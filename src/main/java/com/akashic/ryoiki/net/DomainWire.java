@@ -45,6 +45,8 @@ public final class DomainWire {
         public int keepChunkX;
         public int keepChunkZ;
         public int keepRadius;
+        /** ENTER: where the caster looked when the domain opened; the domain's scene is laid out behind it. */
+        public float yaw;
     }
 
     private DomainWire() {}
@@ -59,7 +61,7 @@ public final class DomainWire {
     }
 
     public static byte[] enter(int session, DomainType type, int casterEntity, double x, double y, double z, int radius,
-        int ticks, int keepChunkX, int keepChunkZ, int keepRadius) {
+        int ticks, int keepChunkX, int keepChunkZ, int keepRadius, float yaw) {
         try {
             ByteArrayOutputStream bytes = new ByteArrayOutputStream(64);
             DataOutputStream out = new DataOutputStream(bytes);
@@ -67,6 +69,7 @@ public final class DomainWire {
             out.writeInt(keepChunkX);
             out.writeInt(keepChunkZ);
             out.writeByte(keepRadius);
+            out.writeFloat(yaw);
             return bytes.toByteArray();
         } catch (IOException e) {
             throw new IllegalStateException(e);
@@ -145,6 +148,7 @@ public final class DomainWire {
                 m.keepChunkX = in.readInt();
                 m.keepChunkZ = in.readInt();
                 m.keepRadius = in.readUnsignedByte();
+                m.yaw = in.readFloat();
             }
             return m;
         } catch (IOException e) {

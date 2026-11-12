@@ -65,6 +65,12 @@ public final class DomainRenderer {
                 domain.arenaX - RenderManager.renderPosX,
                 domain.arenaY + 0.01 - RenderManager.renderPosY,
                 domain.arenaZ - RenderManager.renderPosZ);
+            // The scene is laid out behind where the caster looked: the same for everyone in the domain.
+            GL11.glRotatef(-domain.yaw, 0, 1, 0);
+            Draw.camera(domain.yaw);
+            double a = Math.toRadians(domain.yaw);
+            double camX = RenderManager.renderPosX - domain.arenaX;
+            double camZ = RenderManager.renderPosZ - domain.arenaZ;
             // The floor does not hide what is drawn after it: the mist and the lights lie right on it.
             GL11.glDepthMask(false);
             look.floor(far, domain.radius, time);
@@ -74,9 +80,9 @@ public final class DomainRenderer {
                 domain.radius,
                 time,
                 domain.session,
-                RenderManager.renderPosX - domain.arenaX,
+                camX * Math.cos(a) + camZ * Math.sin(a),
                 RenderManager.renderPosY - domain.arenaY,
-                RenderManager.renderPosZ - domain.arenaZ);
+                -camX * Math.sin(a) + camZ * Math.cos(a));
             GL11.glPopMatrix();
         }
         for (ClientDomain.Dome dome : domain.domes.values()) {

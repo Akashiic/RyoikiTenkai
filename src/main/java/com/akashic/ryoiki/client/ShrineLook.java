@@ -7,17 +7,24 @@ import org.lwjgl.opengl.GL11;
 import com.akashic.ryoiki.fx.SlashField;
 
 /**
- * The crimson shrine: a black sky over still red water, a low blood moon, a ring of gates hung with lanterns, spires
- * on the horizon, mist, embers, and cuts of light that cross the arena without end.
+ * The crimson shrine: a black sky over still red water and a blood moon; behind the caster, the shrine itself, a
+ * tower of three roofs on a stepped base with a lit doorway, a rope across its front, banners and a path of stone
+ * lanterns; around the arena a ring of gates hung with lanterns, spires on the horizon, mist, embers, and cuts of
+ * light that cross the arena without end.
  */
 final class ShrineLook implements DomainLook {
 
     private static final int GATES = 8;
     private static final int SPIRES = 18;
     private static final int EMBERS = 90;
-    private static final float MOON_X = 0.33F;
-    private static final float MOON_Y = 0.21F;
-    private static final float MOON_Z = -0.92F;
+    /** The moon hangs behind the shrine, which stands to the north of the scene. */
+    private static final float MOON_X = 0.13F;
+    private static final float MOON_Y = 0.33F;
+    private static final float MOON_Z = -0.935F;
+    /** How far beyond the arena's wall the shrine's centre is. */
+    private static final float SHRINE_BEYOND = 17;
+    /** The shrine is drawn this much larger than its measures below. */
+    private static final float SHRINE_SCALE = 1.3F;
 
     private final SlashField.Slash slash = new SlashField.Slash();
 
@@ -146,8 +153,11 @@ final class ShrineLook implements DomainLook {
                 0x050001);
         }
         t.draw();
-        // The gates, in a ring around the arena, each facing the centre.
+        // The gates, in a ring around the arena, each facing the centre; none in front of the shrine.
         for (int i = 0; i < GATES; i++) {
+            if (i == GATES / 2 - 1 || i == GATES / 2) {
+                continue;
+            }
             GL11.glPushMatrix();
             float a = 360F * (i + 0.5F) / GATES;
             GL11.glRotatef(a, 0, 1, 0);
@@ -155,6 +165,12 @@ final class ShrineLook implements DomainLook {
             gate(t, time, i);
             GL11.glPopMatrix();
         }
+        GL11.glPushMatrix();
+        GL11.glTranslatef(0, 0, -(radius + SHRINE_BEYOND));
+        GL11.glScalef(SHRINE_SCALE, SHRINE_SCALE, SHRINE_SCALE);
+        shrine(t, time);
+        GL11.glPopMatrix();
+        lights(t, radius, time);
         mist(radius, time);
         embers(t, radius, time);
         slashes(t, radius, time, seed, camX, camY, camZ);
@@ -183,16 +199,238 @@ final class ShrineLook implements DomainLook {
             Draw.box(t, x - 0.28F, height - 4.0F, -0.28F, x + 0.28F, height - 3.2F, 0.28F, 0xFFC070, 0xD8501C);
         }
         t.draw();
-        // Their light.
+    }
+
+    /**
+     * The shrine: a stepped base, a hall of four pillars with a lit doorway, three roofs each smaller than the one
+     * below, a spire with rings of light. A thick rope hangs across its front with paper streamers, a banner stands
+     * on either side and a path of stone lanterns runs up to it. Drawn facing +Z, its centre at the origin.
+     */
+    private static void shrine(Tessellator t, float time) {
+        int stoneLit = 0x3A1418;
+        int stoneDark = 0x0A0304;
+        int woodLit = 0xA81418;
+        int woodDark = 0x220406;
+        int roofLit = 0x3E0C12;
+        int roofDark = 0x070102;
+        GL11.glDisable(GL11.GL_BLEND);
+        t.startDrawingQuads();
+        // The base and its steps.
+        Draw.frustum(t, 0, 0, 0, 8.6F, 8.6F, 0.7F, 8.2F, 8.2F, stoneLit, stoneDark);
+        Draw.frustum(t, 0, 0, 0.7F, 7.4F, 7.4F, 1.4F, 7.0F, 7.0F, stoneLit, stoneDark);
+        Draw.frustum(t, 0, 0, 1.4F, 6.2F, 6.2F, 2.1F, 5.9F, 5.9F, stoneLit, stoneDark);
+        for (int step = 0; step < 4; step++) {
+            Draw.box(
+                t,
+                -2.2F,
+                0,
+                5.9F + step * 0.7F,
+                2.2F,
+                1.9F - step * 0.5F,
+                6.6F + step * 0.7F,
+                stoneLit,
+                stoneDark);
+        }
+        // The hall: back and side walls in shadow, pillars at the corners and beside the door, beams above.
+        Draw.box(t, -4.6F, 2.1F, -4.6F, 4.6F, 7.4F, -4.2F, 0x12030A, 0x050102);
+        Draw.box(t, -4.6F, 2.1F, -4.6F, -4.2F, 7.4F, 4.2F, 0x16040A, 0x050102);
+        Draw.box(t, 4.2F, 2.1F, -4.6F, 4.6F, 7.4F, 4.2F, 0x16040A, 0x050102);
+        for (int sx = -1; sx <= 1; sx += 2) {
+            Draw.box(t, sx * 4.9F - 0.5F, 2.1F, 4.4F, sx * 4.9F + 0.5F, 7.6F, 5.4F, woodLit, woodDark);
+            Draw.box(t, sx * 4.9F - 0.5F, 2.1F, -5.4F, sx * 4.9F + 0.5F, 7.6F, -4.4F, woodLit, woodDark);
+            Draw.box(t, sx * 2.1F - 0.35F, 2.1F, 4.5F, sx * 2.1F + 0.35F, 7.2F, 5.2F, woodLit, woodDark);
+            Draw.box(t, sx * 3.5F - 1.1F, 2.1F, 4.5F, sx * 3.5F + 1.1F, 6.6F, 4.8F, 0x1C0408, 0x070102);
+        }
+        Draw.box(t, -5.8F, 7.2F, 4.3F, 5.8F, 7.9F, 5.5F, woodLit, woodDark);
+        Draw.box(t, -5.8F, 7.2F, -5.5F, 5.8F, 7.9F, -4.3F, woodLit, woodDark);
+        Draw.box(t, -5.5F, 7.2F, -5.8F, -4.3F, 7.9F, 5.8F, woodLit, woodDark);
+        Draw.box(t, 4.3F, 7.2F, -5.8F, 5.5F, 7.9F, 5.8F, woodLit, woodDark);
+        Draw.box(t, -1.9F, 6.3F, 4.5F, 1.9F, 7.2F, 5.0F, woodLit, woodDark);
+        // Three roofs: each flares at the eaves and climbs to the storey above.
+        roof(t, 7.9F, 8.6F, 5.9F, 3.3F, 2.5F, roofLit, roofDark, woodLit, woodDark);
+        Draw.box(t, -3.0F, 10.2F, -3.0F, 3.0F, 12.6F, 3.0F, 0x5A0A0E, 0x160305);
+        roof(t, 12.6F, 5.6F, 3.8F, 2.1F, 2.0F, roofLit, roofDark, woodLit, woodDark);
+        Draw.box(t, -1.9F, 14.4F, -1.9F, 1.9F, 16.2F, 1.9F, 0x5A0A0E, 0x160305);
+        roof(t, 16.2F, 3.7F, 2.4F, 0.5F, 1.9F, roofLit, roofDark, woodLit, woodDark);
+        // The spire.
+        Draw.box(t, -0.22F, 18.0F, -0.22F, 0.22F, 23.5F, 0.22F, 0x2A0A0C, 0x0A0203);
+        Draw.frustum(t, 0, 0, 23.5F, 0.4F, 0.4F, 24.6F, 0.02F, 0.02F, 0xC89040, 0x3A1408);
+        // Banner poles and the stone lanterns of the path.
+        for (int sx = -1; sx <= 1; sx += 2) {
+            Draw.box(t, sx * 11F - 0.18F, 0, 6.8F, sx * 11F + 0.18F, 13.5F, 7.16F, 0x241012, 0x080203);
+            Draw.box(t, sx * 11F - 0.18F, 13.0F, 6.8F, sx * 11F - 0.18F - sx * 2.6F, 13.3F, 7.1F, 0x241012, 0x080203);
+            for (int k = 0; k < 4; k++) {
+                float z = 9.6F + k * 2.6F;
+                float x = sx * 3.3F;
+                Draw.frustum(t, x, z, 0, 0.5F, 0.5F, 0.35F, 0.4F, 0.4F, stoneLit, stoneDark);
+                Draw.box(t, x - 0.17F, 0.35F, z - 0.17F, x + 0.17F, 1.45F, z + 0.17F, stoneLit, stoneDark);
+                Draw.box(t, x - 0.36F, 1.45F, z - 0.36F, x + 0.36F, 1.6F, z + 0.36F, stoneLit, stoneDark);
+                Draw.box(t, x - 0.26F, 1.6F, z - 0.26F, x + 0.26F, 2.15F, z + 0.26F, 0xFFB868, 0xC8401A);
+                Draw.frustum(t, x, z, 2.15F, 0.52F, 0.52F, 2.6F, 0.08F, 0.08F, stoneLit, stoneDark);
+            }
+        }
+        // The rope across the front: a sagging run of thick knots, and paper streamers under it that sway.
+        int knots = 18;
+        for (int k = 0; k < knots; k++) {
+            float u = (k + 0.5F) / knots * 2 - 1;
+            float x = u * 4.5F;
+            float y = 6.0F - 0.9F * (1 - u * u);
+            float thick = 0.2F + 0.1F * (1 - u * u);
+            Draw.box(
+                t,
+                x - 0.27F,
+                y - thick,
+                5.5F,
+                x + 0.27F,
+                y + thick,
+                5.5F + thick * 2,
+                k % 2 == 0 ? 0xD8B880 : 0xB89058,
+                0x4A3018);
+        }
+        for (int k = 0; k < 5; k++) {
+            float u = (k + 0.5F) / 5 * 2 - 1;
+            float x = u * 3.8F;
+            float y = 5.75F - 0.9F * (1 - u * u);
+            float sway = (float) Math.sin(time * 0.07F + k * 1.7F) * 0.18F;
+            for (int fold = 0; fold < 3; fold++) {
+                float x0 = x + (fold % 2 == 0 ? -0.18F : 0.02F) + sway * fold * 0.5F;
+                float top = y - fold * 0.42F;
+                Draw.color(t, 0xF4EEE6, 1);
+                t.addVertex(x0, top, 5.86F);
+                t.addVertex(x0 + 0.34F, top, 5.86F);
+                Draw.color(t, 0xB8A8A0, 1);
+                t.addVertex(x0 + 0.34F + sway * 0.5F, top - 0.46F, 5.86F);
+                t.addVertex(x0 + sway * 0.5F, top - 0.46F, 5.86F);
+            }
+        }
+        // The banners: long cloths that ripple down their length.
+        for (int sx = -1; sx <= 1; sx += 2) {
+            float x = sx * 9.6F;
+            int strips = 12;
+            for (int k = 0; k < strips; k++) {
+                float y0 = 12.9F - k * 0.75F;
+                float y1 = y0 - 0.75F;
+                float w0 = (float) Math.sin(time * 0.09F + k * 0.55F + sx) * 0.05F * k;
+                float w1 = (float) Math.sin(time * 0.09F + (k + 1) * 0.55F + sx) * 0.05F * (k + 1);
+                int c0 = Draw.mix(0x7A0A10, 0x2A0306, 0.5F + 0.5F * (float) Math.sin(k * 0.55F + time * 0.09F));
+                Draw.color(t, c0, 1);
+                t.addVertex(x - 0.85F + w0, y0, 6.95F + w0);
+                t.addVertex(x + 0.85F + w0, y0, 6.95F + w0);
+                Draw.color(t, Draw.mix(c0, 0x000000, 0.25F), 1);
+                t.addVertex(x + 0.85F + w1, y1, 6.95F + w1);
+                t.addVertex(x - 0.85F + w1, y1, 6.95F + w1);
+            }
+        }
+        t.draw();
+        // The doorway: fire deep inside the hall.
+        Draw.translucent();
+        t.startDrawingQuads();
+        float burn = 0.8F + 0.2F * (float) Math.sin(time * 0.23F) * (float) Math.sin(time * 0.071F + 1);
+        Draw.color(t, 0x200004, 1);
+        t.addVertex(-1.75F, 2.1F, 4.4F);
+        t.addVertex(1.75F, 2.1F, 4.4F);
+        Draw.color(t, Draw.mix(0x400008, 0xFF7A28, burn * 0.55F), 1);
+        t.addVertex(1.75F, 6.3F, 4.4F);
+        t.addVertex(-1.75F, 6.3F, 4.4F);
+        Draw.color(t, Draw.mix(0xFF4A18, 0xFFC860, burn), 0.95F);
+        t.addVertex(-1.2F, 2.1F, 4.45F);
+        t.addVertex(1.2F, 2.1F, 4.45F);
+        Draw.color(t, 0xFF2A10, 0);
+        t.addVertex(0.9F, 5.6F, 4.45F);
+        t.addVertex(-0.9F, 5.6F, 4.45F);
+        // Windows of the upper storeys.
+        for (int k = -1; k <= 1; k++) {
+            Draw.color(t, Draw.mix(0xFF5A20, 0xFFC060, burn), 0.9F);
+            t.addVertex(k * 1.7F - 0.45F, 10.9F, 3.03F);
+            t.addVertex(k * 1.7F + 0.45F, 10.9F, 3.03F);
+            t.addVertex(k * 1.7F + 0.45F, 12.0F, 3.03F);
+            t.addVertex(k * 1.7F - 0.45F, 12.0F, 3.03F);
+        }
+        Draw.color(t, Draw.mix(0xFF5A20, 0xFFC060, burn), 0.9F);
+        t.addVertex(-0.5F, 14.9F, 1.93F);
+        t.addVertex(0.5F, 14.9F, 1.93F);
+        t.addVertex(0.5F, 15.8F, 1.93F);
+        t.addVertex(-0.5F, 15.8F, 1.93F);
+        t.draw();
+        // Rings of light on the spire.
+        Draw.additive();
+        GL11.glDepthMask(false);
+        for (int k = 0; k < 3; k++) {
+            GL11.glPushMatrix();
+            GL11.glTranslatef(0, 19.4F + k * 1.25F, 0);
+            GL11.glRotatef(time * (1.2F + k * 0.5F) * (k % 2 == 0 ? 1 : -1), 0, 1, 0);
+            GL11.glRotatef(8, 1, 0, 0);
+            float r = 1.5F - k * 0.36F;
+            Draw.ring(r - 0.07F, r + 0.07F, 40, 0xFFC860, 0.9F, 0xFFC860, 0.9F);
+            Draw.ring(r - 0.5F, r + 0.5F, 40, 0xFF6A20, 0.0F, 0xFF6A20, 0.22F);
+            GL11.glPopMatrix();
+        }
+        GL11.glDepthMask(true);
+    }
+
+    /**
+     * One roof of the shrine: eaves that flare out and turn up at the corners, then the slope up to the storey
+     * above, with a beam under the eaves.
+     */
+    private static void roof(Tessellator t, float y, float eave, float mid, float top, float rise, int lit, int dark,
+        int woodLit, int woodDark) {
+        Draw.box(t, -mid - 0.3F, y - 0.35F, -mid - 0.3F, mid + 0.3F, y, mid + 0.3F, woodLit, woodDark);
+        Draw.frustum(t, 0, 0, y, eave, eave, y + rise * 0.3F, mid, mid, lit, dark);
+        Draw.frustum(t, 0, 0, y + rise * 0.3F, mid, mid, y + rise, top, top, lit, dark);
+        // The corners turn up.
+        for (int sx = -1; sx <= 1; sx += 2) {
+            for (int sz = -1; sz <= 1; sz += 2) {
+                float x = sx * eave;
+                float z = sz * eave;
+                Draw.color(t, Draw.mix(dark, lit, 0.8F), 1);
+                t.addVertex(x - sx * 1.5F, y + 0.05F, z);
+                t.addVertex(x, y + 0.05F, z - sz * 1.5F);
+                Draw.color(t, 0xC8782A, 1);
+                t.addVertex(x + sx * 0.4F, y + 0.7F, z + sz * 0.4F);
+                t.addVertex(x + sx * 0.4F, y + 0.7F, z + sz * 0.4F);
+            }
+        }
+        // A ridge of lighter tiles along each edge of the eaves.
+        Draw.box(t, -eave, y - 0.06F, eave - 0.14F, eave, y + 0.1F, eave, 0x7A1A1E, 0x2A0608);
+        Draw.box(t, -eave, y - 0.06F, -eave, eave, y + 0.1F, -eave + 0.14F, 0x7A1A1E, 0x2A0608);
+        Draw.box(t, eave - 0.14F, y - 0.06F, -eave, eave, y + 0.1F, eave, 0x7A1A1E, 0x2A0608);
+        Draw.box(t, -eave, y - 0.06F, -eave, -eave + 0.14F, y + 0.1F, eave, 0x7A1A1E, 0x2A0608);
+    }
+
+    /** Every light of the scene, as soft glows facing the camera: the gates' lanterns, the path's, the doorway. */
+    private static void lights(Tessellator t, int radius, float time) {
         Draw.additive();
         GL11.glDepthMask(false);
         t.startDrawing(GL11.GL_TRIANGLES);
-        for (int side = -1; side <= 1; side += 2) {
-            float x = side * (half - 1.3F);
-            float flicker = 0.75F + 0.25F * (float) Math.sin(time * 0.31F + index * 2.3F + side);
-            Draw.glow(t, x, height - 3.6F, 0, 1.7F, 0xFF8A30, 0.55F * flicker);
-            Draw.glow(t, x, height - 3.6F, 0, 4.2F, 0xFF5A20, 0.22F * flicker);
+        for (int i = 0; i < GATES; i++) {
+            if (i == GATES / 2 - 1 || i == GATES / 2) {
+                continue;
+            }
+            double a = Math.toRadians(360F * (i + 0.5F) / GATES);
+            for (int side = -1; side <= 1; side += 2) {
+                float along = side * 2.1F;
+                double x = Math.sin(a) * (radius + 5.5F) + Math.cos(a) * along;
+                double z = Math.cos(a) * (radius + 5.5F) - Math.sin(a) * along;
+                float flicker = 0.75F + 0.25F * (float) Math.sin(time * 0.31F + i * 2.3F + side);
+                Draw.glow(t, x, 5.0F, z, 1.7F, 0xFF8A30, 0.55F * flicker);
+                Draw.glow(t, x, 5.0F, z, 4.2F, 0xFF5A20, 0.22F * flicker);
+            }
         }
+        float shrineZ = -(radius + SHRINE_BEYOND);
+        float k1 = SHRINE_SCALE;
+        for (int sx = -1; sx <= 1; sx += 2) {
+            for (int k = 0; k < 4; k++) {
+                float flicker = 0.8F + 0.2F * (float) Math.sin(time * 0.27F + k * 1.9F + sx);
+                float z = shrineZ + (9.6F + k * 2.6F) * k1;
+                Draw.glow(t, sx * 3.3F * k1, 1.9F * k1, z, 1.3F, 0xFFA040, 0.6F * flicker);
+                Draw.glow(t, sx * 3.3F * k1, 1.9F * k1, z, 3.2F, 0xFF5A20, 0.2F * flicker);
+            }
+        }
+        float burn = 0.8F + 0.2F * (float) Math.sin(time * 0.23F);
+        Draw.glow(t, 0, 4.0F * k1, shrineZ + 5.6F * k1, 5.5F, 0xFF6A20, 0.45F * burn);
+        Draw.glow(t, 0, 4.0F * k1, shrineZ + 5.6F * k1, 13F, 0xFF2A10, 0.22F * burn);
+        Draw.glow(t, 0, 24.3F * k1, shrineZ, 3F, 0xFFD080, 0.6F);
+        Draw.glow(t, 0, 21F * k1, shrineZ, 9F, 0xFF5A20, 0.16F);
         t.draw();
         GL11.glDepthMask(true);
     }

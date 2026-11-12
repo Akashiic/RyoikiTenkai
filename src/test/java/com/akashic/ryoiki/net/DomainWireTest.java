@@ -17,8 +17,8 @@ class DomainWireTest {
 
     @Test
     void enterRoundTrips() {
-        DomainWire.Message m = DomainWire
-            .read(DomainWire.enter(7, DomainType.MALEVOLENT_SHRINE, 4321, 200000, 120, -48.5, 13, 360, -12, 30, 10));
+        DomainWire.Message m = DomainWire.read(
+            DomainWire.enter(7, DomainType.MALEVOLENT_SHRINE, 4321, 200000, 120, -48.5, 13, 360, -12, 30, 10, -137.5F));
         assertEquals(DomainWire.ENTER, m.op);
         assertEquals(7, m.session);
         assertEquals(DomainType.MALEVOLENT_SHRINE, m.type);
@@ -31,6 +31,7 @@ class DomainWireTest {
         assertEquals(-12, m.keepChunkX);
         assertEquals(30, m.keepChunkZ);
         assertEquals(10, m.keepRadius);
+        assertEquals(-137.5F, m.yaw);
     }
 
     @Test

@@ -3,20 +3,32 @@ package com.akashic.ryoiki.client;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.AbstractClientPlayer;
 import net.minecraft.client.gui.FontRenderer;
+import net.minecraft.client.model.ModelBiped;
+import net.minecraft.client.model.ModelRenderer;
+import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.entity.Entity;
 
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL12;
 
 /**
  * The cut-in: while the caster makes the hand sign, a slanted band crosses the screen of everyone near, with the
- * caster's face (from its skin), its name and the domain's. It rushes in, holds, and leaves as the domain opens.
+ * caster's figure (its own skin) raising its arms into the domain's sign, its name and the domain's. It rushes in,
+ * holds, and leaves as the domain opens.
  */
 final class CutIn {
 
     private static final float IN_TICKS = 5;
     private static final float OUT_TICKS = 4;
+    /** When the figure starts raising its arms, and how long the sign takes. */
+    private static final float SIGN_START = 3;
+    private static final float SIGN_TICKS = 9;
+
+    /** One figure for each skin layout: 64 by 32 (old) and 64 by 64. */
+    private static ModelBiped figureOld;
+    private static ModelBiped figureNew;
 
     private CutIn() {}
 
@@ -84,40 +96,40 @@ final class CutIn {
         edge(t, x0, x1, yc + half - trim * 3.4F, -skew * 0.9F, trim * 0.4F, look.bandTrim());
         t.draw();
 
-        // The face, in a tilted frame.
-        float faceX = w * 0.20F + slide;
+        // The caster, in a tilted frame: its own skin on a figure that makes the hand sign.
+        float faceX = w * 0.19F + slide;
         float size = half * 1.42F;
         t.startDrawingQuads();
-        diamond(t, faceX, yc, size * 0.94F, look.bandTrim(), 1);
-        diamond(t, faceX, yc, size * 0.88F, 0x000000, 1);
+        diamond(t, faceX, yc, size * 0.98F, look.bandTrim(), 1);
+        diamond(t, faceX, yc, size * 0.92F, Draw.mix(look.bandFrom(), 0x000000, 0.5F), 1);
         t.draw();
+        // A burst behind the figure at the instant the sign is complete.
+        float sign = Draw.easeOut((age - SIGN_START) / SIGN_TICKS);
+        float burst = Draw.clamp01((age - SIGN_START - SIGN_TICKS + 1) / 7F);
+        if (burst > 0 && burst < 1) {
+            Draw.additive();
+            t.startDrawingQuads();
+            float r = size * (0.5F + burst * 2.2F);
+            diamond(t, faceX, yc, r, look.bandTrim(), (1 - burst) * 0.75F);
+            diamond(t, faceX, yc, r * 0.7F, 0xFFFFFF, (1 - burst) * 0.5F);
+            t.draw();
+            Draw.translucent();
+        }
         GL11.glShadeModel(GL11.GL_FLAT);
         GL11.glEnable(GL11.GL_TEXTURE_2D);
         GL11.glColor4f(1, 1, 1, 1);
         Entity caster = mc.theWorld.getEntityByID(casterEntity);
         String name = caster == null ? "" : caster.getCommandSenderName();
         if (caster instanceof AbstractClientPlayer) {
-            mc.getTextureManager()
-                .bindTexture(((AbstractClientPlayer) caster).getLocationSkin());
-            // Old skins are 64 by 32, new ones 64 by 64: the face is 8 by 8 pixels at (8, 8) in both.
-            int texHeight = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_HEIGHT);
-            int texWidth = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH);
-            float unit = texWidth <= 0 ? 1 / 64F : 1F / 64F;
-            float vUnit = texHeight > 0 && texWidth > 0 && texHeight == texWidth ? 1 / 64F : 1 / 32F;
-            float f = size * 0.56F;
-            GL11.glEnable(GL11.GL_BLEND);
-            GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-            face(t, faceX, yc, f, 8 * unit, 8 * vUnit, 16 * unit, 16 * vUnit);
-            GL11.glEnable(GL11.GL_ALPHA_TEST);
-            face(t, faceX, yc, f * 1.1F, 40 * unit, 8 * vUnit, 48 * unit, 16 * vUnit);
+            figure(mc, (AbstractClientPlayer) caster, domainId, faceX, yc + half * 0.95F, half * 3.0F, sign, age);
         }
 
         // The words.
         FontRenderer font = mc.fontRenderer;
         String title = I18n.format("ryoikitenkai.dominio." + domainId);
         String over = I18n.format("ryoikitenkai.expansao");
-        float textX = w * 0.33F + slide;
-        float scale = Math.min(h * 0.115F / font.FONT_HEIGHT, (w * 0.62F) / Math.max(1, font.getStringWidth(title)));
+        float textX = w * 0.36F + slide;
+        float scale = Math.min(h * 0.115F / font.FONT_HEIGHT, (w * 0.58F) / Math.max(1, font.getStringWidth(title)));
         int trimColor = 0xFF000000 | look.bandTrim();
         GL11.glPushMatrix();
         GL11.glTranslatef(textX, yc - scale * font.FONT_HEIGHT * 0.38F, 0);
@@ -174,13 +186,94 @@ final class CutIn {
         t.addVertex(x + r, y, 0);
     }
 
-    private static void face(Tessellator t, float x, float y, float half, float u0, float v0, float u1, float v1) {
-        t.startDrawingQuads();
-        t.setColorRGBA_F(1, 1, 1, 1);
-        t.addVertexWithUV(x - half, y - half, 0, u0, v0);
-        t.addVertexWithUV(x - half, y + half, 0, u0, v1);
-        t.addVertexWithUV(x + half, y + half, 0, u1, v1);
-        t.addVertexWithUV(x + half, y - half, 0, u1, v0);
-        t.draw();
+    /**
+     * The caster's figure from the waist up, turned a little to one side, its arms going from rest to the domain's
+     * hand sign as {@code sign} goes from 0 to 1.
+     *
+     * @param feetY where the figure's waist line sits on the screen
+     * @param scale screen units per block of figure
+     */
+    private static void figure(Minecraft mc, AbstractClientPlayer caster, String domainId, float x, float feetY,
+        float scale, float sign, float age) {
+        mc.getTextureManager()
+            .bindTexture(caster.getLocationSkin());
+        int texHeight = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_HEIGHT);
+        int texWidth = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH);
+        boolean square = texHeight > 0 && texHeight == texWidth;
+        ModelBiped model;
+        if (square) {
+            if (figureNew == null) {
+                figureNew = new ModelBiped(0, 0, 64, 64);
+            }
+            model = figureNew;
+        } else {
+            if (figureOld == null) {
+                figureOld = new ModelBiped(0, 0, 64, 32);
+            }
+            model = figureOld;
+        }
+        // The pose. Angles in radians; a negative X raises an arm forward.
+        boolean shrine = "santuario".equals(domainId);
+        float tremble = sign >= 1 ? (float) Math.sin(age * 2.3F) * 0.012F : 0;
+        reset(model.bipedHead);
+        reset(model.bipedHeadwear);
+        reset(model.bipedBody);
+        reset(model.bipedRightArm);
+        reset(model.bipedLeftArm);
+        if (shrine) {
+            // Both hands brought together in front of the chest, head bowed.
+            model.bipedRightArm.rotateAngleX = -1.32F * sign + tremble;
+            model.bipedRightArm.rotateAngleY = -0.62F * sign;
+            model.bipedLeftArm.rotateAngleX = -1.32F * sign - tremble;
+            model.bipedLeftArm.rotateAngleY = 0.62F * sign;
+            model.bipedHead.rotateAngleX = 0.22F * sign;
+        } else {
+            // One hand raised before the face, the other at rest, chin up.
+            model.bipedRightArm.rotateAngleX = -2.45F * sign + tremble;
+            model.bipedRightArm.rotateAngleY = -0.1F * sign;
+            model.bipedRightArm.rotateAngleZ = 0.1F * sign;
+            model.bipedLeftArm.rotateAngleX = 0.12F * sign;
+            model.bipedLeftArm.rotateAngleZ = -0.08F;
+            model.bipedHead.rotateAngleX = -0.12F * sign;
+        }
+        model.bipedHead.rotateAngleY = 0.18F;
+        model.bipedHeadwear.rotateAngleX = model.bipedHead.rotateAngleX;
+        model.bipedHeadwear.rotateAngleY = model.bipedHead.rotateAngleY;
+
+        GL11.glClear(GL11.GL_DEPTH_BUFFER_BIT);
+        GL11.glEnable(GL11.GL_DEPTH_TEST);
+        GL11.glDepthMask(true);
+        GL11.glDisable(GL11.GL_CULL_FACE);
+        GL11.glEnable(GL11.GL_ALPHA_TEST);
+        GL11.glDisable(GL11.GL_BLEND);
+        GL11.glEnable(GL12.GL_RESCALE_NORMAL);
+        GL11.glPushMatrix();
+        // The model's own space has Y down, as the screen has: the waist (12 pixels below the neck) goes on feetY.
+        GL11.glTranslatef(x, feetY - scale * 0.75F, 200);
+        GL11.glScalef(scale, scale, scale);
+        float punch = 1 + 0.06F * Draw.clamp01(1 - Math.abs(age - SIGN_START - SIGN_TICKS) / 2.5F);
+        GL11.glScalef(punch, punch, punch);
+        GL11.glRotatef(-8, 1, 0, 0);
+        GL11.glRotatef(180 - 24, 0, 1, 0);
+        RenderHelper.enableStandardItemLighting();
+        GL11.glColor4f(1, 1, 1, 1);
+        float unit = 0.0625F;
+        model.bipedBody.render(unit);
+        model.bipedRightArm.render(unit);
+        model.bipedLeftArm.render(unit);
+        model.bipedHead.render(unit);
+        model.bipedHeadwear.render(unit);
+        RenderHelper.disableStandardItemLighting();
+        GL11.glPopMatrix();
+        GL11.glDisable(GL12.GL_RESCALE_NORMAL);
+        GL11.glDisable(GL11.GL_DEPTH_TEST);
+        GL11.glDisable(GL11.GL_LIGHTING);
+        GL11.glColor4f(1, 1, 1, 1);
+    }
+
+    private static void reset(ModelRenderer part) {
+        part.rotateAngleX = 0;
+        part.rotateAngleY = 0;
+        part.rotateAngleZ = 0;
     }
 }

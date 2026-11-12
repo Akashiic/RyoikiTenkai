@@ -164,6 +164,7 @@ public final class DomainManager {
         // The caster's position now: the domain opens around where it stands, not where the hand sign began.
         double ox = caster.posX;
         double oz = caster.posZ;
+        float yaw = caster.rotationYaw;
         for (EntityPlayerMP p : players(world)) {
             boolean caught = p == caster || p.isEntityAlive() && sessionOf(p.getUniqueID()) == null
                 && distanceSq(p, s.x, s.y, s.z) <= square(s.radius);
@@ -200,7 +201,8 @@ public final class DomainManager {
                     s.type.durationTicks,
                     p.chunkCoordX,
                     p.chunkCoordZ,
-                    view));
+                    view,
+                    yaw));
             teleport(p, cx + at[0], slots.floorY, cz + at[1], p.rotationYaw, p.rotationPitch);
             if (p.dimension != s.dimension || distanceSq(p, cx + at[0], slots.floorY, cz + at[1]) > 4) {
                 // Something on the server (a world border, a region plugin) cancelled or redirected the teleport.

@@ -11,7 +11,33 @@ final class Draw {
     /** Everything drawn while this is below 1 is that much fainter (reflections, fades). */
     static float alpha = 1;
 
+    /** The camera's right and up, in the space things are being drawn in: what faces the camera is built on them. */
+    private static float rightX;
+    private static float rightZ;
+    private static float upX;
+    private static float upY;
+    private static float upZ;
+
     private Draw() {}
+
+    /**
+     * Takes the camera's axes for the frame, turned into a scene that is itself turned {@code -sceneYaw} degrees
+     * about the vertical.
+     */
+    static void camera(float sceneYaw) {
+        double a = Math.toRadians(sceneYaw);
+        float cos = (float) Math.cos(a);
+        float sin = (float) Math.sin(a);
+        float rx = ActiveRenderInfo.rotationX;
+        float rz = ActiveRenderInfo.rotationZ;
+        float ux = ActiveRenderInfo.rotationYZ;
+        float uz = ActiveRenderInfo.rotationXY;
+        rightX = rx * cos + rz * sin;
+        rightZ = -rx * sin + rz * cos;
+        upX = ux * cos + uz * sin;
+        upY = ActiveRenderInfo.rotationXZ;
+        upZ = -ux * sin + uz * cos;
+    }
 
     static int mix(int from, int to, float blend) {
         blend = blend < 0 ? 0 : blend > 1 ? 1 : blend;
@@ -147,11 +173,11 @@ final class Draw {
      * centre, nothing at its rim.
      */
     static void glow(Tessellator t, double x, double y, double z, float size, int rgb, float a) {
-        float rx = ActiveRenderInfo.rotationX * size;
-        float rz = ActiveRenderInfo.rotationZ * size;
-        float ux = ActiveRenderInfo.rotationYZ * size;
-        float uy = ActiveRenderInfo.rotationXZ * size;
-        float uz = ActiveRenderInfo.rotationXY * size;
+        float rx = rightX * size;
+        float rz = rightZ * size;
+        float ux = upX * size;
+        float uy = upY * size;
+        float uz = upZ * size;
         int segments = 8;
         for (int j = 0; j < segments; j++) {
             double a0 = Math.PI * 2 * j / segments;
@@ -166,6 +192,33 @@ final class Draw {
             t.addVertex(x + rx * c0 + ux * s0, y + uy * s0, z + rz * c0 + uz * s0);
             t.addVertex(x + rx * c1 + ux * s1, y + uy * s1, z + rz * c1 + uz * s1);
         }
+    }
+
+    /**
+     * A roof or a plinth, added to a batch of quads: four sloped faces from a rectangle at {@code y0} to another at
+     * {@code y1}, both centred on (cx, cz), and a lid on top.
+     */
+    static void frustum(Tessellator t, float cx, float cz, float y0, float halfX0, float halfZ0, float y1, float halfX1,
+        float halfZ1, int lit, int dark) {
+        float[][] low = { { cx - halfX0, cz - halfZ0 }, { cx + halfX0, cz - halfZ0 }, { cx + halfX0, cz + halfZ0 },
+            { cx - halfX0, cz + halfZ0 } };
+        float[][] high = { { cx - halfX1, cz - halfZ1 }, { cx + halfX1, cz - halfZ1 }, { cx + halfX1, cz + halfZ1 },
+            { cx - halfX1, cz + halfZ1 } };
+        float[] shade = { 0.2F, 0.45F, 0.8F, 0.45F };
+        for (int i = 0; i < 4; i++) {
+            int j = (i + 1) % 4;
+            color(t, mix(dark, lit, shade[i] * 0.45F), 1);
+            t.addVertex(low[i][0], y0, low[i][1]);
+            t.addVertex(low[j][0], y0, low[j][1]);
+            color(t, mix(dark, lit, shade[i]), 1);
+            t.addVertex(high[j][0], y1, high[j][1]);
+            t.addVertex(high[i][0], y1, high[i][1]);
+        }
+        color(t, lit, 1);
+        t.addVertex(high[0][0], y1, high[0][1]);
+        t.addVertex(high[3][0], y1, high[3][1]);
+        t.addVertex(high[2][0], y1, high[2][1]);
+        t.addVertex(high[1][0], y1, high[1][1]);
     }
 
     /** A box with shaded faces, added to a batch of quads: lit on top, darker on the sides away from the light. */

@@ -54,6 +54,8 @@ public final class ClientDomain {
     public double arenaY;
     public double arenaZ;
     public int radius;
+    /** Where the caster looked when the domain opened, in degrees: the scene is laid out behind it. */
+    public float yaw;
     /** Ticks since this player entered. */
     public int age;
 
@@ -117,6 +119,7 @@ public final class ClientDomain {
                 arenaY = m.y;
                 arenaZ = m.z;
                 radius = m.radius;
+                yaw = m.yaw;
                 age = 0;
                 keepRadius = m.keepRadius;
                 releaseIn = -1;

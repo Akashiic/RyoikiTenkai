@@ -81,8 +81,11 @@ final class DomainSky extends IRenderHandler {
             GL11.glDisable(GL11.GL_DEPTH_TEST);
         }
         GL11.glShadeModel(GL11.GL_SMOOTH);
+        GL11.glPushMatrix();
+        GL11.glRotatef(-domain.yaw, 0, 1, 0);
         DomainRenderer.look(domain.inside)
             .sky(far(mc) * 0.92F, domain.age + partialTicks);
+        GL11.glPopMatrix();
         GL11.glShadeModel(GL11.GL_FLAT);
         GL11.glDepthMask(true);
         GL11.glPopAttrib();
