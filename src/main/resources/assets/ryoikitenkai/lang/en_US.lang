@@ -7,3 +7,6 @@ ryoikitenkai.erro.perto=Another domain is too close.
 ryoikitenkai.erro.cheio=Too many domains are open.
 ryoikitenkai.erro.regiao=Players have been in the arena region. Change arena.x and arena.z in the config.
 ryoikitenkai.erro.bloqueado=The server blocked the teleport into the arena (world border or protection). Domain cancelled.
+ryoikitenkai.expansao=DOMAIN EXPANSION
+ryoikitenkai.dominio.vazio=STAR VOID
+ryoikitenkai.dominio.santuario=CRIMSON SHRINE

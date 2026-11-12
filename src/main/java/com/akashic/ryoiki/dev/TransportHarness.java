@@ -295,8 +295,8 @@ public final class TransportHarness {
                                 + " us on the server");
                     });
                 }
-                if (ticks == 12) {
-                    shot(mc, "ryoiki-" + (run + 1) + "-windup");
+                if (ticks == 6 || ticks == 12 || ticks == 20) {
+                    shot(mc, "ryoiki-" + (run + 1) + "-windup" + (ticks == 12 ? "" : "-t" + ticks));
                 }
                 if (ClientDomain.INSTANCE.inside != null) {
                     next(Step.IN_DOMAIN);
@@ -312,6 +312,13 @@ public final class TransportHarness {
                 }
                 break;
             case IN_DOMAIN:
+                if (ticks == 30 || ticks == 60) {
+                    mc.thePlayer.rotationYaw = ticks == 30 ? 180 : 135;
+                    mc.thePlayer.rotationPitch = ticks == 30 ? -12 : 4;
+                }
+                if (ticks == 34 || ticks == 64 || ticks == 68) {
+                    shot(mc, "ryoiki-" + (run + 1) + "-look-t" + ticks);
+                }
                 if (ticks == 100) {
                     report(
                         "in the domain, client chunks: " + mc.theWorld.getChunkProvider()

@@ -7,3 +7,6 @@ ryoikitenkai.erro.perto=Há outro domínio perto demais.
 ryoikitenkai.erro.cheio=Já há domínios demais abertos.
 ryoikitenkai.erro.regiao=A região das arenas já foi usada por jogadores. Mude arena.x e arena.z no config.
 ryoikitenkai.erro.bloqueado=O servidor bloqueou o teleporte para a arena (borda do mundo ou proteção). Domínio cancelado.
+ryoikitenkai.expansao=EXPANSÃO DE DOMÍNIO
+ryoikitenkai.dominio.vazio=VAZIO ESTELAR
+ryoikitenkai.dominio.santuario=SANTUÁRIO CARMESIM

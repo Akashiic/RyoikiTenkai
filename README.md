@@ -13,7 +13,9 @@ O estado do projeto, as decisões e o que falta estão em [`docs/HANDOFF.md`](do
   todos voltam para onde estavam.
 * `/ryoiki encerrar` e `/ryoiki preparar` (constrói as arenas do mundo antes do primeiro uso).
 * Quem fica de fora vê o domo (branco ou preto) no lugar da conjuração.
-* O visual ainda é um rascunho: céu, chão e domo desenhados por código, e um flash na ida e na volta.
+* O visual dos dois domínios (Vazio Estelar e Santuário Carmesim), todo desenhado por código: faixa de entrada com o
+  rosto da skin do conjurador, selo no chão, céu com reflexo, estruturas, cortes, tremor e saída em estilhaços. Ver
+  [`docs/VISUAL.md`](docs/VISUAL.md).
 
 ## Como funciona, em uma frase
 

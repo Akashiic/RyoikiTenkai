@@ -12,6 +12,7 @@ não quer plugin Bukkit.
 1. **[`docs/HANDOFF.md`](docs/HANDOFF.md)**: o estado do projeto, as decisões do dono, o caminho escolhido, os riscos e
    os fatos do ambiente. **Leia primeiro.**
 2. [`docs/TRANSPORTE.md`](docs/TRANSPORTE.md): como a ida para a arena e a volta funcionam, e o que foi medido.
+   [`docs/VISUAL.md`](docs/VISUAL.md): o que se vê em cada domínio e como é desenhado.
 3. [`docs/ESTUDO.md`](docs/ESTUDO.md): regras e visual do Infinite Void, do Malevolent Shrine e do choque, a escala e
    o que cada elemento precisa no Kunftig.
 4. [`docs/ESTUDO-TECNICO.md`](docs/ESTUDO-TECNICO.md): como o JJS provavelmente faz por dentro (Roblox/Luau), com

@@ -19,6 +19,9 @@ public final class ClientProxy extends CommonProxy {
         FMLCommonHandler.instance()
             .bus()
             .register(ClientDomain.INSTANCE);
+        FMLCommonHandler.instance()
+            .bus()
+            .register(CameraShake.INSTANCE);
         DomainRenderer renderer = new DomainRenderer();
         MinecraftForge.EVENT_BUS.register(renderer);
         // Development only, never in the release jar: -Dryoiki.devHarness=true and a "ryoiki-harness" file.

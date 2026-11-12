@@ -8,6 +8,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 
 import com.akashic.ryoiki.DomainType;
+import com.akashic.ryoiki.fx.SlashField;
 import com.akashic.ryoiki.net.ChunkKeep;
 import com.akashic.ryoiki.net.DomainWire;
 
@@ -28,6 +29,8 @@ public final class ClientDomain {
     /** A domain seen from outside: the hand sign, then the dome. */
     public static final class Dome {
 
+        public int session;
+        public int casterEntity;
         public DomainType type;
         public double x;
         public double y;
@@ -57,6 +60,12 @@ public final class ClientDomain {
     /** Ticks of screen flash left, and its colour. */
     public int flash;
     public int flashColor;
+    /** Ticks left of the shatter that ends a domain, and which domain it was. */
+    public int shatter;
+    public DomainType shatterType;
+    /** The cut-in on screen: the domain being cast near this player, or null. */
+    public Dome cutIn;
+    final DomainSky sky = new DomainSky();
 
     private int keepRadius;
     private int releaseIn = -1;
@@ -77,15 +86,23 @@ public final class ClientDomain {
                     d = new Dome();
                     domes.put(m.session, d);
                 }
+                d.session = m.session;
                 d.type = m.type;
                 d.x = m.x;
                 d.y = m.y;
                 d.z = m.z;
                 d.radius = m.radius;
                 if (m.op == DomainWire.WINDUP) {
+                    d.casterEntity = m.casterEntity;
                     d.windup = m.ticks;
                     d.windupTotal = m.ticks;
                     d.left = m.ticks + 20 * 60;
+                    Minecraft mc = Minecraft.getMinecraft();
+                    // The cut-in is for those who may be caught: the caster and whoever is close.
+                    if (mc.thePlayer != null && (mc.thePlayer.getEntityId() == m.casterEntity
+                        || mc.thePlayer.getDistanceSq(m.x, m.y, m.z) <= (m.radius + 12.0) * (m.radius + 12.0))) {
+                        cutIn = d;
+                    }
                 } else {
                     d.windup = 0;
                     d.left = m.ticks + 40;
@@ -108,9 +125,11 @@ public final class ClientDomain {
                 break;
             case DomainWire.EXIT:
                 if (inside != null && session == m.session) {
-                    flash(inside == DomainType.MALEVOLENT_SHRINE ? 0x000000 : 0xFFFFFF);
+                    shatter = Shatter.TICKS;
+                    shatterType = inside;
                     inside = null;
                     releaseIn = RELEASE_AFTER;
+                    CameraShake.INSTANCE.kick(2.5F);
                 }
                 break;
             case DomainWire.DOME_END:
@@ -137,8 +156,11 @@ public final class ClientDomain {
             world = mc.theWorld;
             keep.clear();
             domes.clear();
+            sky.restore();
             inside = null;
+            cutIn = null;
             flash = 0;
+            shatter = 0;
             releaseIn = -1;
             return;
         }
@@ -148,8 +170,21 @@ public final class ClientDomain {
         if (flash > 0) {
             flash--;
         }
+        if (shatter > 0) {
+            shatter--;
+        }
         if (inside != null) {
             age++;
+            sky.install(world.provider);
+            // Each cut of the crimson shrine jolts the view.
+            if (inside == DomainType.MALEVOLENT_SHRINE && SlashField.startsAt(age)) {
+                CameraShake.INSTANCE.kick(0.9F);
+            }
+        } else {
+            sky.restore();
+        }
+        if (cutIn != null && (cutIn.windup <= 0 || !domes.containsValue(cutIn))) {
+            cutIn = null;
         }
         for (Iterator<Dome> it = domes.values()
             .iterator(); it.hasNext();) {

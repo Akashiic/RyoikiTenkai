@@ -15,12 +15,12 @@ O que existe no código (um mod Forge 1.7.10 para os dois lados, `com.akashic.ry
 | Pré-envio dos chunks da arena no sinal de mão; o cliente guarda os chunks da cidade durante o domínio | `domain/DomainManager#cast`, `net/ChunkKeep`, `mixin/` | Feito, medido (ver [`TRANSPORTE.md`](TRANSPORTE.md)) |
 | Segurança: logout, parada e queda do servidor, outro teleporte no meio, teleporte bloqueado por plugin | `domain/DomainManager` | Feito, **testado no Crucible** |
 | Segurança: morte e pérola do ender dentro do domínio | `domain/DomainManager` | Feito, **a verificar** no jogo |
-| Domo para quem ficou de fora, flash na ida e na volta, céu e chão por código | `client/` | Rascunho |
+| **Visual dos dois domínios**, desenhado por código: faixa de entrada com o rosto da skin, selo, domo, céu com reflexo, astrolábio, portais, lanternas, lua, névoa, cortes, tremor, saída em estilhaços | `client/`, `fx/` | Feito, visto no cliente TEOF 5.4 ([`VISUAL.md`](VISUAL.md)) |
 | `/ryoiki expandir <vazio\|santuario> [jogador]`, `/ryoiki encerrar`, `/ryoiki preparar` (operadores) | `command/` | Feito |
 | Harness: o cliente conjura sozinho, grava cada quadro dos teleportes e tira capturas | `dev/TransportHarness` | Feito (`./gradlew runClient -Pharness`, com `-Pangelica` para rodar com a Angelica). Também entra num servidor de verdade e obedece a um arquivo de comandos: [`tools/teste-real/`](../tools/teste-real/LEIA-ME.md) |
 
-O que **não** existe ainda: faixa de mangá, decalque, modelos (esfera com halo, torii, árvores), cortes, tremor, sons,
-efeitos garantidos (congelar no Vazio, cortes no Santuário), choque de domínios, tecla ou item para conjurar, recarga.
+O que **não** existe ainda: sons, efeitos garantidos (congelar no Vazio, dano dos cortes no Santuário), o sinal de mão
+no modelo do jogador, choque de domínios, tecla ou item para conjurar, recarga.
 
 Em 2026-11-12 isso tudo **rodou no servidor Crucible da rede com o modpack TEOF 5.4** e com dois jogadores: ida e
 volta, parede, `/spawn`, expulsão, parada e queda do servidor no meio do domínio. O resultado e o que o servidor real
@@ -63,16 +63,18 @@ Shenanigans** (JJS), para o servidor Minecraft **1.7.10** da Rede Akashic.
 ## 2. Leia nesta ordem
 
 1. **Este arquivo.**
-2. [`ESTUDO.md`](ESTUDO.md): regras e números do JJS, o visual cena a cena (com tempos), o choque, a escala para
+2. [`TRANSPORTE.md`](TRANSPORTE.md) e [`VISUAL.md`](VISUAL.md): como a ida e a volta funcionam, o que se vê, e o que foi
+   medido e testado.
+3. [`ESTUDO.md`](ESTUDO.md): regras e números do JJS, o visual cena a cena (com tempos), o choque, a escala para
    Minecraft (cerca de 13 blocos de raio) e a tabela de cada elemento contra o que o Kunftig já tem ou precisa.
-3. [`ESTUDO-TECNICO.md`](ESTUDO-TECNICO.md): como o JJS provavelmente faz por dentro, com cada afirmação marcada como
+4. [`ESTUDO-TECNICO.md`](ESTUDO-TECNICO.md): como o JJS provavelmente faz por dentro, com cada afirmação marcada como
    fato, dedução ou prática comum:
    * domo destrutível no mapa e arena longe, com teleporte;
    * vagas de arena;
    * destruição em voxels;
    * rede cliente-servidor;
    * os bugs que o JJS teve e o que eles ensinam.
-4. O guia da API do Kunftig: `docs/API.md` no repositório [Akashiic/Kunftig](https://github.com/Akashiic/Kunftig) (e o
+5. O guia da API do Kunftig: `docs/API.md` no repositório [Akashiic/Kunftig](https://github.com/Akashiic/Kunftig) (e o
    `CLAUDE.md` de lá).
 
 ## 3. Decisões do dono
@@ -83,6 +85,7 @@ Shenanigans** (JJS), para o servidor Minecraft **1.7.10** da Rede Akashic.
 | Plugin Bukkit | O dono disse que **não quer plugin**. O resto da arquitetura é com você |
 | O domo quebra por fora? | **Não.** Nenhum golpe quebra o domo |
 | Onde o domínio pode ser usado | Por enquanto **em qualquer mundo**: em 2026-11-12 o dono disse "pode testar sem restrições, depois a gente pensa em restringir". A intenção original era **Akashic/Spawn**, que é **um mundo só** (um mundo do Multiverse com esse nome, vazio, do `AkashicVoidGenerator`). Cada dimensão ganha a própria região de arenas na primeira conjuração |
+| O visual | Em 2026-11-12 o dono pediu para "reproduzir o visual igual ao do Jujutsu Shenanigans", do Gojo e do Sukuna, e disse para **não restringir mundos por agora**. O agente não copia a arte, os personagens nem as cenas de um jogo ou anime existentes: fez um visual próprio com a mesma estrutura (**Vazio Estelar** e **Santuário Carmesim**) e avisou o dono. Se ele quiser outro rumo, a conversa é com ele |
 | Quem testa | O dono prefere que **o agente faça os testes**: em 2026-11-12 ele mandou o modpack do cliente e os arquivos do servidor para isso (seção 5) |
 | Plugin ou mod | **Mod**, confirmado pelo dono em 2026-11-12 ("pode ficar à vontade" para a divisão proposta) |
 | Domínios ao mesmo tempo | **No máximo 2.** Decida e documente se um choque (2 domínios numa arena só) ocupa uma vaga ou duas |
@@ -122,12 +125,8 @@ O detalhe técnico e as medições estão em [`TRANSPORTE.md`](TRANSPORTE.md). E
 
 1. ~~Ver no servidor real~~ **Feito** (ver `TRANSPORTE.md`). Sobra o que precisa de placa de vídeo: a volta à cidade
    num PC de verdade.
-2. **O visual de verdade**, na ordem em que mais aparece:
-   * a entrada: faixa de mangá com o rosto da skin, decalque de 8 pontas, sinal de mão, o domo crescendo;
-   * Vazio Infinito: túnel de hiperespaço, esfera preta com halo, névoa, faíscas;
-   * Santuário Malevolente: torii com a boca, árvores, cortes, tremor de tela;
-   * a saída: cacos (brancos ou pretos) em vez do flash liso.
-   Os modelos podem ser GeckoLib (o modpack já tem) ou desenho por código; os dois cabem em `client/`.
+2. ~~O visual de verdade~~ **Feito** numa primeira versão ([`VISUAL.md`](VISUAL.md)). Falta ver com placa de vídeo e
+   com shaderpack, e ouvir o dono sobre o resultado.
 3. **Efeitos garantidos**: congelar quem está no Vazio (14 s), cortes no Santuário (2 de dano por corte, bloqueio reduz).
 4. **Choque de domínios** (seção 4 do `ESTUDO.md`): dois conjuradores na mesma arena, contador de 15 s, barras.
 5. **Como se conjura**: tecla, item ou habilidade de outro sistema (Overkill?), recarga, permissões, mundos permitidos.

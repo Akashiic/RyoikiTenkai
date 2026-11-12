@@ -165,8 +165,8 @@ os mods de base (dois clientes do modpack completo não cabem na memória da má
 * **Waila.** O bloco invisível aparecia na dica do Waila ("Véu do Domínio") ao olhar para a parede. O bloco agora não
   devolve nada ao ser "pego" (`getPickBlock`), o que deve escondê-lo: **a verificar**, a correção veio depois da
   rodada com o modpack completo.
-* **Céu perto demais.** As estrelas ficam na casca a 15 blocos; encostado na parede, elas viram quadrados grandes. O
-  céu de verdade deve ser desenhado em volta da câmera, não da arena (entra com o visual).
+* **Céu perto demais.** As estrelas ficavam na casca a 15 blocos e viravam quadrados grandes de perto. Resolvido com
+  o visual novo: o céu é desenhado em volta da câmera ([`VISUAL.md`](VISUAL.md)).
 * **Minimapa.** O JourneyMap mostra as coordenadas da arena (x 200.006). Detalhe de imersão, para o visual.
 
 ## O que acontece quando algo sai do roteiro
