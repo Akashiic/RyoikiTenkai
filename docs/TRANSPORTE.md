@@ -3,9 +3,10 @@
 O dono quer uma expansão **instantânea**: sem tela de carregamento e sem buraco no mundo. Este documento descreve como
 o mod faz isso e o que foi medido.
 
-> Tudo aqui foi medido no **harness** (`dev/TransportHarness`): um cliente só, servidor integrado, renderização por
-> software, sem placa de vídeo. Nada foi visto ainda no Crucible, com o modpack inteiro ou com dois jogadores. Esses
-> pontos estão em [A verificar](#a-verificar).
+> Medido de duas formas com o **harness** (`dev/TransportHarness`): primeiro num cliente de desenvolvimento com
+> servidor integrado; depois, em 2026-11-12, **no servidor Crucible da rede com o modpack TEOF 5.4** e os plugins
+> de produção (seção [No servidor real](#no-servidor-real)). Sempre com renderização por software, sem placa de vídeo:
+> o que depende disso está em [A verificar](#a-verificar).
 
 ## O problema
 
@@ -117,6 +118,57 @@ LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a -s "-screen 0 1280x720x24 +extension RANDR" 
 cat run/client/ryoiki-harness.txt
 ```
 
+## No servidor real
+
+Em 2026-11-12 o mod rodou nos arquivos do servidor da rede (Crucible `1.7.10-staging-67b53034`, Java 21, 53 plugins ligados)
+com o cliente **TEOF 5.4** (286 mods, Java 8, Angelica 2.2.43, Distant Horizons, EndlessIDs). O harness entrou como um
+jogador comum e foi comandado de fora. Como foi montado: [`tools/teste-real/`](../tools/teste-real/LEIA-ME.md).
+
+![Servidor real com o TEOF 5.4](img/servidor-real-teof.png)
+
+### O que passou
+
+| Teste | Resultado |
+|---|---|
+| Conjurar os dois domínios no `Akashic/Spawn` (servidor e cliente completos) | Abriram; chão sob o jogador no quadro 0, na ida e na volta; o cliente guardou 361 chunks e voltou a 361; o jogador voltou ao ponto exato |
+| Parede da arena | Andando contra a casca: 12,70 blocos do centro, não sai |
+| Construir as arenas e esvaziar o terreno, com o gerador de mundo do modpack | Duas arenas e 1.144 chunks em volta: 13 s em segundo plano, tanto no `world` quanto no `Akashic/Spawn` |
+| `/spawn` (Essentials) no meio do domínio | O jogador sai, o domínio termina, ninguém é puxado de volta, os chunks guardados são soltos |
+| Expulsão (`/kick`) no meio do domínio | O jogador foi salvo no ponto de onde tinha sido pego |
+| `stop` no meio do domínio | Os dois jogadores foram salvos nos pontos de origem, sem marca de retorno |
+| Queda do servidor (`kill -9` depois de um `save-all`) no meio do domínio | Os dois ficaram salvos dentro da arena, com a marca de retorno; no login seguinte o mod mandou cada um de volta ao seu ponto |
+| Dois jogadores, um a 6 blocos do conjurador | O segundo foi pego e caiu na arena com o mesmo deslocamento (5 e 4 blocos) em relação ao conjurador; voltou ao seu ponto |
+| Dois jogadores, um a 25 blocos | Ficou onde estava e viu o domo nascer e durar o tempo do domínio |
+
+Os três últimos testes de segurança e os de dois jogadores rodaram no mesmo Crucible com os mesmos plugins, mas só com
+os mods de base (dois clientes do modpack completo não cabem na memória da máquina de teste).
+
+![Dois jogadores](img/dois-jogadores.png)
+
+### O que o servidor real mostrou (e o que mudou por causa disso)
+
+* **WorldBorder.** O mundo `world` tem borda de 25.000 blocos. O teleporte para a arena em x = 200.000 foi
+  **desviado pela borda**, e o jogador ficou largado na beira do mapa. Agora, depois de cada teleporte de entrada, o
+  mod confere se o jogador chegou; se algo o desviou ou cancelou, **o domínio é cancelado, todos voltam ao ponto de
+  origem** e o conjurador recebe um aviso. Testado: o jogador ficou onde estava. Para usar domínios num mundo com
+  borda, as arenas precisam ficar dentro dela (`arena.x` / `arena.z`). O `Akashic/Spawn` não tem borda.
+* **Tickets de chunk.** O `config/forgeChunkLoading.cfg` do servidor dá **0 tickets** a mods que não estão na lista.
+  O mod funciona assim mesmo (as arenas são carregadas na conjuração; foi nessa condição que tudo acima passou). Para
+  mantê-las sempre carregadas, acrescente:
+
+  ```
+  ryoikitenkai {
+      I:maximumChunksPerTicket=8
+      I:maximumTicketCount=4
+  }
+  ```
+* **Waila.** O bloco invisível aparecia na dica do Waila ("Véu do Domínio") ao olhar para a parede. O bloco agora não
+  devolve nada ao ser "pego" (`getPickBlock`), o que deve escondê-lo: **a verificar**, a correção veio depois da
+  rodada com o modpack completo.
+* **Céu perto demais.** As estrelas ficam na casca a 15 blocos; encostado na parede, elas viram quadrados grandes. O
+  céu de verdade deve ser desenhado em volta da câmera, não da arena (entra com o visual).
+* **Minimapa.** O JourneyMap mostra as coordenadas da arena (x 200.006). Detalhe de imersão, para o visual.
+
 ## O que acontece quando algo sai do roteiro
 
 | Situação | O que o mod faz |
@@ -134,14 +186,14 @@ Tudo isso está no código (`domain/DomainManager`) e **a verificar** no jogo.
 
 ## A verificar
 
-* **No Crucible:** o teleporte dispara os eventos do Bukkit; plugins de proteção, de borda de mundo ou de combate podem
-  cancelá-lo. `/home`, `/tpa` e `/spawn` dentro do domínio.
-* **A região x = 200.000** no mundo real do servidor: se existe borda, se alguém já esteve lá.
-* **O custo de esvaziar o terreno** com o gerador de mundo do modpack (aqui foi o gerador padrão).
-* **A volta num PC de verdade**, com a Angelica e com um shaderpack: se o flash de 14 ticks cobre a remontagem.
-* **Dois ou mais jogadores:** quem é pego, a posição relativa, o domo visto de fora, quem chega depois.
+* **A volta num PC de verdade**, com placa de vídeo, a Angelica e um shaderpack: se o flash de 14 ticks cobre a
+  remontagem das malhas. Com o Distant Horizons do modpack, o terreno distante também precisa voltar.
+* **A dica do Waila** escondida (ver acima).
+* `/home`, `/tpa` e `/warp` no meio do domínio (o `/spawn` passou; o caminho no código é o mesmo).
+* **Regiões do WorldGuard** com bandeiras de entrada ou de teleporte no ponto da conjuração (o mundo de teste não
+  tinha as regiões de produção). Se bloquearem, o domínio é cancelado com segurança, como na borda.
 * **Mobs e itens** que estavam no raio: hoje ficam onde estão (só jogadores são levados).
 * **Voz** (AkashicVoiceChat): quem está na arena some da voz de quem ficou (ver o handoff).
 * **Golpes de outros mods** que atravessam ou quebram blocos, contra a casca.
-* **Mods de minimapa** (o terreno vazio e a arena a 200.000 blocos podem aparecer no mapa).
 * **Chuva e som de chuva** dentro da arena (a cúpula é sólida, deve bloquear).
+* **Mais de dois jogadores** e dois domínios ao mesmo tempo.

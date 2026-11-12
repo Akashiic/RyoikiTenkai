@@ -12,6 +12,8 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.network.play.server.S26PacketMapChunkBulk;
 import net.minecraft.network.play.server.S3FPacketCustomPayload;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.util.ChatComponentTranslation;
+import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.event.entity.living.EnderTeleportEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
@@ -200,6 +202,27 @@ public final class DomainManager {
                     p.chunkCoordZ,
                     view));
             teleport(p, cx + at[0], slots.floorY, cz + at[1], p.rotationYaw, p.rotationPitch);
+            if (p.dimension != s.dimension || distanceSq(p, cx + at[0], slots.floorY, cz + at[1]) > 4) {
+                // Something on the server (a world border, a region plugin) cancelled or redirected the teleport.
+                // Nobody stays wherever that left them: the domain ends and everyone goes back.
+                RyoikiTenkai.LOG.warn(
+                    "The teleport of {} into the arena at {}, {}, {} was blocked (the player is at {}, {}, {}): "
+                        + "domain cancelled. A world border or a protection plugin is in the way; move the arenas "
+                        + "(arena.x / arena.z in the config).",
+                    p.getCommandSenderName(),
+                    cx,
+                    slots.floorY,
+                    cz,
+                    p.posX,
+                    p.posY,
+                    p.posZ);
+                ChatComponentTranslation message = new ChatComponentTranslation("ryoikitenkai.erro.bloqueado");
+                message.getChatStyle()
+                    .setColor(EnumChatFormatting.RED);
+                caster.addChatMessage(message);
+                end(s, world);
+                return;
+            }
         }
         s.phase = Phase.ACTIVE;
         s.age = 0;

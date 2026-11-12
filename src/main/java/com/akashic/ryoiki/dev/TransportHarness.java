@@ -40,7 +40,10 @@ import cpw.mods.fml.common.gameevent.TickEvent;
  * {@code ryoiki-harness.txt}; then the client quits.
  * <p>
  * The file's content picks the run: {@code cold} casts at once (the arena is built and the terrain around it is still
- * there); anything else waits for the arenas to be ready first.
+ * there); {@code warm} waits for the arenas to be ready first. On a real server (the whole modpack, Crucible):
+ * {@code server <host> <port>} joins it, waits for a {@code ryoiki-harness-go} file and then takes its orders from a
+ * {@code ryoiki-harness-cmd} file (see {@link #command}); the player must be an operator to cast with
+ * {@code /ryoiki}.
  */
 public final class TransportHarness {
 
@@ -49,7 +52,9 @@ public final class TransportHarness {
     private static final int[] SHOTS = { 0, 1, 2, 4, 8, 16, 40 };
 
     private enum Step {
+        JOIN,
         SETTLE,
+        IDLE,
         PREPARE,
         CAST,
         IN_DOMAIN,
@@ -59,6 +64,19 @@ public final class TransportHarness {
 
     private boolean launched;
     private boolean cold;
+    /** On a real server: no access to the server's objects, everything goes through chat commands. */
+    private boolean remote;
+    private String host;
+    private int port;
+    private int casts = 2;
+    private int joinAttempts;
+    private DomainType castType = DomainType.INFINITE_VOID;
+    private int view;
+    private int watchLeft;
+    private int watchShot;
+    private int commandWait;
+    private final java.util.ArrayDeque<String> commands = new java.util.ArrayDeque<>();
+    private int deadTicks;
     private int menuTicks;
     private Step step = Step.SETTLE;
     private int ticks;
@@ -104,11 +122,17 @@ public final class TransportHarness {
             && (mc.currentScreen instanceof GuiMainMenu || mc.currentScreen != null && ++menuTicks > 60)) {
             launched = true;
             try {
-                cold = new String(
+                String[] words = new String(
                     Files.readAllBytes(new File(mc.mcDataDir, "ryoiki-harness").toPath()),
                     StandardCharsets.UTF_8).trim()
-                        .startsWith("cold");
-            } catch (IOException e) {
+                        .split("\\s+");
+                cold = words[0].equals("cold");
+                if (words[0].equals("server")) {
+                    remote = true;
+                    host = words[1];
+                    port = Integer.parseInt(words[2]);
+                }
+            } catch (IOException | RuntimeException e) {
                 cold = false;
             }
             mc.gameSettings.pauseOnLostFocus = false;
@@ -123,23 +147,67 @@ public final class TransportHarness {
                     deltaY = 0;
                 }
             };
-            mc.launchIntegratedServer(
-                WORLD,
-                WORLD,
-                new WorldSettings(20261112L, WorldSettings.GameType.CREATIVE, false, false, WorldType.DEFAULT));
+            if (remote) {
+                step = Step.JOIN;
+                join(mc);
+            } else {
+                mc.launchIntegratedServer(
+                    WORLD,
+                    WORLD,
+                    new WorldSettings(20261112L, WorldSettings.GameType.CREATIVE, false, false, WorldType.DEFAULT));
+            }
+            return;
+        }
+        if (step == Step.JOIN) {
+            if (mc.thePlayer != null && mc.theWorld != null) {
+                next(Step.SETTLE);
+            } else if (mc.currentScreen instanceof net.minecraft.client.gui.GuiDisconnected && ++menuTicks > 100) {
+                // Refused or timed out: say so and try again a few times (a loaded test machine is slow to answer).
+                menuTicks = 0;
+                if (++joinAttempts > 6) {
+                    report("FAILED: could not join " + host + ":" + port);
+                    finish(mc);
+                } else {
+                    RyoikiTenkai.LOG.warn("Harness: join attempt {} failed, trying again", joinAttempts);
+                    join(mc);
+                }
+            }
             return;
         }
         if (mc.thePlayer == null || mc.theWorld == null) {
             return;
         }
-        if (mc.currentScreen != null) {
+        if (mc.currentScreen != null && !(mc.currentScreen instanceof net.minecraft.client.gui.GuiDownloadTerrain)) {
             mc.displayGuiScreen(null);
         }
         mc.gameSettings.pauseOnLostFocus = false;
+        if (remote && mc.thePlayer.getHealth() <= 0) {
+            // A fresh test world can kill the player where it spawns: get up and carry on.
+            if (++deadTicks % 40 == 1) {
+                report("the player died (tick " + ticks + " of " + step + "): respawning");
+                mc.thePlayer.respawnPlayer();
+            }
+            return;
+        }
         ticks++;
+        if (watchLeft > 0 && --watchLeft % 30 == 0) {
+            watchShot++;
+            shot(mc, String.format("ryoiki-watch-%03d", watchShot));
+            report(
+                String.format(
+                    "watch %03d: at %.1f %.1f %.1f, inside %s, domes %d, client chunks %s",
+                    watchShot,
+                    mc.thePlayer.posX,
+                    mc.thePlayer.boundingBox.minY,
+                    mc.thePlayer.posZ,
+                    ClientDomain.INSTANCE.inside,
+                    ClientDomain.INSTANCE.domes.size(),
+                    mc.theWorld.getChunkProvider()
+                        .makeString()));
+        }
         switch (step) {
             case SETTLE:
-                if (ticks == 1) {
+                if (ticks == 1 && !remote) {
                     onServer(p -> {
                         WorldServer w = p.getServerForPlayer();
                         w.setWorldTime(6000);
@@ -152,19 +220,36 @@ public final class TransportHarness {
                             .setPlayerLocation(x + 0.5, w.getTopSolidOrLiquidBlock(x, z), z + 0.5, 30, 15);
                     });
                 }
-                if (ticks >= 300 && dirtyNear(mc, 4) == 0) {
-                    report("java " + System.getProperty("java.version") + ", " + (cold ? "cold" : "warm") + " run");
+                // On a server the test waits for a "ryoiki-harness-go" file: whoever runs it places the players first.
+                if (remote ? ticks >= 100 && new File(mc.mcDataDir, "ryoiki-harness-go").isFile()
+                    : ticks >= 300 && dirtyNear(mc, 4) == 0) {
+                    report(
+                        "java " + System.getProperty("java.version")
+                            + ", "
+                            + (remote ? "on " + host + ":" + port : cold ? "cold run" : "warm run")
+                            + ", player "
+                            + mc.thePlayer.getCommandSenderName());
                     report(
                         "render distance " + mc.gameSettings.renderDistanceChunks
                             + ", client chunks: "
                             + mc.theWorld.getChunkProvider()
                                 .makeString());
                     shot(mc, "ryoiki-0-map");
-                    next(cold ? Step.CAST : Step.PREPARE);
+                    next(remote ? Step.IDLE : cold ? Step.CAST : Step.PREPARE);
                 }
                 break;
+            case IDLE:
+                command(mc);
+                break;
             case PREPARE:
-                if (ticks == 1) {
+                if (remote) {
+                    if (ticks == 1) {
+                        mc.thePlayer.sendChatMessage("/ryoiki preparar");
+                    }
+                    if (ticks == 400) {
+                        next(Step.CAST);
+                    }
+                } else if (ticks == 1) {
                     onServer(p -> {
                         WorldServer w = p.getServerForPlayer();
                         long t = System.nanoTime();
@@ -188,11 +273,19 @@ public final class TransportHarness {
                 break;
             case CAST:
                 if (ticks == 1) {
-                    DomainType type = DomainType.values()[run % DomainType.values().length];
+                    DomainType type = remote ? castType : DomainType.values()[run % DomainType.values().length];
                     report("");
                     report("== cast " + (run + 1) + ": " + type.id + " ==");
-                    mc.gameSettings.thirdPersonView = run % 2;
-                    onServer(p -> {
+                    mc.gameSettings.thirdPersonView = remote ? view : run % 2;
+                    if (remote) {
+                        report(
+                            String.format(
+                                "casting at %.1f %.1f %.1f",
+                                mc.thePlayer.posX,
+                                mc.thePlayer.boundingBox.minY,
+                                mc.thePlayer.posZ));
+                        mc.thePlayer.sendChatMessage("/ryoiki expandir " + type.id);
+                    } else onServer(p -> {
                         long t = System.nanoTime();
                         String error = DomainManager.INSTANCE.cast(p, type);
                         report(
@@ -208,8 +301,14 @@ public final class TransportHarness {
                 if (ClientDomain.INSTANCE.inside != null) {
                     next(Step.IN_DOMAIN);
                 } else if (ticks > 200) {
-                    report("FAILED: the domain never opened");
-                    finish(mc);
+                    report("the domain never opened. Chat: " + lastChat(mc));
+                    shot(mc, "ryoiki-" + (run + 1) + "-refused");
+                    if (remote) {
+                        run++;
+                        next(Step.IDLE);
+                    } else {
+                        finish(mc);
+                    }
                 }
                 break;
             case IN_DOMAIN:
@@ -246,8 +345,16 @@ public final class TransportHarness {
                     report(
                         "back, client chunks: " + mc.theWorld.getChunkProvider()
                             .makeString() + ", kept: " + ClientDomain.INSTANCE.keep.keptCount());
+                    report(
+                        String.format(
+                            "standing at %.1f %.1f %.1f",
+                            mc.thePlayer.posX,
+                            mc.thePlayer.boundingBox.minY,
+                            mc.thePlayer.posZ));
                     run++;
-                    if (run >= 2) {
+                    if (remote) {
+                        next(Step.IDLE);
+                    } else if (run >= casts) {
                         finish(mc);
                     } else {
                         next(Step.CAST);
@@ -270,7 +377,7 @@ public final class TransportHarness {
         double x = mc.thePlayer.posX;
         double z = mc.thePlayer.posZ;
         if (!Double.isNaN(lastX) && Math.abs(x - lastX) + Math.abs(z - lastZ) > 500
-            && (step == Step.CAST || step == Step.IN_DOMAIN || step == Step.AFTER)) {
+            && (step == Step.CAST || step == Step.IN_DOMAIN || step == Step.AFTER || step == Step.IDLE)) {
             flushFrames();
             phase = ClientDomain.INSTANCE.inside != null ? "in" : "out";
             frame = 0;
@@ -351,6 +458,133 @@ public final class TransportHarness {
         } catch (ReflectiveOperationException e) {
             return -1;
         }
+    }
+
+    /**
+     * Joins the server. FML's handshake waits on a latch that only its own entry points create; this one creates it
+     * and nothing else (the others need the server list or ping the server first).
+     */
+    private void join(Minecraft mc) {
+        cpw.mods.fml.client.FMLClientHandler.instance()
+            .connectToRealmsServer(host, port);
+        mc.displayGuiScreen(new net.minecraft.client.multiplayer.GuiConnecting(new GuiMainMenu(), mc, host, port));
+    }
+
+    /**
+     * On a server the test is driven from outside: lines appended to a {@code ryoiki-harness-cmd} file in the run
+     * directory, one command at a time. {@code chat <text>} sends a chat line or a command; {@code cast <domain>}
+     * casts and records the trip; {@code view <0|1|2>} sets the camera; {@code look <yaw> <pitch>};
+     * {@code shot <name>}; {@code watch <seconds>} takes a screenshot every second and a half; {@code where} writes
+     * the position; {@code quit}.
+     */
+    private void command(Minecraft mc) {
+        File file = new File(mc.mcDataDir, "ryoiki-harness-cmd");
+        if (ticks % 10 == 0 && file.isFile()) {
+            try {
+                for (String line : Files.readAllLines(file.toPath(), StandardCharsets.UTF_8)) {
+                    if (!line.trim()
+                        .isEmpty()) {
+                        commands.add(line.trim());
+                    }
+                }
+                Files.delete(file.toPath());
+            } catch (IOException e) {
+                return;
+            }
+        }
+        if (commandWait > 0) {
+            commandWait--;
+            return;
+        }
+        String line = commands.poll();
+        if (line == null) {
+            return;
+        }
+        String[] words = line.split(" ", 2);
+        String rest = words.length > 1 ? words[1] : "";
+        report("> " + line);
+        switch (words[0]) {
+            case "chat":
+                mc.thePlayer.sendChatMessage(rest);
+                commandWait = 20;
+                break;
+            case "cast":
+                castType = DomainType.byId(rest);
+                next(Step.CAST);
+                break;
+            case "view":
+                view = Integer.parseInt(rest);
+                mc.gameSettings.thirdPersonView = view;
+                break;
+            case "look": {
+                String[] angles = rest.split(" ");
+                mc.thePlayer.rotationYaw = Float.parseFloat(angles[0]);
+                mc.thePlayer.rotationPitch = Float.parseFloat(angles[1]);
+                commandWait = 5;
+                break;
+            }
+            case "shot":
+                shot(mc, "ryoiki-" + rest);
+                break;
+            case "watch":
+                watchLeft = Integer.parseInt(rest) * 20;
+                break;
+            case "wait":
+                commandWait = Integer.parseInt(rest) * 20;
+                break;
+            case "where":
+                report(
+                    String.format(
+                        "at %.1f %.1f %.1f in dimension %d, inside %s, domes %d, chat: %s",
+                        mc.thePlayer.posX,
+                        mc.thePlayer.boundingBox.minY,
+                        mc.thePlayer.posZ,
+                        mc.thePlayer.dimension,
+                        ClientDomain.INSTANCE.inside,
+                        ClientDomain.INSTANCE.domes.size(),
+                        lastChat(mc)));
+                break;
+            case "quit":
+                finish(mc);
+                break;
+            default:
+                report("unknown command");
+                break;
+        }
+    }
+
+    /** The last lines of chat, where the server's refusal is. */
+    private static String lastChat(Minecraft mc) {
+        StringBuilder out = new StringBuilder();
+        for (Object line : mc.ingameGUI.getChatGUI()
+            .getSentMessages()) {
+            out.append(" | ")
+                .append(line);
+        }
+        try {
+            for (java.lang.reflect.Field f : net.minecraft.client.gui.GuiNewChat.class.getDeclaredFields()) {
+                if (!java.util.List.class.isAssignableFrom(f.getType())) {
+                    continue;
+                }
+                f.setAccessible(true);
+                java.util.List<?> lines = (java.util.List<?>) f.get(mc.ingameGUI.getChatGUI());
+                if (lines.isEmpty() || !(lines.get(0) instanceof net.minecraft.client.gui.ChatLine)) {
+                    continue;
+                }
+                for (int i = 0; i < Math.min(4, lines.size()); i++) {
+                    out.append(" || ")
+                        .append(
+                            ((net.minecraft.client.gui.ChatLine) lines.get(i)).func_151461_a()
+                                .getUnformattedText());
+                }
+                break;
+            }
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            out.append(" (chat unreadable: ")
+                .append(e)
+                .append(')');
+        }
+        return out.toString();
     }
 
     private interface ServerAction {

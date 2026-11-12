@@ -41,3 +41,22 @@ O cliente abre um mundo, conjura os dois domínios, grava quadro a quadro o que 
 (`run/client/ryoiki-harness.txt`), salva capturas (`run/client/screenshots/ryoiki-*.png`) e fecha. Com `cold` no
 arquivo, conjura sem preparar as arenas antes. Sem placa de vídeo: `LIBGL_ALWAYS_SOFTWARE=1`, e o LWJGL 2 precisa do
 `xrandr` (`apt-get install -y x11-xserver-utils`).
+
+O mesmo harness entra num servidor de verdade (`server <host> <porta>` no arquivo) e obedece a um arquivo de comandos.
+Foi assim que o mod foi testado no Crucible da rede com o modpack TEOF 5.4:
+[`tools/teste-real/LEIA-ME.md`](tools/teste-real/LEIA-ME.md).
+
+## No servidor
+
+* O jar vai em `mods/` do servidor e de todos os clientes.
+* As arenas ficam em x = 200.000, z = 200.000 de cada mundo (`config/ryoikitenkai.cfg`). **Num mundo com borda
+  (WorldBorder), elas precisam ficar dentro dela**; se o teleporte for bloqueado, o domínio é cancelado com um aviso e
+  ninguém sai do lugar.
+* Opcional, para as arenas ficarem sempre carregadas, em `config/forgeChunkLoading.cfg`:
+
+  ```
+  ryoikitenkai {
+      I:maximumChunksPerTicket=8
+      I:maximumTicketCount=4
+  }
+  ```

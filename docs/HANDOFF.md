@@ -13,15 +13,19 @@ O que existe no código (um mod Forge 1.7.10 para os dois lados, `com.akashic.ry
 | Arena longe do mapa, feita de um bloco invisível (`ryoikitenkai:veu`), 4 chunks por arena, terreno em volta esvaziado | `arena/`, `block/BlockVeil` | Feito, testado no harness |
 | Sessão de domínio: sinal de mão (25 ticks), captura por raio, teleporte com a posição relativa ao conjurador, duração, volta ao ponto de origem | `domain/DomainManager` | Feito, testado no harness com 1 jogador |
 | Pré-envio dos chunks da arena no sinal de mão; o cliente guarda os chunks da cidade durante o domínio | `domain/DomainManager#cast`, `net/ChunkKeep`, `mixin/` | Feito, medido (ver [`TRANSPORTE.md`](TRANSPORTE.md)) |
-| Segurança: logout, morte, queda do servidor, pérola do ender, outro teleporte no meio | `domain/DomainManager` | Feito, **a verificar** no jogo |
+| Segurança: logout, parada e queda do servidor, outro teleporte no meio, teleporte bloqueado por plugin | `domain/DomainManager` | Feito, **testado no Crucible** |
+| Segurança: morte e pérola do ender dentro do domínio | `domain/DomainManager` | Feito, **a verificar** no jogo |
 | Domo para quem ficou de fora, flash na ida e na volta, céu e chão por código | `client/` | Rascunho |
 | `/ryoiki expandir <vazio\|santuario> [jogador]`, `/ryoiki encerrar`, `/ryoiki preparar` (operadores) | `command/` | Feito |
-| Harness: o cliente conjura sozinho, grava cada quadro dos teleportes e tira capturas | `dev/TransportHarness` | Feito (`./gradlew runClient -Pharness`, com `-Pangelica` para rodar com a Angelica) |
+| Harness: o cliente conjura sozinho, grava cada quadro dos teleportes e tira capturas | `dev/TransportHarness` | Feito (`./gradlew runClient -Pharness`, com `-Pangelica` para rodar com a Angelica). Também entra num servidor de verdade e obedece a um arquivo de comandos: [`tools/teste-real/`](../tools/teste-real/LEIA-ME.md) |
 
 O que **não** existe ainda: faixa de mangá, decalque, modelos (esfera com halo, torii, árvores), cortes, tremor, sons,
 efeitos garantidos (congelar no Vazio, cortes no Santuário), choque de domínios, tecla ou item para conjurar, recarga.
 
-Nada foi visto num servidor Crucible nem com dois jogadores: tudo isso está **a verificar**.
+Em 2026-11-12 isso tudo **rodou no servidor Crucible da rede com o modpack TEOF 5.4** e com dois jogadores: ida e
+volta, parede, `/spawn`, expulsão, parada e queda do servidor no meio do domínio. O resultado e o que o servidor real
+obrigou a mudar estão no [`TRANSPORTE.md`](TRANSPORTE.md#no-servidor-real). O que continua **a verificar** é o que
+depende de placa de vídeo e de plugins que o mundo de teste não tinha.
 
 ## Antes de tudo: você tem carta branca
 
@@ -78,7 +82,8 @@ Shenanigans** (JJS), para o servidor Minecraft **1.7.10** da Rede Akashic.
 | Monetização | Nenhuma. Pode usar nomes, falas e o visual de Jujutsu Kaisen e do JJS como referência livremente |
 | Plugin Bukkit | O dono disse que **não quer plugin**. O resto da arquitetura é com você |
 | O domo quebra por fora? | **Não.** Nenhum golpe quebra o domo |
-| Onde o domínio pode ser usado | Por enquanto **em qualquer mundo**: em 2026-11-12 o dono disse "pode testar sem restrições, depois a gente pensa em restringir". A intenção original era **Akashic/Spawn** (não ficou claro se é um mundo ou dois). Cada dimensão ganha a própria região de arenas na primeira conjuração |
+| Onde o domínio pode ser usado | Por enquanto **em qualquer mundo**: em 2026-11-12 o dono disse "pode testar sem restrições, depois a gente pensa em restringir". A intenção original era **Akashic/Spawn**, que é **um mundo só** (um mundo do Multiverse com esse nome, vazio, do `AkashicVoidGenerator`). Cada dimensão ganha a própria região de arenas na primeira conjuração |
+| Quem testa | O dono prefere que **o agente faça os testes**: em 2026-11-12 ele mandou o modpack do cliente e os arquivos do servidor para isso (seção 5) |
 | Plugin ou mod | **Mod**, confirmado pelo dono em 2026-11-12 ("pode ficar à vontade" para a divisão proposta) |
 | Domínios ao mesmo tempo | **No máximo 2.** Decida e documente se um choque (2 domínios numa arena só) ocupa uma vaga ou duas |
 
@@ -115,9 +120,8 @@ O detalhe técnico e as medições estão em [`TRANSPORTE.md`](TRANSPORTE.md). E
 
 ### 4.4 Próximos passos sugeridos
 
-1. **Ver no servidor real** (Crucible, com o modpack): o que está em "a verificar" no `TRANSPORTE.md`. Em especial:
-   plugins que cancelam teleportes, borda de mundo, o custo de esvaziar a região, e a volta com placa de vídeo de
-   verdade.
+1. ~~Ver no servidor real~~ **Feito** (ver `TRANSPORTE.md`). Sobra o que precisa de placa de vídeo: a volta à cidade
+   num PC de verdade.
 2. **O visual de verdade**, na ordem em que mais aparece:
    * a entrada: faixa de mangá com o rosto da skin, decalque de 8 pontas, sinal de mão, o domo crescendo;
    * Vazio Infinito: túnel de hiperespaço, esfera preta com halo, névoa, faíscas;
@@ -144,6 +148,23 @@ pré-requisito.
 * Servidor híbrido Thermos/Crucible. O **Crucible de produção roda Java 21**.
 * O modpack é o TEOF, com **Angelica** (renderização otimizada: teste cedo tudo que mexe em renderização) e GeckoLib
   Unofficial 1.0.4.
+
+### O servidor e o modpack de verdade (vistos em 2026-11-12)
+
+O dono mandou os dois pacotes. Não estão em repositório nenhum: se precisar deles de novo, peça os links.
+
+* **Cliente:** `TEOF-5.4.zip`, nas releases de [Akashiic/Technic-Forbidden](https://github.com/Akashiic/Technic-Forbidden)
+  (tag `TEOF-5.4`). 286 mods, Java 8, LWJGL 2. Além da Angelica 2.2.43: **Distant Horizons**, **EndlessIDs** (o bloco
+  do mod ganhou o ID 11529), JourneyMap, Waila, CoreTweaks, o Kunftig (`kunftig-b192616`) e o Futura3D.
+* **Servidor:** Crucible `1.7.10-staging-67b53034`, `view-distance=10`, 63 plugins no pacote (53 ligados no teste). Os que importam aqui:
+  * **WorldBorder:** borda de 25.000 blocos no mundo `world`, e só nele;
+  * **Multiverse-Core:** os mundos `Akashic/Spawn` e `Akashic/Evento` (vazios), `plotworld` e as dimensões dos mods;
+  * WorldGuard, Essentials, GriefPreventionPlus, PerWorldInventory (troca o modo de jogo ao mudar de mundo), ClearLag;
+  * `config/forgeChunkLoading.cfg`: **0 tickets** para mods fora da lista.
+* O pacote do servidor estava mais velho que o do cliente (14 mods em versões diferentes) e veio sem os mundos. Como
+  alinhar e ligar os dois aqui está em [`tools/teste-real/LEIA-ME.md`](../tools/teste-real/LEIA-ME.md).
+* **AkashicBellow** (repositório BelowCore) guarda blocos abaixo de Y 0 em cada chunk. Não atrapalhou o envio dos
+  chunks da arena.
 
 ### Kunftig ([Akashiic/Kunftig](https://github.com/Akashiic/Kunftig))
 
@@ -187,9 +208,10 @@ pré-requisito.
 2. **A volta com placa de vídeo de verdade.** O cliente guarda os dados da cidade, mas precisa remontar as malhas. No
    harness (renderização por software) a cidade já aparece inteira por baixo do flash; num PC real, **a verificar**.
 3. **Teleportes concorrentes:** quem sai da arena por outro teleporte é tirado do domínio (e a pérola do ender é
-   bloqueada). Homes e /tpa de plugins **a verificar** no Crucible.
-4. **Plugins que cancelam teleportes** (proteção de região, borda de mundo) podem impedir a ida para x = 200.000:
-   **a verificar**. As coordenadas são configuráveis.
+   bloqueada). Testado no Crucible com o `/spawn` do Essentials; `/home` e `/tpa` seguem o mesmo caminho.
+4. **Plugins que cancelam ou desviam teleportes.** Aconteceu de verdade: o WorldBorder do mundo `world` desviou o
+   teleporte para a arena. O mod agora confere a chegada e cancela o domínio devolvendo todos (testado). Num mundo com
+   borda, as arenas precisam ficar dentro dela.
 5. **Sair pelas paredes da arena:** a casca é de blocos sólidos e inquebráveis, fechada inclusive nas diagonais (teste
    unitário). Golpes de outros mods que atravessam blocos, **a verificar**.
 6. **Custo** de várias exibições grandes num choque.
