@@ -1,6 +1,6 @@
 # Estudo: Expansão de Domínio e Choque de Domínios (referência: Jujutsu Shenanigans)
 
-Estudo de referência para um recurso de **Expansão de Domínio** no servidor 1.7.10 (Kunftig + plugin), a partir do
+Estudo de referência para um recurso de **Expansão de Domínio** no servidor 1.7.10 (com o Kunftig), a partir do
 jogo de Roblox **Jujutsu Shenanigans** (JJS). Cobre os dois domínios pedidos, o do Gojo (**Infinite Void**, do
 personagem *Honored One*) e o do Sukuna (**Malevolent Shrine**, do *Vessel* desperto como *King of Curses*), e o
 **choque de domínios** (dois jogadores expandindo ao mesmo tempo). No fim, a tradução para o nosso ambiente.
@@ -187,7 +187,7 @@ precedente para nós: **a mecânica pode simplificar o original** sem perder a l
   as páginas dos personagens.
 * **O raio** "37,5 studs" vale "em geral". O vídeo de referência sugeriu entre 25 e 40 studs.
 
-## 5. Tradução para o nosso servidor (Minecraft 1.7.10, Kunftig + plugin)
+## 5. Tradução para o nosso servidor (Minecraft 1.7.10, com o Kunftig)
 
 ### 5.1 Escala
 
@@ -229,9 +229,9 @@ quando o domínio pedir. Deixar **B** como evolução, se quisermos arenas feita
 | Cenários piscando no choque, aberração cromática | Trocar estados e variantes das exibições rapidamente | **Pós-processamento** (`ShaderGroup`) e alternância de céu |
 | Contador de 15 a 0, barras do choque | `KunftigHud` (texto e barra) | — |
 | Câmera subindo até o rosto do vencedor | — | **Câmera cinematográfica** (entidade de câmera em `renderViewEntity`) |
-| Voz e trilha (a trilha de choque sobrepondo tudo) | Sons do resource pack, tocados pelo plugin | (opcional) parar a música do cliente durante o domínio |
-| Congelar quem está no Gojo | Plugin: lentidão e cancelamento de ações. `KunftigInput` desligado para o alvo | — |
-| Cortes do Sukuna (dano por tick, bloqueio reduz) | Plugin, dano a cada ~3 ticks, bloqueio pela espada levantada no 1.7.10 | — |
+| Voz e trilha (a trilha de choque sobrepondo tudo) | Sons do resource pack, tocados pelo servidor | (opcional) parar a música do cliente durante o domínio |
+| Congelar quem está no Gojo | Servidor: lentidão e cancelamento de ações. `KunftigInput` desligado para o alvo | — |
+| Cortes do Sukuna (dano por tick, bloqueio reduz) | Servidor, dano a cada ~3 ticks, bloqueio pela espada levantada no 1.7.10 | — |
 
 ### 5.4 Choque: proposta de regras para nós
 
@@ -239,7 +239,7 @@ Usamos as regras atuais do JJS como base, adaptadas ao combate do 1.7.10:
 
 * **Gatilho:** um segundo domínio conjurado **durante o preparo do primeiro** (janela de 25 ticks) e com os
   conjuradores **dentro do raio um do outro**. Fora disso vale a regra "não se conjura dentro de um domínio".
-* **Durante o choque:** efeitos garantidos e habilidades desligados (o plugin já controla habilidades e o Overkill tem
+* **Durante o choque:** efeitos garantidos e habilidades desligados (o servidor já controla habilidades e o Overkill tem
   os ganchos). Só ataque básico, **sem empurrão**.
 * **Progresso:** **+6,25 % por acerto no conjurador rival** (16 acertos). Opcional: a variante de **cabo de guerra**, com
   a tecla Especial do `KunftigInput` apertada várias vezes, que já tem limite de 20 por segundo e validação no
