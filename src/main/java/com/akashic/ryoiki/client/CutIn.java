@@ -48,8 +48,7 @@ final class CutIn {
         float slide = (in - 1) * w * 1.25F + out * out * w * 1.25F;
         boolean starVoid = "vazio".equals(domainId);
         float yc = h * 0.40F;
-        // The star void's band is taller: its figure moves, and has the room to.
-        float half = h * (starVoid ? 0.185F : 0.155F);
+        float half = h * 0.185F;
         float skew = half * 0.75F;
         float x0 = -w * 0.2F + slide;
         float x1 = w * 1.2F + slide;
@@ -82,11 +81,22 @@ final class CutIn {
                 (int) (half * 2 * factor));
             vortex(t, w * shot(true, age)[5], yc, w, half, age);
             GL11.glDisable(GL11.GL_SCISSOR_TEST);
+        } else {
+            // Inside the band, the shrine's own air: rings on red water, cuts of light, embers going up.
+            int factor = Math.max(1, Math.round((float) mc.displayHeight / h));
+            GL11.glEnable(GL11.GL_SCISSOR_TEST);
+            GL11.glScissor(
+                0,
+                mc.displayHeight - (int) ((yc + half) * factor),
+                mc.displayWidth,
+                (int) (half * 2 * factor));
+            blaze(t, w * shot(false, age)[5], yc, w, half, age);
+            GL11.glDisable(GL11.GL_SCISSOR_TEST);
         }
         // Streaks rushing along it.
         Draw.additive();
         t.startDrawingQuads();
-        for (int i = 0; i < (starVoid ? 8 : 22); i++) {
+        for (int i = 0; i < 8; i++) {
             float lane = Draw.hash(i, 31) * 2 - 1;
             float y = yc + lane * half * 0.86F;
             float length = w * (0.12F + Draw.hash(i, 32) * 0.3F);
@@ -116,34 +126,15 @@ final class CutIn {
 
         // The caster, in a tilted frame: its own skin on a figure that makes the hand sign.
         float[] shot = shot(starVoid, age);
-        // The star void's figure is there from the first frame, the band rushing in behind it; the crimson
-        // shrine's comes in with its frame.
-        float faceX = w * shot[5] + (starVoid ? 0 : slide);
-        float size = half * 1.42F;
-        if (!starVoid) {
-            t.startDrawingQuads();
-            diamond(t, faceX, yc, size * 0.98F, look.bandTrim(), 1);
-            diamond(t, faceX, yc, size * 0.92F, Draw.mix(look.bandFrom(), 0x000000, 0.5F), 1);
-            t.draw();
-        }
-        // A burst behind the figure at the instant the sign is complete.
+        // The figure is there from the first frame, the band rushing in behind it.
+        float faceX = w * shot[5];
         float sign = sign(age);
-        float burst = Draw.clamp01((age - SIGN_START - SIGN_TICKS + 1) / 7F);
         float cut = cutFlash(starVoid, age);
         if (cut > 0) {
             // A cut: the band whites out for an instant.
             Draw.additive();
             t.startDrawingQuads();
             band(t, x0, x1, yc, half, skew, 0xFFFFFF, cut * 0.85F, look.bandTrim(), cut * 0.6F);
-            t.draw();
-            Draw.translucent();
-        }
-        if (burst > 0 && burst < 1 && !starVoid) {
-            Draw.additive();
-            t.startDrawingQuads();
-            float r = size * (0.5F + burst * 2.2F);
-            diamond(t, faceX, yc, r, look.bandTrim(), (1 - burst) * 0.75F);
-            diamond(t, faceX, yc, r * 0.7F, 0xFFFFFF, (1 - burst) * 0.5F);
             t.draw();
             Draw.translucent();
         }
@@ -215,7 +206,11 @@ final class CutIn {
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
     }
 
-    /** When the star void's cut-in cuts from one shot to the next, in ticks. */
+    /** The crimson shrine's camera heights, in degrees of pitch: looking down on the caster, and up from the ground. */
+    private static final float SHRINE_HIGH = Float.parseFloat(System.getProperty("ryoiki.shrineHigh", "30"));
+    private static final float SHRINE_LOW = Float.parseFloat(System.getProperty("ryoiki.shrineLow", "-58"));
+
+    /** When a cut-in cuts from one shot to the next, in ticks. */
     private static final float CUT_ONE = 6;
     private static final float CUT_TWO = 12;
 
@@ -228,7 +223,20 @@ final class CutIn {
      */
     static float[] shot(boolean starVoid, float age) {
         if (!starVoid) {
-            return new float[] { 22, -6, 0, 1 + 0.008F * age, 0, 0.19F };
+            // The crimson shrine: from above and the side as the head bows and the arms come up; then from the
+            // ground, looking up at the hands as they meet; then the face over the joined hands, head on.
+            if (age < CUT_ONE) {
+                float a = age / CUT_ONE;
+                return new float[] { -42 + 14 * a, SHRINE_HIGH, 9 - 3 * a, 0.95F + 0.2F * a, 0, 0.17F + 0.02F * a };
+            }
+            if (age < CUT_TWO) {
+                float a = (age - CUT_ONE) / (CUT_TWO - CUT_ONE);
+                return new float[] { 16 - 10 * a, SHRINE_LOW, -9 + 5 * a, 1.75F + 0.4F * a, 0.8F, 0.24F };
+            }
+            float a = Draw.easeOut((age - CUT_TWO) / 7F);
+            float drift = age - CUT_TWO;
+            return new float[] { -6 + 8 * a + drift * 0.3F, SHRINE_LOW * 0.4F * (1 - a) - 4, 6 - 8 * a,
+                1.7F + 0.5F * (1 - a) + drift * 0.012F, 0.5F, 0.21F };
         }
         if (age < CUT_ONE) {
             float a = age / CUT_ONE;
@@ -248,11 +256,90 @@ final class CutIn {
 
     /** How bright the flash of a cut is, this many ticks into the hand sign (0 to 1). */
     private static float cutFlash(boolean starVoid, float age) {
-        if (!starVoid) {
-            return 0;
-        }
         float since = age >= CUT_TWO ? age - CUT_TWO : age >= CUT_ONE ? age - CUT_ONE : 99;
         return Draw.clamp01(1 - since / 2.2F);
+    }
+
+    /**
+     * The crimson shrine behind its caster, inside the band: a dark moon, rings spreading on red water, cuts of
+     * light crossing and embers rising.
+     */
+    private static void blaze(Tessellator t, float cx, float cy, float w, float half, float age) {
+        Draw.additive();
+        t.startDrawingQuads();
+        // A glow low behind the caster, and the moon's rim over it.
+        float glow = half * 3.2F;
+        for (int j = 0; j < 28; j++) {
+            double a0 = Math.PI * 2 * j / 28;
+            double a1 = Math.PI * 2 * (j + 1) / 28;
+            Draw.color(t, 0xFF3A20, 0.55F);
+            t.addVertex(cx, cy, 0);
+            t.addVertex(cx, cy, 0);
+            Draw.color(t, 0x800008, 0);
+            t.addVertex(cx + Math.cos(a1) * glow * 1.6F, cy + Math.sin(a1) * glow, 0);
+            t.addVertex(cx + Math.cos(a0) * glow * 1.6F, cy + Math.sin(a0) * glow, 0);
+            float r0 = half * 1.25F;
+            float r1 = half * 1.36F;
+            Draw.color(t, 0xFF7A50, 0.8F);
+            t.addVertex(cx + Math.cos(a0) * r0, cy + Math.sin(a0) * r0, 0);
+            t.addVertex(cx + Math.cos(a1) * r0, cy + Math.sin(a1) * r0, 0);
+            Draw.color(t, 0xFF2A10, 0);
+            t.addVertex(cx + Math.cos(a1) * r1, cy + Math.sin(a1) * r1, 0);
+            t.addVertex(cx + Math.cos(a0) * r1, cy + Math.sin(a0) * r1, 0);
+        }
+        // Rings running out along the band, flat as on water.
+        for (int k = 0; k < 6; k++) {
+            float phase = (age * 0.045F + k / 6F) % 1F;
+            float r = w * 0.75F * phase;
+            float fade = (1 - phase) * 0.6F;
+            for (int j = 0; j < 40; j++) {
+                double a0 = Math.PI * 2 * j / 40;
+                double a1 = Math.PI * 2 * (j + 1) / 40;
+                float thick = 1 + phase * 5;
+                Draw.color(t, 0xFF4030, fade);
+                t.addVertex(cx + Math.cos(a0) * r, cy + half * 0.55F + Math.sin(a0) * r * 0.16F, 0);
+                t.addVertex(cx + Math.cos(a1) * r, cy + half * 0.55F + Math.sin(a1) * r * 0.16F, 0);
+                Draw.color(t, 0xFF4030, 0);
+                t.addVertex(
+                    cx + Math.cos(a1) * (r + thick * 3),
+                    cy + half * 0.55F + Math.sin(a1) * (r + thick * 3) * 0.16F,
+                    0);
+                t.addVertex(
+                    cx + Math.cos(a0) * (r + thick * 3),
+                    cy + half * 0.55F + Math.sin(a0) * (r + thick * 3) * 0.16F,
+                    0);
+            }
+        }
+        // Cuts: thin bright lines that cross the band at a slant and are gone.
+        for (int i = 0; i < 9; i++) {
+            float life = (age * 0.16F + Draw.hash(i, 51)) % 1F;
+            int turn = (int) (age * 0.16F + Draw.hash(i, 51));
+            float x = w * Draw.hash(i, 52 + turn);
+            float lean = (Draw.hash(i, 53 + turn) - 0.5F) * half * 5;
+            float fade = (1 - life) * (1 - life);
+            float thick = 0.6F + 2.2F * fade;
+            Draw.color(t, 0xFFFFFF, 0.9F * fade);
+            t.addVertex(x - lean - thick, cy - half, 0);
+            t.addVertex(x - lean + thick, cy - half, 0);
+            Draw.color(t, 0xFF5040, 0.5F * fade);
+            t.addVertex(x + lean + thick, cy + half, 0);
+            t.addVertex(x + lean - thick, cy + half, 0);
+        }
+        // Embers going up.
+        for (int i = 0; i < 46; i++) {
+            float speed = 0.02F + Draw.hash(i, 61) * 0.05F;
+            float phase = (Draw.hash(i, 62) + age * speed) % 1F;
+            float x = w * Draw.hash(i, 63) + (float) Math.sin(age * 0.2F + i) * 3;
+            float y = cy + half - phase * half * 2;
+            float size = 0.8F + Draw.hash(i, 64) * 1.6F;
+            Draw.color(t, 0xFFC070, 0.9F * (1 - phase));
+            t.addVertex(x - size, y - size, 0);
+            t.addVertex(x - size, y + size, 0);
+            t.addVertex(x + size, y + size, 0);
+            t.addVertex(x + size, y - size, 0);
+        }
+        t.draw();
+        Draw.translucent();
     }
 
     /** The star void behind its caster, inside the band: arms of light turning about a point, stars streaming out. */
@@ -337,14 +424,6 @@ final class CutIn {
         t.addVertex(x0 + skew, y + thick, 0);
         t.addVertex(x1 + skew, y + thick, 0);
         t.addVertex(x1 + skew, y, 0);
-    }
-
-    private static void diamond(Tessellator t, float x, float y, float r, int rgb, float alpha) {
-        Draw.color(t, rgb, alpha);
-        t.addVertex(x, y - r, 0);
-        t.addVertex(x - r, y, 0);
-        t.addVertex(x, y + r, 0);
-        t.addVertex(x + r, y, 0);
     }
 
     /**
