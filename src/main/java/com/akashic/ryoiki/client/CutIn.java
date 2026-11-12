@@ -80,7 +80,7 @@ final class CutIn {
                 mc.displayHeight - (int) ((yc + half) * factor),
                 mc.displayWidth,
                 (int) (half * 2 * factor));
-            vortex(t, w * 0.19F + slide, yc, w, half, age);
+            vortex(t, w * shot(true, age)[5], yc, w, half, age);
             GL11.glDisable(GL11.GL_SCISSOR_TEST);
         }
         // Streaks rushing along it.
@@ -115,16 +115,30 @@ final class CutIn {
         t.draw();
 
         // The caster, in a tilted frame: its own skin on a figure that makes the hand sign.
-        float faceX = w * 0.19F + slide;
+        float[] shot = shot(starVoid, age);
+        // The star void's figure is there from the first frame, the band rushing in behind it; the crimson
+        // shrine's comes in with its frame.
+        float faceX = w * shot[5] + (starVoid ? 0 : slide);
         float size = half * 1.42F;
-        t.startDrawingQuads();
-        diamond(t, faceX, yc, size * 0.98F, look.bandTrim(), 1);
-        diamond(t, faceX, yc, size * 0.92F, Draw.mix(look.bandFrom(), 0x000000, 0.5F), 1);
-        t.draw();
+        if (!starVoid) {
+            t.startDrawingQuads();
+            diamond(t, faceX, yc, size * 0.98F, look.bandTrim(), 1);
+            diamond(t, faceX, yc, size * 0.92F, Draw.mix(look.bandFrom(), 0x000000, 0.5F), 1);
+            t.draw();
+        }
         // A burst behind the figure at the instant the sign is complete.
         float sign = sign(age);
         float burst = Draw.clamp01((age - SIGN_START - SIGN_TICKS + 1) / 7F);
-        if (burst > 0 && burst < 1) {
+        float cut = cutFlash(starVoid, age);
+        if (cut > 0) {
+            // A cut: the band whites out for an instant.
+            Draw.additive();
+            t.startDrawingQuads();
+            band(t, x0, x1, yc, half, skew, 0xFFFFFF, cut * 0.85F, look.bandTrim(), cut * 0.6F);
+            t.draw();
+            Draw.translucent();
+        }
+        if (burst > 0 && burst < 1 && !starVoid) {
             Draw.additive();
             t.startDrawingQuads();
             float r = size * (0.5F + burst * 2.2F);
@@ -142,7 +156,7 @@ final class CutIn {
             if (FuturaBridge.INSTANCE.modelled((AbstractClientPlayer) caster)) {
                 // The caster's own model makes the sign (the bones are posed just before it is drawn).
                 FuturaBridge.INSTANCE.pose((AbstractClientPlayer) caster, DomainType.byId(domainId), sign);
-                model(mc, (AbstractClientPlayer) caster, faceX, yc + half, half, h, shot(starVoid, age));
+                model(mc, (AbstractClientPlayer) caster, faceX, yc + half, half, h, shot);
             } else {
                 figure(
                     mc,
@@ -153,7 +167,7 @@ final class CutIn {
                     half * 3.0F,
                     sign,
                     age,
-                    shot(starVoid, age));
+                    shot);
             }
         }
 
@@ -201,21 +215,44 @@ final class CutIn {
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
     }
 
+    /** When the star void's cut-in cuts from one shot to the next, in ticks. */
+    private static final float CUT_ONE = 6;
+    private static final float CUT_TWO = 12;
+
     /**
-     * The camera on the caster's figure, this many ticks into the hand sign: {yaw, pitch, roll, zoom}. The crimson
-     * shrine holds a three-quarter view and closes in slowly. The star void starts low and from the side, far back,
-     * and sweeps round to the front as it rushes in on the face and the raised hand.
+     * The camera on the caster's figure, this many ticks into the hand sign: {yaw, pitch, roll, zoom, how much it
+     * aims at the hand instead of the head (0 to 1), where across the screen the figure is (a fraction of its
+     * width)}. The crimson shrine holds a three-quarter view and closes in slowly. The star void is three shots
+     * with hard cuts between them: from behind and below, far, as the caster's arm starts up; then close on the
+     * rising hand, from the other side, tilted; then the face, head on, as the sign is completed, with a jolt.
      */
     static float[] shot(boolean starVoid, float age) {
         if (!starVoid) {
-            return new float[] { 22, -6, 0, 1 + 0.008F * age };
+            return new float[] { 22, -6, 0, 1 + 0.008F * age, 0, 0.19F };
         }
-        float a = Draw.easeOut(age / 12F);
-        float drift = Math.max(0, age - 12);
-        // A jolt of zoom at the instant the sign is complete.
-        float punch = 0.16F * Draw.clamp01(1 - Math.abs(age - SIGN_START - SIGN_TICKS) / 2.2F);
-        return new float[] { 112 - 98 * a - drift * 0.8F, -34 + 28 * a, -17 + 23 * a,
-            0.62F + 1.2F * a + drift * 0.018F + punch };
+        if (age < CUT_ONE) {
+            float a = age / CUT_ONE;
+            return new float[] { 158 - 26 * a, -30 + 6 * a, -14 + 4 * a, 0.72F + 0.2F * a, 0, 0.15F + 0.03F * a };
+        }
+        if (age < CUT_TWO) {
+            float a = (age - CUT_ONE) / (CUT_TWO - CUT_ONE);
+            return new float[] { 64 - 18 * a, -6 - 8 * a, 15 - 6 * a, 2.1F + 0.5F * a, 1, 0.27F - 0.03F * a };
+        }
+        float a = Draw.easeOut((age - CUT_TWO) / 7F);
+        float drift = age - CUT_TWO;
+        // In close at the cut, easing back to hold the face and the hand together.
+        float punch = 0.5F * (1 - a);
+        return new float[] { 6 + 10 * a - drift * 0.35F, -18 + 10 * a, -8 + 11 * a, 1.75F + punch + drift * 0.012F,
+            0.22F * (1 - a), 0.20F };
+    }
+
+    /** How bright the flash of a cut is, this many ticks into the hand sign (0 to 1). */
+    private static float cutFlash(boolean starVoid, float age) {
+        if (!starVoid) {
+            return 0;
+        }
+        float since = age >= CUT_TWO ? age - CUT_TWO : age >= CUT_ONE ? age - CUT_ONE : 99;
+        return Draw.clamp01(1 - since / 2.2F);
     }
 
     /** The star void behind its caster, inside the band: arms of light turning about a point, stars streaming out. */
@@ -396,8 +433,9 @@ final class CutIn {
         GL11.glColor4f(1, 1, 1, 1);
     }
 
-    /** The head's height above the feet in the last model drawn, in blocks: the next frame is framed by it. */
-    private static float headHeight = 0.1F;
+    /** Where the head and the right hand of the model being drawn are, in blocks from the point it is drawn at. */
+    private static float[] head = { 0, 0.1F, 0 };
+    private static float[] hand = { 0, 0.1F, 0 };
 
     /** Whether the cut-in is drawing a player right now: its name tag is not wanted on the band. */
     static boolean drawingPlayer;
@@ -437,33 +475,54 @@ final class CutIn {
         float prevPitch = caster.prevRotationPitch;
         float headYaw = caster.rotationYawHead;
         float prevHeadYaw = caster.prevRotationYawHead;
-        GL11.glRotatef(135, 0, 1, 0);
-        RenderHelper.enableStandardItemLighting();
-        GL11.glRotatef(-135, 0, 1, 0);
-        GL11.glRotatef(shot[1], 1, 0, 0);
-        GL11.glTranslatef(0, -headHeight, 0);
-        caster.renderYawOffset = shot[0];
-        caster.prevRenderYawOffset = shot[0];
-        caster.rotationYaw = shot[0] - 8;
-        caster.prevRotationYaw = shot[0] - 8;
+        caster.renderYawOffset = 0;
+        caster.prevRenderYawOffset = 0;
+        caster.rotationYaw = -8;
+        caster.prevRotationYaw = -8;
         caster.rotationPitch = 0;
         caster.prevRotationPitch = 0;
-        caster.rotationYawHead = shot[0] - 8;
-        caster.prevRotationYawHead = shot[0] - 8;
+        caster.rotationYawHead = -8;
+        caster.prevRotationYawHead = -8;
         float viewY = RenderManager.instance.playerViewY;
         RenderManager.instance.playerViewY = 180;
         drawingPlayer = true;
         FuturaBridge.INSTANCE.screenDraw(true);
         try {
+            // Once without drawing anything, to learn where this frame's pose puts the head and the hand (the hand
+            // moves fast: last frame's place would not do); then for real, with the camera aimed by them.
+            GL11.glPushMatrix();
+            camera(shot);
+            GL11.glColorMask(false, false, false, false);
+            GL11.glDepthMask(false);
+            RenderManager.instance.renderEntityWithPosYaw(caster, 0, 0, 0, 0, 1);
+            GL11.glColorMask(true, true, true, true);
+            GL11.glPopMatrix();
+            float[] seenHead = FuturaBridge.INSTANCE.point(caster, "Head");
+            if (seenHead != null) {
+                head = seenHead;
+            }
+            float[] seenHand = FuturaBridge.INSTANCE.point(caster, "RightHandLocator");
+            hand = seenHand != null ? seenHand : head;
+            float aim = shot[4];
+            // A draw leaves the GL state as it likes, and the unseen one may have written depth: start clean for
+            // the one that shows.
+            GL11.glDepthMask(true);
+            GL11.glClear(GL11.GL_DEPTH_BUFFER_BIT);
+            GL11.glEnable(GL11.GL_DEPTH_TEST);
+            GL11.glDepthFunc(GL11.GL_LEQUAL);
+            GL11.glDepthMask(true);
+            GL11.glEnable(GL11.GL_ALPHA_TEST);
+            GL11.glEnable(GL11.GL_COLOR_MATERIAL);
+            GL11.glEnable(GL11.GL_TEXTURE_2D);
+            GL11.glDisable(GL11.GL_BLEND);
+            GL11.glColor4f(1, 1, 1, 1);
+            camera(shot);
+            GL11.glTranslatef(
+                -(head[0] + (hand[0] - head[0]) * aim),
+                -(head[1] + (hand[1] - head[1]) * aim),
+                -(head[2] + (hand[2] - head[2]) * aim));
             RenderManager.instance.renderEntityWithPosYaw(caster, 0, 0, 0, 0, 1);
         } finally {
-            float seen = FuturaBridge.INSTANCE.headHeight(caster);
-            if (!Float.isNaN(seen) && seen > -4 && seen < 4) {
-                if (Boolean.getBoolean("ryoiki.devHarness") && Math.abs(seen - headHeight) > 0.01F) {
-                    com.akashic.ryoiki.RyoikiTenkai.LOG.info("cut-in: head at {} blocks above the draw point", seen);
-                }
-                headHeight = seen;
-            }
             FuturaBridge.INSTANCE.screenDraw(false);
             drawingPlayer = false;
             RenderManager.instance.playerViewY = viewY;
@@ -487,6 +546,18 @@ final class CutIn {
         GL11.glDisable(GL11.GL_LIGHTING);
         GL11.glEnable(GL11.GL_TEXTURE_2D);
         GL11.glColor4f(1, 1, 1, 1);
+    }
+
+    /**
+     * The light and the camera's turn, in the figure's space. The camera goes round the figure, not the figure
+     * round itself: the model eases its body toward where the player faces, and would trail behind a cut.
+     */
+    private static void camera(float[] shot) {
+        GL11.glRotatef(135, 0, 1, 0);
+        RenderHelper.enableStandardItemLighting();
+        GL11.glRotatef(-135, 0, 1, 0);
+        GL11.glRotatef(shot[1], 1, 0, 0);
+        GL11.glRotatef(-shot[0], 0, 1, 0);
     }
 
     private static void reset(ModelRenderer part) {

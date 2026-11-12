@@ -296,7 +296,8 @@ public final class TransportHarness {
                     });
                 }
                 // Every tick of the hand sign: the cut-in, frame by frame.
-                if (ticks >= 2 && ticks <= 26) {
+                // (-Dryoiki.shotEvery=2 for every other tick, where saving a capture takes longer than a tick.)
+                if (ticks >= 2 && ticks <= 26 && ticks % Integer.getInteger("ryoiki.shotEvery", 1) == 0) {
                     shot(mc, "ryoiki-" + (run + 1) + (ticks == 12 ? "-windup" : String.format("-windup-t%02d", ticks)));
                 }
                 if (ClientDomain.INSTANCE.inside != null) {

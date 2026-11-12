@@ -159,19 +159,19 @@ final class FuturaBridge {
     }
 
     /**
-     * How high the model's head was in the draw that just ended, in blocks above the point it was drawn at; NaN if
-     * unknown. Models differ in height: the cut-in frames each by its own head.
+     * Where a bone of the model was in the draw that just ended, in blocks from the point it was drawn at; null if
+     * unknown. Models differ in height and build: the cut-in aims its camera by the model's own head and hand.
      */
-    float headHeight(EntityPlayer player) {
+    float[] point(EntityPlayer player, String bone) {
         if (locatorInLastDraw == null) {
-            return Float.NaN;
+            return null;
         }
         try {
-            float[] m = (float[]) locatorInLastDraw.invoke(player, "Head");
-            return m == null ? Float.NaN : m[13];
+            float[] m = (float[]) locatorInLastDraw.invoke(player, bone);
+            return m == null ? null : new float[] { m[12], m[13], m[14] };
         } catch (Throwable e) {
             locatorInLastDraw = null;
-            return Float.NaN;
+            return null;
         }
     }
 
