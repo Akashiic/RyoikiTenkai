@@ -210,6 +210,9 @@ O JJS teleporta para uma arena longe do mapa. Para nós, as opções são:
 **Recomendação: A**, com o chão "trocado" por uma exibição plana (o espelho de sangue do Sukuna, o vazio do Gojo)
 quando o domínio pedir. Deixar **B** como evolução, se quisermos arenas feitas à mão.
 
+> O [estudo técnico](ESTUDO-TECNICO.md) confirma que o JJS usa a opção **B**: um domo destrutível no mapa e a arena
+> longe, com teleporte. Ele também lista os problemas que isso trouxe (seção 6) e o que isso ensina para nós (seção 8).
+
 ### 5.3 Cada elemento visto e onde ele mora
 
 | Elemento | Kunftig hoje (API 13) | Precisa da API 14 |

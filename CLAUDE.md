@@ -5,7 +5,10 @@ Shenanigans) para o servidor Minecraft **1.7.10** da rede. Mecânica sobretudo v
 para o servidor (clipes, eventos, engajamento).
 
 O estudo de referência está em [`docs/ESTUDO.md`](docs/ESTUDO.md): regras e visual do Infinite Void e do Malevolent
-Shrine, as regras do choque, a escala e o que cada elemento precisa no Kunftig. Leia antes de propor qualquer coisa.
+Shrine, as regras do choque, a escala e o que cada elemento precisa no Kunftig. O estudo técnico, em
+[`docs/ESTUDO-TECNICO.md`](docs/ESTUDO-TECNICO.md), cobre como o JJS provavelmente faz isso por dentro (Roblox/Luau):
+arena longe do mapa com teleporte, domo destrutível no mapa, destruição em voxels, rede cliente-servidor e choque.
+O código do JJS é fechado: o estudo separa fato, dedução e prática comum. Leia os dois antes de propor qualquer coisa.
 
 ## Sobre o dono e o ambiente
 
@@ -19,7 +22,7 @@ Shrine, as regras do choque, a escala e o que cada elemento precisa no Kunftig. 
 
 ## Estado e decisões
 
-* Por enquanto este repositório guarda **só o estudo e este arquivo**.
+* Por enquanto este repositório guarda **só os estudos (`docs/`) e este arquivo**.
 * **Não haverá plugin.** Não crie plugin Bukkit, esqueleto de projeto nem READMEs sem o dono pedir.
 * A forma de implementar ainda não foi decidida. Pergunte antes de criar código.
 
