@@ -25,6 +25,5 @@ Shrine, as regras do choque, a escala e o que cada elemento precisa no Kunftig. 
 
 ## Regras
 
-* **Arte própria.** Nada de modelos, texturas, sons ou trilhas do Jujutsu Shenanigans.
 * O que não foi visto no jogo fica marcado como "a verificar".
 * Commits e PRs só quando pedidos. Não usar force-push.
