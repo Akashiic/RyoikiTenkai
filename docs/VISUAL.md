@@ -55,18 +55,22 @@ modelo, textura nem som no mod. A arena é feita de blocos invisíveis, então o
 ## A arte do dono na faixa
 
 A faixa tem um espaço, à direita, para uma imagem ou uma animação curta de cada domínio. **O mod não traz nenhuma**:
-quem monta o modpack põe os quadros, em PNG, na pasta de configuração **do cliente**:
+quem monta o modpack põe o arquivo na pasta de configuração **do cliente**. Há dois jeitos:
 
 ```
-config/ryoikitenkai/faixa/vazio/00.png, 01.png, 02.png...
-config/ryoikitenkai/faixa/santuario/00.png, 01.png...
-config/ryoikitenkai/faixa/<domínio>/fps.txt      (opcional; um número, 12 se faltar)
+config/ryoikitenkai/faixa/vazio.gif              um GIF animado, tocado na velocidade dele
+config/ryoikitenkai/faixa/santuario.gif
+
+config/ryoikitenkai/faixa/vazio/00.png, 01.png...    ou uma pasta de quadros PNG, na ordem dos nomes
+config/ryoikitenkai/faixa/vazio/fps.txt              (opcional; um número, 12 se faltar)
 ```
 
-Os quadros tocam na ordem dos nomes, em laço, enquanto a faixa está na tela (até 96 quadros, até 1.024 pixels de
-lado). Com a pasta vazia ou ausente, a faixa fica como antes. Um GIF vira quadros com, por exemplo,
-`ffmpeg -i cena.gif %02d.png`. O que vai ali é escolha e responsabilidade de quem distribui o modpack: o dono pediu
-duas cenas do anime, e o agente não as embutiu no mod.
+Toca em laço enquanto a faixa está na tela (até 96 quadros, até 1.024 pixels de lado). Se houver o GIF e a pasta, vale
+o GIF. Sem nenhum dos dois, a faixa fica como antes. O mod lê na primeira vez que a faixa aparece, então trocar o
+arquivo pede reabrir o jogo. Só GIF e PNG: WebP não é lido.
+
+O que vai ali é escolha e responsabilidade de quem monta o modpack. O dono pediu duas cenas do anime e insistiu; o
+agente não as embutiu no mod nem as usou nas amostras (as capturas mostram uma animação de teste).
 
 ## Como é feito
 
