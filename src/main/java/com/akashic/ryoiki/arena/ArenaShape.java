@@ -2,13 +2,12 @@ package com.akashic.ryoiki.arena;
 
 /**
  * The shape of a domain arena, in blocks relative to its centre: a floor disc and a dome shell around an open
- * interior of {@link #radius} blocks. The centre is the corner shared by four chunks, at the top of the floor, so
- * the whole arena fits in those four chunks while {@code radius <= MAX_RADIUS}. No Minecraft classes.
+ * interior of {@link #radius} blocks. The centre is a corner shared by four chunks, at the top of the floor, so
+ * the whole arena fits in a square of {@link #chunkSpan} chunks to each side of it. No Minecraft classes.
  */
 public final class ArenaShape {
 
-    /** The largest interior radius whose floor and shell stay inside the four chunks around the centre. */
-    public static final int MAX_RADIUS = 14;
+    public static final int MAX_RADIUS = 30;
     public static final int MIN_RADIUS = 6;
 
     /** What a block of the arena is. */
@@ -24,6 +23,11 @@ public final class ArenaShape {
     }
 
     public final int radius;
+
+    /** How many chunks to each side of the centre an arena of this radius reaches (floor and shell included). */
+    public static int chunkSpan(int radius) {
+        return (radius + 2 + 15) / 16;
+    }
 
     public ArenaShape(int radius) {
         if (radius < MIN_RADIUS || radius > MAX_RADIUS) {

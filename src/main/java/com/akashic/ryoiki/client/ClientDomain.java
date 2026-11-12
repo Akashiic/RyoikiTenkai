@@ -183,7 +183,8 @@ public final class ClientDomain {
             age++;
             sky.install(world.provider);
             // Each cut of the crimson shrine jolts the view.
-            if (inside == DomainType.MALEVOLENT_SHRINE && SlashField.startsAt(age)) {
+            if (inside == DomainType.MALEVOLENT_SHRINE && SlashField.startsAt(age)
+                && age % (SlashField.PERIOD * 2) == 0) {
                 CameraShake.INSTANCE.kick(0.9F);
             }
         } else {

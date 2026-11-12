@@ -38,15 +38,35 @@ modelo, textura nem som no mod. A arena é feita de blocos invisíveis, então o
 
 * **Céu:** preto, com o horizonte em brasa e uma **lua de sangue** baixa (refletida na água).
 * **Chão:** água vermelha, com ondas que saem do centro.
-* **O santuário:** atrás do conjurador, fora da parede invisível, uma torre de 31 blocos: base em degraus, um salão
-  de pilares com a porta acesa por dentro, três telhados de beirais virados para cima, cada um menor que o de baixo,
-  e uma agulha com três anéis de luz. Uma corda grossa com tiras de papel atravessa a frente, há um estandarte de
-  cada lado e um caminho de oito lanternas de pedra. A lua fica atrás dela.
-* **Em volta:** seis **portais** em anel, cada um com duas lanternas que tremulam (nenhum na frente do santuário);
+* **O santuário:** no **meio da arena**, atrás do conjurador (que cai 13 blocos à frente da porta, de costas para
+  ela). Um salão quadrado de 10 blocos de lado sobre uma base em degraus, com a porta acesa por dentro, três telhados
+  de beirais virados para cima e uma agulha com três anéis de luz; uma corda grossa com tiras de papel na frente,
+  um estandarte de cada lado e lanternas de pedra. A lua fica atrás dele.
+  * **É sólido.** No sinal de mão o servidor ergue o salão em blocos invisíveis (`arena/ShrineCore`, paredes e teto,
+    girado para onde o conjurador olhava) e o desfaz quando o domínio acaba. Ninguém cai dentro dele.
+  * É um desenho próprio. O dono pediu o santuário da referência (bocas na porta, chifres, caveiras) "100%": isso o
+    agente não reproduz.
+* **Em volta:** doze **portais** em anel, fora da parede, cada um com duas lanternas que tremulam;
   **torres** negras no horizonte; névoa vermelha rasteira em faixas; brasas subindo.
-* **Cortes:** a cada 7 ticks um risco branco cruza a arena num instante e deixa um rastro vermelho que some
+* **Cortes:** a cada 4 ticks um risco branco cruza a arena num instante e deixa um rastro vermelho que some
   (`fx/SlashField`). A posição de cada corte sai do número do domínio e do tempo, então **todos os clientes veem os
   mesmos cortes sem nenhuma mensagem**. Cada corte dá um tranco na câmera. Por enquanto é só visual: não causa dano.
+
+## A arte do dono na faixa
+
+A faixa tem um espaço, à direita, para uma imagem ou uma animação curta de cada domínio. **O mod não traz nenhuma**:
+quem monta o modpack põe os quadros, em PNG, na pasta de configuração **do cliente**:
+
+```
+config/ryoikitenkai/faixa/vazio/00.png, 01.png, 02.png...
+config/ryoikitenkai/faixa/santuario/00.png, 01.png...
+config/ryoikitenkai/faixa/<domínio>/fps.txt      (opcional; um número, 12 se faltar)
+```
+
+Os quadros tocam na ordem dos nomes, em laço, enquanto a faixa está na tela (até 96 quadros, até 1.024 pixels de
+lado). Com a pasta vazia ou ausente, a faixa fica como antes. Um GIF vira quadros com, por exemplo,
+`ffmpeg -i cena.gif %02d.png`. O que vai ali é escolha e responsabilidade de quem distribui o modpack: o dono pediu
+duas cenas do anime, e o agente não as embutiu no mod.
 
 ## Como é feito
 

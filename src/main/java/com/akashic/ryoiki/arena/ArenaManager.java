@@ -20,7 +20,7 @@ import com.akashic.ryoiki.RyoikiTenkai;
 import com.akashic.ryoiki.block.BlockVeil;
 
 /**
- * The arenas of each dimension: builds them (once), keeps their four chunks loaded and empties the terrain around
+ * The arenas of each dimension: builds them (once), keeps their chunks loaded and empties the terrain around
  * them. An arena is made of {@link BlockVeil} only, in a region where every chunk in view is empty: the server has
  * next to nothing to send when players arrive and the client has nothing to mesh. Main server thread only.
  */
@@ -34,7 +34,7 @@ public final class ArenaManager {
     private static final class Dimension {
 
         ArenaSlots slots;
-        ForgeChunkManager.Ticket ticket;
+        final ForgeChunkManager.Ticket[] tickets;
         final ArrayDeque<long[]> toVoid = new ArrayDeque<>();
         final boolean[] ready;
         boolean surroundingsQueued;
@@ -42,6 +42,7 @@ public final class ArenaManager {
         Dimension(ArenaSlots slots) {
             this.slots = slots;
             this.ready = new boolean[slots.size()];
+            this.tickets = new ForgeChunkManager.Ticket[slots.size()];
         }
     }
 
@@ -52,7 +53,13 @@ public final class ArenaManager {
     private Dimension dimension(WorldServer world) {
         Dimension d = dimensions.get(world.provider.dimensionId);
         if (d == null) {
-            d = new Dimension(new ArenaSlots(Config.arenaX, Config.arenaZ, Config.arenaY, Config.maxDomains));
+            d = new Dimension(
+                new ArenaSlots(
+                    Config.arenaX,
+                    Config.arenaZ,
+                    Config.arenaY,
+                    Config.maxDomains,
+                    ArenaShape.chunkSpan(Config.radius)));
             dimensions.put(world.provider.dimensionId, d);
         }
         return d;
@@ -74,24 +81,29 @@ public final class ArenaManager {
         Dimension d = dimension(world);
         if (!d.ready[slot]) {
             int[][] chunks = d.slots.chunks(slot);
-            for (int[] c : chunks) {
-                Chunk chunk = world.theChunkProviderServer.loadChunk(c[0], c[1]);
-                if (!isArena(world, d.slots, slot) && !empty(chunk)) {
-                    if (chunk.inhabitedTime > 0) {
-                        return "ryoikitenkai.erro.regiao";
-                    }
-                    voidChunk(world, chunk);
-                }
-            }
             if (!isArena(world, d.slots, slot)) {
+                // Not there, or there with another radius: clear the ground and build it. Where an arena of ours
+                // already stands, everything it could have reached is cleared, whoever has been in it.
+                boolean ours = centre(world, d.slots, slot);
+                int reach = ours ? ArenaShape.chunkSpan(ArenaShape.MAX_RADIUS) : d.slots.span;
+                for (int[] c : d.slots.chunks(slot, reach)) {
+                    Chunk chunk = world.theChunkProviderServer.loadChunk(c[0], c[1]);
+                    if (!empty(chunk)) {
+                        if (!ours && lived(chunk)) {
+                            return "ryoikitenkai.erro.regiao";
+                        }
+                        voidChunk(world, chunk);
+                    }
+                }
                 build(world, d.slots, slot);
             }
-            if (d.ticket == null) {
-                d.ticket = ForgeChunkManager.requestTicket(RyoikiTenkai.instance, world, ForgeChunkManager.Type.NORMAL);
+            if (d.tickets[slot] == null) {
+                d.tickets[slot] = ForgeChunkManager
+                    .requestTicket(RyoikiTenkai.instance, world, ForgeChunkManager.Type.NORMAL);
             }
-            if (d.ticket != null) {
+            if (d.tickets[slot] != null) {
                 for (int[] c : chunks) {
-                    ForgeChunkManager.forceChunk(d.ticket, new ChunkCoordIntPair(c[0], c[1]));
+                    ForgeChunkManager.forceChunk(d.tickets[slot], new ChunkCoordIntPair(c[0], c[1]));
                 }
             }
             d.ready[slot] = true;
@@ -103,9 +115,9 @@ public final class ArenaManager {
         return null;
     }
 
-    /** The four chunks of a slot, loaded. */
+    /** The chunks of a slot, loaded. */
     public List<Chunk> chunks(WorldServer world, int slot) {
-        List<Chunk> out = new ArrayList<>(4);
+        List<Chunk> out = new ArrayList<>();
         for (int[] c : dimension(world).slots.chunks(slot)) {
             out.add(world.theChunkProviderServer.loadChunk(c[0], c[1]));
         }
@@ -117,8 +129,43 @@ public final class ArenaManager {
         return dimension(world).toVoid.size();
     }
 
-    private static boolean isArena(WorldServer world, ArenaSlots slots, int slot) {
+    /** Whether an arena of ours stands on this slot, whatever its radius. */
+    private static boolean centre(WorldServer world, ArenaSlots slots, int slot) {
         return world.getBlock(slots.centerX(slot), slots.floorY - 1, slots.centerZ(slot)) == RyoikiTenkai.veil;
+    }
+
+    /** Whether the arena of this slot is there with the radius of the config: its shell is where it should be. */
+    private static boolean isArena(WorldServer world, ArenaSlots slots, int slot) {
+        int cx = slots.centerX(slot);
+        int cz = slots.centerZ(slot);
+        return centre(world, slots, slot) && world.getBlock(cx + Config.radius, slots.floorY, cz) == RyoikiTenkai.veil
+            && world.getBlock(cx + Config.radius - 2, slots.floorY, cz) != RyoikiTenkai.veil
+            && world.getBlock(cx + Config.radius + 3, slots.floorY - 1, cz) != RyoikiTenkai.veil;
+    }
+
+    /**
+     * Puts the crimson shrine's solid hall in the middle of a slot's arena, turned by {@code yaw}, or takes away
+     * whatever hall is there ({@code yaw} NaN). A few hundred blocks, in chunks that are always loaded.
+     */
+    public void setCore(WorldServer world, int slot, float yaw) {
+        ArenaSlots slots = dimension(world).slots;
+        int cx = slots.centerX(slot);
+        int cy = slots.floorY;
+        int cz = slots.centerZ(slot);
+        boolean on = !Float.isNaN(yaw);
+        for (int dx = -ShrineCore.REACH; dx < ShrineCore.REACH; dx++) {
+            for (int dz = -ShrineCore.REACH; dz < ShrineCore.REACH; dz++) {
+                for (int dy = 0; dy <= ShrineCore.HEIGHT; dy++) {
+                    boolean want = on && ShrineCore.solid(dx, dy, dz, yaw);
+                    boolean has = world.getBlock(cx + dx, cy + dy, cz + dz) == RyoikiTenkai.veil;
+                    if (want && !has) {
+                        world.setBlock(cx + dx, cy + dy, cz + dz, RyoikiTenkai.veil, BlockVeil.SHELL, 2);
+                    } else if (!want && has) {
+                        world.setBlockToAir(cx + dx, cy + dy, cz + dz);
+                    }
+                }
+            }
+        }
     }
 
     private void build(WorldServer world, ArenaSlots slots, int slot) {
@@ -127,7 +174,10 @@ public final class ArenaManager {
         final int cz = slots.centerZ(slot);
         final int[] count = { 0 };
         shape().forEach((dx, dy, dz, part) -> {
-            int meta = part == ArenaShape.Part.FLOOR ? BlockVeil.FLOOR : BlockVeil.SHELL;
+            // One floor block in sixteen gives light: enough to light the whole arena evenly, and far fewer
+            // sources for the server to spread.
+            int meta = part == ArenaShape.Part.FLOOR && (dx & 3) == 0 && (dz & 3) == 0 ? BlockVeil.FLOOR
+                : BlockVeil.SHELL;
             world.setBlock(cx + dx, cy + dy, cz + dz, RyoikiTenkai.veil, meta, 2);
             count[0]++;
         });
@@ -150,9 +200,10 @@ public final class ArenaManager {
         for (int slot = 0; slot < d.slots.size(); slot++) {
             int cx = d.slots.centerX(slot) >> 4;
             int cz = d.slots.centerZ(slot) >> 4;
-            for (int x = cx - view - 1; x <= cx + view; x++) {
-                for (int z = cz - view - 1; z <= cz + view; z++) {
-                    boolean own = (x == cx || x == cx - 1) && (z == cz || z == cz - 1);
+            int span = d.slots.span;
+            for (int x = cx - view - span; x < cx + view + span; x++) {
+                for (int z = cz - view - span; z < cz + view + span; z++) {
+                    boolean own = x >= cx - span && x < cx + span && z >= cz - span && z < cz + span;
                     if (!own) {
                         long dx = x - cx;
                         long dz = z - cz;
@@ -179,7 +230,7 @@ public final class ArenaManager {
             boolean wasLoaded = world.theChunkProviderServer.chunkExists(x, z);
             Chunk chunk = world.theChunkProviderServer.loadChunk(x, z);
             if (!empty(chunk)) {
-                if (chunk.inhabitedTime > 0) {
+                if (lived(chunk)) {
                     refused++;
                 } else {
                     voidChunk(world, chunk);
@@ -199,6 +250,16 @@ public final class ArenaManager {
         if (d.toVoid.isEmpty()) {
             RyoikiTenkai.LOG.info("The terrain around the arenas of dimension {} is empty", world.provider.dimensionId);
         }
+    }
+
+    /**
+     * Whether players have been in a chunk of real terrain. A chunk this mod emptied can get a tree or a vein back
+     * from a neighbour that is generated later; that is not terrain (nothing at the bottom of the world), and it is
+     * emptied again.
+     */
+    private static boolean lived(Chunk chunk) {
+        return chunk.inhabitedTime > 0 && !chunk.getBlock(8, 0, 8)
+            .isAir(chunk.worldObj, chunk.xPosition * 16 + 8, 0, chunk.zPosition * 16 + 8);
     }
 
     private static boolean empty(Chunk chunk) {

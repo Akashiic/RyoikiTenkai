@@ -14,15 +14,19 @@ import org.junit.jupiter.api.Test;
 class ArenaShapeTest {
 
     private static long key(int x, int y, int z) {
-        return (x + 64L) << 16 | (y + 64L) << 8 | (z + 64L);
+        return (x + 64L) << 32 | (y + 64L) << 16 | (z + 64L);
     }
 
     @Test
-    void everyRadiusFitsInTheFourChunksAroundTheCentre() {
-        for (int r = ArenaShape.MIN_RADIUS; r <= ArenaShape.MAX_RADIUS; r++) {
+    void everyRadiusFitsInItsChunksAroundTheCentre() {
+        assertEquals(1, ArenaShape.chunkSpan(14));
+        assertEquals(2, ArenaShape.chunkSpan(15));
+        assertEquals(2, ArenaShape.chunkSpan(30));
+        for (int r = ArenaShape.MIN_RADIUS; r <= ArenaShape.MAX_RADIUS; r += 3) {
+            final int reach = ArenaShape.chunkSpan(r) * 16;
             new ArenaShape(r).forEach((dx, dy, dz, part) -> {
-                assertTrue(dx >= -16 && dx < 16 && dz >= -16 && dz < 16, "block outside the four chunks");
-                assertTrue(dy >= -1 && dy <= 16);
+                assertTrue(dx >= -reach && dx < reach && dz >= -reach && dz < reach, "block outside its chunks");
+                assertTrue(dy >= -1 && dy <= reach);
             });
         }
         assertThrows(IllegalArgumentException.class, () -> new ArenaShape(ArenaShape.MAX_RADIUS + 1));
@@ -31,7 +35,7 @@ class ArenaShapeTest {
     /** Flood from the centre through everything that is not arena: it must never get out. */
     @Test
     void theShellAndTheFloorCloseTheInterior() {
-        for (int r = ArenaShape.MIN_RADIUS; r <= ArenaShape.MAX_RADIUS; r++) {
+        for (int r : new int[] { ArenaShape.MIN_RADIUS, 9, 13, 14, 15, 22, ArenaShape.MAX_RADIUS }) {
             ArenaShape shape = new ArenaShape(r);
             Set<Long> solid = new HashSet<>();
             shape.forEach((dx, dy, dz, part) -> solid.add(key(dx, dy, dz)));

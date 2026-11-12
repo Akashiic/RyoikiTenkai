@@ -134,12 +134,21 @@ final class CutIn {
             }
         }
 
+        // The owner's own picture or animation, if the modpack has one for this domain, at the right end.
+        GL11.glDisable(GL11.GL_DEPTH_TEST);
+        Draw.translucent();
+        float room = w * 0.94F;
+        if (CutInArt.has(domainId)) {
+            room = CutInArt.draw(domainId, look.bandTrim(), w * 0.97F + slide, yc, half, skew, age) - slide - w * 0.02F;
+            GL11.glEnable(GL11.GL_TEXTURE_2D);
+        }
         // The words.
         FontRenderer font = mc.fontRenderer;
         String title = I18n.format("ryoikitenkai.dominio." + domainId);
         String over = I18n.format("ryoikitenkai.expansao");
         float textX = w * 0.36F + slide;
-        float scale = Math.min(h * 0.115F / font.FONT_HEIGHT, (w * 0.58F) / Math.max(1, font.getStringWidth(title)));
+        float scale = Math
+            .min(h * 0.115F / font.FONT_HEIGHT, (room - w * 0.36F) / Math.max(1, font.getStringWidth(title)));
         int trimColor = 0xFF000000 | look.bandTrim();
         GL11.glPushMatrix();
         GL11.glTranslatef(textX, yc - scale * font.FONT_HEIGHT * 0.38F, 0);

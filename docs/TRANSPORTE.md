@@ -30,11 +30,12 @@ A arena é feita de um único bloco, o `ryoikitenkai:veu` (`block/BlockVeil`): s
 lá dentro (céu, chão, estruturas) é desenhado pelo cliente por cima, em `client/DomainRenderer`.
 
 * **Forma** (`arena/ArenaShape`, sem classes do Minecraft): um disco de piso e uma casca em cúpula em volta de um
-  interior de 13 blocos de raio (configurável de 6 a 14). A casca é fechada inclusive nas diagonais; um teste
-  unitário "inunda" o interior e confere que nada vaza.
-* **Tamanho:** o centro fica no canto comum de quatro chunks, e a arena inteira cabe nesses **quatro chunks**
-  (2.496 blocos com raio 13).
-* **Luz:** o piso (meta 1) emite luz 15. Quem está dentro fica iluminado igual de dia e de noite.
+  interior de **30 blocos de raio** (configurável de 6 a 30; o dono pediu 30 em 2026-11-12). A casca é fechada
+  inclusive nas diagonais; um teste unitário "inunda" o interior e confere que nada vaza.
+* **Tamanho:** o centro fica no canto comum de quatro chunks. Com raio até 14 a arena cabe nesses 4 chunks; com raio
+  30, em **16 chunks** (12.076 blocos). Mudar o raio no config faz o mod reconstruir a arena sozinho no próximo uso.
+* **Luz:** um bloco do piso em cada dezesseis (meta 1) emite luz 15. Quem está dentro fica iluminado igual de dia e de
+  noite, e o servidor tem poucas fontes de luz para espalhar.
 * **Contorno:** o cliente não desenha o contorno preto de seleção nesses blocos.
 
 ### 2. As arenas ficam longe, num terreno vazio
@@ -43,7 +44,7 @@ lá dentro (céu, chão, estruturas) é desenhado pelo cliente por cima, em `cli
   (config `arena.x`, `arena.z`, `arena.y`), uma vaga a cada 1.024 blocos. O número de vagas é o máximo de domínios
   simultâneos (config `dominio.maximo`, padrão 2).
 * **Construção** (`arena/ArenaManager#prepare`): na primeira conjuração em cada dimensão, ou com `/ryoiki preparar`.
-* **Sempre carregadas:** um ticket do ForgeChunkManager segura os quatro chunks de cada arena.
+* **Sempre carregadas:** um ticket do ForgeChunkManager por arena segura os chunks dela (onde o servidor dá tickets).
 * **Terreno em volta apagado:** todos os chunks que um jogador na arena teria em vista são esvaziados, seis por tick,
   em segundo plano. Sem isso, cada teleporte faria o servidor carregar e mandar centenas de chunks de terreno que
   ninguém vê. Um chunk vazio é carregado e enviado quase de graça.
@@ -52,7 +53,7 @@ lá dentro (céu, chão, estruturas) é desenhado pelo cliente por cima, em `cli
 
 ### 3. Os chunks da arena chegam antes
 
-No início do sinal de mão (25 ticks), o servidor manda os quatro chunks da arena, num pacote só
+No início do sinal de mão (25 ticks), o servidor manda os chunks da arena, num pacote só
 (`S26PacketMapChunkBulk`), para quem está perto o bastante para ser pego (raio + 12 blocos). O cliente 1.7.10 guarda
 chunks recebidos mesmo longe do jogador. Quando o teleporte chega, o chão já está na memória: o custo 2 não existe.
 
@@ -87,6 +88,10 @@ Kunftig). O "você entrou" (`ENTER`) chega sempre antes do pacote de teleporte e
 | `DOME` | o domínio abre (e a cada segundo, para quem chegou depois) | quem está perto e ficou de fora |
 | `EXIT` | fim do domínio, ou o jogador saiu dele | quem estava dentro |
 | `DOME_END` | fim do domínio | quem viu o sinal de mão ou o domo |
+
+> As medições abaixo e as do servidor real foram feitas com **raio 13**. Com o raio 30 (desde 2026-11-12) o teste
+> foi repetido no cliente de desenvolvimento com a Angelica e no Crucible enxuto: chão no quadro 0, as duas arenas
+> reconstruídas em 0,2 s, a parede segurando a 29,7 blocos. No modpack completo com raio 30, **a verificar**.
 
 ## O que foi medido
 
@@ -158,7 +163,7 @@ os mods de base (dois clientes do modpack completo não cabem na memória da má
 
   ```
   ryoikitenkai {
-      I:maximumChunksPerTicket=8
+      I:maximumChunksPerTicket=16
       I:maximumTicketCount=4
   }
   ```

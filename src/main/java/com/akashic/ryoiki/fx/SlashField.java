@@ -7,7 +7,7 @@ package com.akashic.ryoiki.fx;
  */
 public final class SlashField {
 
-    public static final int PERIOD = 7;
+    public static final int PERIOD = 4;
     public static final int LIFE = 9;
 
     /** One cut: a segment through {@code (x, y, z)} (relative to the arena's centre) along a direction. */

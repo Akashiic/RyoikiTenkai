@@ -24,6 +24,7 @@ import com.akashic.ryoiki.RyoikiTenkai;
 import com.akashic.ryoiki.arena.ArenaManager;
 import com.akashic.ryoiki.arena.ArenaShape;
 import com.akashic.ryoiki.arena.ArenaSlots;
+import com.akashic.ryoiki.arena.ShrineCore;
 import com.akashic.ryoiki.domain.DomainSession.Phase;
 import com.akashic.ryoiki.domain.DomainSession.ReturnPoint;
 import com.akashic.ryoiki.net.DomainWire;
@@ -43,7 +44,7 @@ public final class DomainManager {
     public static final DomainManager INSTANCE = new DomainManager();
 
     /** Who sees the hand sign and the dome, in blocks from where it was cast. */
-    private static final double NOTICE_RANGE = 96;
+    private static final double NOTICE_RANGE = 128;
     /** Who gets the arena's chunks in advance: the radius and how far someone can run in during the hand sign. */
     private static final double PRESEND_MARGIN = 12;
     /** A player this far outside the arena's interior has left it (another teleport took it away). */
@@ -104,8 +105,11 @@ public final class DomainManager {
             caster.boundingBox.minY,
             caster.posZ,
             Config.radius,
-            slot);
+            slot,
+            caster.rotationYaw);
         sessions.add(s);
+        // The crimson shrine's hall is solid: it goes up before the arena's chunks are sent.
+        ArenaManager.INSTANCE.setCore(world, slot, type == DomainType.MALEVOLENT_SHRINE ? s.yaw : Float.NaN);
         byte[] windup = DomainWire
             .windup(s.id, type, caster.getEntityId(), s.x, s.y, s.z, s.radius, DomainType.WINDUP_TICKS);
         S26PacketMapChunkBulk arena = new S26PacketMapChunkBulk(ArenaManager.INSTANCE.chunks(world, slot));
@@ -164,7 +168,7 @@ public final class DomainManager {
         // The caster's position now: the domain opens around where it stands, not where the hand sign began.
         double ox = caster.posX;
         double oz = caster.posZ;
-        float yaw = caster.rotationYaw;
+        float yaw = s.yaw;
         for (EntityPlayerMP p : players(world)) {
             boolean caught = p == caster || p.isEntityAlive() && sessionOf(p.getUniqueID()) == null
                 && distanceSq(p, s.x, s.y, s.z) <= square(s.radius);
@@ -187,7 +191,11 @@ public final class DomainManager {
                 p.rotationPitch);
             s.inside.put(p.getUniqueID(), back);
             remember(p, back);
-            double[] at = shape.place(p.posX - ox, p.posZ - oz);
+            // In the crimson shrine the caster stands before the door of the hall in the middle; in the star void, in
+            // the middle itself. Everyone else keeps its offset from the caster.
+            double[] at = s.type == DomainType.MALEVOLENT_SHRINE
+                ? ShrineCore.place(p.posX - ox, p.posZ - oz, yaw, s.radius - 2.5)
+                : shape.place(p.posX - ox, p.posZ - oz);
             send(
                 p,
                 DomainWire.enter(
@@ -292,6 +300,7 @@ public final class DomainManager {
                 send(p, gone);
             }
         }
+        ArenaManager.INSTANCE.setCore(world, s.slot, Float.NaN);
         ArenaManager.INSTANCE.slots(world)
             .release(s.slot);
     }

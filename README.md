@@ -8,7 +8,7 @@ O estado do projeto, as decisões e o que falta estão em [`docs/HANDOFF.md`](do
 
 ## O que já existe
 
-* `/ryoiki expandir <vazio|santuario> [jogador]` (operadores): o sinal de mão de 1,25 s, e quem está no raio vai para a
+* `/ryoiki expandir <vazio|santuario> [jogador]` (operadores): o sinal de mão de 1,25 s, e quem está no raio (30 blocos) vai para a
   arena, cada um na sua posição em relação ao conjurador. No fim (14 s no Vazio Infinito, 18 s no Santuário Malevolente)
   todos voltam para onde estavam.
 * `/ryoiki encerrar` e `/ryoiki preparar` (constrói as arenas do mundo antes do primeiro uso).
@@ -54,11 +54,15 @@ Foi assim que o mod foi testado no Crucible da rede com o modpack TEOF 5.4:
 * As arenas ficam em x = 200.000, z = 200.000 de cada mundo (`config/ryoikitenkai.cfg`). **Num mundo com borda
   (WorldBorder), elas precisam ficar dentro dela**; se o teleporte for bloqueado, o domínio é cancelado com um aviso e
   ninguém sai do lugar.
+* O raio do domínio é `dominio.raio` no config (30 por padrão). **Um config antigo guarda o valor antigo**: mude para
+  30 à mão se o arquivo já existia.
+* A faixa de entrada aceita uma imagem ou animação por domínio, que o modpack fornece: ver "A arte do dono na
+  faixa" em [`docs/VISUAL.md`](docs/VISUAL.md).
 * Opcional, para as arenas ficarem sempre carregadas, em `config/forgeChunkLoading.cfg`:
 
   ```
   ryoikitenkai {
-      I:maximumChunksPerTicket=8
+      I:maximumChunksPerTicket=16
       I:maximumTicketCount=4
   }
   ```

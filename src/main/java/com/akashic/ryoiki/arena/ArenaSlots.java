@@ -2,7 +2,7 @@ package com.akashic.ryoiki.arena;
 
 /**
  * Where the arenas are: a row of slots far from the map, one per domain at a time. A slot's centre is a chunk corner,
- * so its arena is exactly the four chunks around it. No Minecraft classes.
+ * so its arena is a square of chunks around it. No Minecraft classes.
  */
 public final class ArenaSlots {
 
@@ -12,13 +12,16 @@ public final class ArenaSlots {
     private final int baseX;
     private final int baseZ;
     public final int floorY;
+    /** Chunks to each side of a centre that an arena takes. */
+    public final int span;
     private final Object[] owners;
 
     /**
      * @param baseX  the first slot's centre, rounded down to a chunk corner
      * @param floorY the Y of the floor's top (players stand at this Y)
      */
-    public ArenaSlots(int baseX, int baseZ, int floorY, int slots) {
+    public ArenaSlots(int baseX, int baseZ, int floorY, int slots, int span) {
+        this.span = span;
         this.baseX = baseX & ~15;
         this.baseZ = baseZ & ~15;
         this.floorY = floorY;
@@ -37,11 +40,23 @@ public final class ArenaSlots {
         return baseZ;
     }
 
-    /** The four chunks of a slot, as {x, z} pairs. */
+    /** The chunks of a slot, as {x, z} pairs. */
     public int[][] chunks(int slot) {
+        return chunks(slot, span);
+    }
+
+    /** The chunks within {@code reach} chunks to each side of a slot's centre. */
+    public int[][] chunks(int slot, int reach) {
         int cx = centerX(slot) >> 4;
         int cz = centerZ(slot) >> 4;
-        return new int[][] { { cx - 1, cz - 1 }, { cx, cz - 1 }, { cx - 1, cz }, { cx, cz } };
+        int[][] out = new int[reach * reach * 4][];
+        int n = 0;
+        for (int x = cx - reach; x < cx + reach; x++) {
+            for (int z = cz - reach; z < cz + reach; z++) {
+                out[n++] = new int[] { x, z };
+            }
+        }
+        return out;
     }
 
     /** Takes the first free slot for this owner, or returns -1 when all are taken. */

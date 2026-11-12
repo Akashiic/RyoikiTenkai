@@ -49,6 +49,8 @@ public final class DomainSession {
     public final double z;
     public final int radius;
     public final int slot;
+    /** Where the caster looked when it began the hand sign: the domain's scene is laid out by it. */
+    public final float yaw;
 
     Phase phase = Phase.WINDUP;
     /** Ticks in the current phase. */
@@ -59,7 +61,8 @@ public final class DomainSession {
     final Set<UUID> told = new HashSet<>();
 
     DomainSession(int id, DomainType type, UUID caster, int dimension, double x, double y, double z, int radius,
-        int slot) {
+        int slot, float yaw) {
+        this.yaw = yaw;
         this.id = id;
         this.type = type;
         this.caster = caster;

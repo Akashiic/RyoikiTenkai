@@ -10,7 +10,7 @@ import com.akashic.ryoiki.arena.ArenaShape;
 public final class Config {
 
     /** The interior radius of a domain, in blocks: who is this close to the caster is caught. */
-    public static int radius = 13;
+    public static int radius = 30;
     /** Domains at the same time, per dimension. */
     public static int maxDomains = 2;
     public static int arenaX = 200000;

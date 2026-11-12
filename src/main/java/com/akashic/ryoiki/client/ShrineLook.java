@@ -4,27 +4,30 @@ import net.minecraft.client.renderer.Tessellator;
 
 import org.lwjgl.opengl.GL11;
 
+import com.akashic.ryoiki.arena.ShrineCore;
 import com.akashic.ryoiki.fx.SlashField;
 
 /**
- * The crimson shrine: a black sky over still red water and a blood moon; behind the caster, the shrine itself, a
+ * The crimson shrine: a black sky over still red water and a blood moon; in the middle, behind the caster, the
+ * shrine itself (solid: the server builds its hall of invisible blocks), a
  * tower of three roofs on a stepped base with a lit doorway, a rope across its front, banners and a path of stone
  * lanterns; around the arena a ring of gates hung with lanterns, spires on the horizon, mist, embers, and cuts of
  * light that cross the arena without end.
  */
 final class ShrineLook implements DomainLook {
 
-    private static final int GATES = 8;
+    private static final int GATES = 12;
     private static final int SPIRES = 18;
     private static final int EMBERS = 90;
     /** The moon hangs behind the shrine, which stands to the north of the scene. */
     private static final float MOON_X = 0.13F;
     private static final float MOON_Y = 0.33F;
     private static final float MOON_Z = -0.935F;
-    /** How far beyond the arena's wall the shrine's centre is. */
-    private static final float SHRINE_BEYOND = 17;
-    /** The shrine is drawn this much larger than its measures below. */
-    private static final float SHRINE_SCALE = 1.3F;
+    /**
+     * The shrine is drawn this much smaller than its measures below: its hall is then as wide as the solid one the
+     * server builds in the middle of the arena ({@code ShrineCore}).
+     */
+    private static final float SHRINE_SCALE = ShrineCore.HALF / 5.4F;
 
     private final SlashField.Slash slash = new SlashField.Slash();
 
@@ -153,11 +156,8 @@ final class ShrineLook implements DomainLook {
                 0x050001);
         }
         t.draw();
-        // The gates, in a ring around the arena, each facing the centre; none in front of the shrine.
+        // The gates, in a ring around the arena, each facing the centre.
         for (int i = 0; i < GATES; i++) {
-            if (i == GATES / 2 - 1 || i == GATES / 2) {
-                continue;
-            }
             GL11.glPushMatrix();
             float a = 360F * (i + 0.5F) / GATES;
             GL11.glRotatef(a, 0, 1, 0);
@@ -166,7 +166,6 @@ final class ShrineLook implements DomainLook {
             GL11.glPopMatrix();
         }
         GL11.glPushMatrix();
-        GL11.glTranslatef(0, 0, -(radius + SHRINE_BEYOND));
         GL11.glScalef(SHRINE_SCALE, SHRINE_SCALE, SHRINE_SCALE);
         shrine(t, time);
         GL11.glPopMatrix();
@@ -259,7 +258,7 @@ final class ShrineLook implements DomainLook {
         for (int sx = -1; sx <= 1; sx += 2) {
             Draw.box(t, sx * 11F - 0.18F, 0, 6.8F, sx * 11F + 0.18F, 13.5F, 7.16F, 0x241012, 0x080203);
             Draw.box(t, sx * 11F - 0.18F, 13.0F, 6.8F, sx * 11F - 0.18F - sx * 2.6F, 13.3F, 7.1F, 0x241012, 0x080203);
-            for (int k = 0; k < 4; k++) {
+            for (int k = 0; k < 2; k++) {
                 float z = 9.6F + k * 2.6F;
                 float x = sx * 3.3F;
                 Draw.frustum(t, x, z, 0, 0.5F, 0.5F, 0.35F, 0.4F, 0.4F, stoneLit, stoneDark);
@@ -403,9 +402,6 @@ final class ShrineLook implements DomainLook {
         GL11.glDepthMask(false);
         t.startDrawing(GL11.GL_TRIANGLES);
         for (int i = 0; i < GATES; i++) {
-            if (i == GATES / 2 - 1 || i == GATES / 2) {
-                continue;
-            }
             double a = Math.toRadians(360F * (i + 0.5F) / GATES);
             for (int side = -1; side <= 1; side += 2) {
                 float along = side * 2.1F;
@@ -416,10 +412,10 @@ final class ShrineLook implements DomainLook {
                 Draw.glow(t, x, 5.0F, z, 4.2F, 0xFF5A20, 0.22F * flicker);
             }
         }
-        float shrineZ = -(radius + SHRINE_BEYOND);
+        float shrineZ = 0;
         float k1 = SHRINE_SCALE;
         for (int sx = -1; sx <= 1; sx += 2) {
-            for (int k = 0; k < 4; k++) {
+            for (int k = 0; k < 2; k++) {
                 float flicker = 0.8F + 0.2F * (float) Math.sin(time * 0.27F + k * 1.9F + sx);
                 float z = shrineZ + (9.6F + k * 2.6F) * k1;
                 Draw.glow(t, sx * 3.3F * k1, 1.9F * k1, z, 1.3F, 0xFFA040, 0.6F * flicker);
