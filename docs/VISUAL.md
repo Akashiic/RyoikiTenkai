@@ -60,9 +60,23 @@ modelo, textura nem som no mod. A arena é feita de blocos invisíveis, então o
   (`CameraShake`). Nada vai para o servidor.
 * **A cena fica atrás do conjurador.** A mensagem de entrada leva para onde o conjurador olhava quando o domínio
   abriu; céu, chão e estruturas são girados por esse ângulo, igual para todos lá dentro.
-* **O boneco da faixa** é um `ModelBiped` do próprio jogo com a textura da skin do conjurador (64 por 32 ou 64 por 64),
-  com os ângulos dos braços e da cabeça postos à mão a cada quadro. É a skin comum do jogador: quem usa um modelo do
-  Futura3D aparece na faixa com a skin, não com o modelo.
+* **O gesto usa o modelo do jogador.** Onde o 3D Futura Engine desenha os jogadores (o mod de modelos da rede, no
+  repositório YesSteveModel), o conjurador faz o sinal com o **próprio modelo**: `FuturaBridge` chama, por reflexão,
+  `FuturaModels.setBonePose` (API 6 do Futura3D) a cada quadro, com a rotação de cada osso como num arquivo de
+  animação. Isso vale **na faixa** (o jogador é desenhado ali como no inventário, da cintura para cima, enquadrado
+  pela cabeça do modelo) **e no mundo** (durante o sinal e nos primeiros 34 ticks do domínio).
+  * Ossos posados: `RightArm`, `RightForeArm`, `LeftArm`, `LeftForeArm`, `Head` (nomes padrão dos modelos) e os dedos
+    `right_fg`, `right_ffg`, `left_fg`, `left_ffg`, `left_dmz` (os quatro dedos como um bloco em duas juntas, e o
+    polegar). Um modelo que não tem um osso simplesmente não o move.
+  * Os ângulos foram acertados num modelo de teste que o dono mandou (uma personagem de quimono, CC BY-NC-SA, **fora
+    do repositório**) e conferidos no modelo padrão do modpack. Em outros modelos o gesto pode sair diferente.
+  * **Dedos um a um não existem** nesses modelos: os quatro dedos são um osso só. O sinal é feito com os braços, as
+    mãos e esse bloco.
+* **Sem o Futura3D** (ou com um mais antigo que a API 6), a faixa mostra um `ModelBiped` do próprio jogo com a skin
+  comum do conjurador, com os braços posados à mão.
+
+![O gesto no modelo do jogador](img/visual-gesto-modelo.png)
+
 * **Um domínio novo** é uma classe que implementa `DomainLook` (céu, chão, o que há na arena e as cores da faixa e
   dos estilhaços) e uma entrada em `DomainType`.
 
@@ -77,6 +91,7 @@ modelo, textura nem som no mod. A arena é feita de blocos invisíveis, então o
   * o **custo em quadros por segundo** num PC modesto (são alguns milhares de triângulos por quadro, sem textura);
   * a faixa de entrada em telas muito largas ou com a escala da interface no máximo;
   * skins em alta resolução (HD);
+  * o gesto em outros modelos do servidor (cada modelo tem o seu repouso de braços e os seus ossos de dedos);
   * o que os outros jogadores veem (a faixa, o selo, o domo): as capturas são de um jogador só;
   * o minimapa (JourneyMap) continua mostrando as coordenadas da arena.
 
@@ -84,5 +99,5 @@ modelo, textura nem som no mod. A arena é feita de blocos invisíveis, então o
 
 * **Som:** voz, trilha de cada domínio. O mod não tem nenhum arquivo de áudio.
 * **Efeitos de jogo:** os cortes do santuário e a paralisia do vazio são só imagem.
-* **O sinal de mão** no modelo do jogador dentro do mundo (o gesto só aparece na faixa; no mundo ele fica parado).
+* **O sinal de mão no mundo sem o Futura3D:** com a skin comum o jogador fica parado (o gesto só aparece na faixa).
 * **Choque de domínios.**

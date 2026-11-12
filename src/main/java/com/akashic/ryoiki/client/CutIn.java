@@ -5,13 +5,17 @@ import net.minecraft.client.entity.AbstractClientPlayer;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.model.ModelBiped;
 import net.minecraft.client.model.ModelRenderer;
+import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.client.renderer.entity.RenderManager;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.entity.Entity;
 
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
+
+import com.akashic.ryoiki.DomainType;
 
 /**
  * The cut-in: while the caster makes the hand sign, a slanted band crosses the screen of everyone near, with the
@@ -104,7 +108,7 @@ final class CutIn {
         diamond(t, faceX, yc, size * 0.92F, Draw.mix(look.bandFrom(), 0x000000, 0.5F), 1);
         t.draw();
         // A burst behind the figure at the instant the sign is complete.
-        float sign = Draw.easeOut((age - SIGN_START) / SIGN_TICKS);
+        float sign = sign(age);
         float burst = Draw.clamp01((age - SIGN_START - SIGN_TICKS + 1) / 7F);
         if (burst > 0 && burst < 1) {
             Draw.additive();
@@ -121,7 +125,13 @@ final class CutIn {
         Entity caster = mc.theWorld.getEntityByID(casterEntity);
         String name = caster == null ? "" : caster.getCommandSenderName();
         if (caster instanceof AbstractClientPlayer) {
-            figure(mc, (AbstractClientPlayer) caster, domainId, faceX, yc + half * 0.95F, half * 3.0F, sign, age);
+            if (FuturaBridge.INSTANCE.modelled((AbstractClientPlayer) caster)) {
+                // The caster's own model makes the sign (the bones are posed just before it is drawn).
+                FuturaBridge.INSTANCE.pose((AbstractClientPlayer) caster, DomainType.byId(domainId), sign);
+                model(mc, (AbstractClientPlayer) caster, faceX, yc + half, half, h);
+            } else {
+                figure(mc, (AbstractClientPlayer) caster, domainId, faceX, yc + half * 0.95F, half * 3.0F, sign, age);
+            }
         }
 
         // The words.
@@ -157,6 +167,11 @@ final class CutIn {
         GL11.glEnable(GL11.GL_ALPHA_TEST);
         GL11.glEnable(GL11.GL_BLEND);
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+    }
+
+    /** How far the hand sign has come, 0 to 1, this many ticks into it. */
+    static float sign(float age) {
+        return Draw.easeOut((age - SIGN_START) / SIGN_TICKS);
     }
 
     /** A slanted band: its top edge leans right, its bottom edge left. */
@@ -268,6 +283,97 @@ final class CutIn {
         GL11.glDisable(GL12.GL_RESCALE_NORMAL);
         GL11.glDisable(GL11.GL_DEPTH_TEST);
         GL11.glDisable(GL11.GL_LIGHTING);
+        GL11.glColor4f(1, 1, 1, 1);
+    }
+
+    /** The head's height above the feet in the last model drawn, in blocks: the next frame is framed by it. */
+    private static float headHeight = 0.1F;
+
+    /** Whether the cut-in is drawing a player right now: its name tag is not wanted on the band. */
+    static boolean drawingPlayer;
+
+    /**
+     * The caster as the game draws it, model and all, from the waist up: turned a little to one side, cut off at the
+     * band's lower edge.
+     *
+     * @param bandBottom the band's lower edge
+     * @param half       half the band's height
+     */
+    private static void model(Minecraft mc, AbstractClientPlayer caster, float x, float bandBottom, float half,
+        int screenHeight) {
+        float scale = half * 2.7F;
+        // The neck goes a little above the middle of the band, wherever this model has it: the head rises over the
+        // band and the hands, before the chest, stay inside it.
+        float feetY = bandBottom - half * 1.15F + scale * headHeight;
+        // Nothing below the band: the legs are cut off there.
+        int factor = Math.max(1, Math.round((float) mc.displayHeight / screenHeight));
+        GL11.glEnable(GL11.GL_SCISSOR_TEST);
+        GL11.glScissor(0, mc.displayHeight - (int) (bandBottom * factor), mc.displayWidth, mc.displayHeight);
+        GL11.glClear(GL11.GL_DEPTH_BUFFER_BIT);
+        GL11.glEnable(GL11.GL_DEPTH_TEST);
+        GL11.glDepthMask(true);
+        GL11.glEnable(GL11.GL_ALPHA_TEST);
+        GL11.glEnable(GL11.GL_COLOR_MATERIAL);
+        GL11.glPushMatrix();
+        GL11.glTranslatef(x, feetY, 200);
+        GL11.glScalef(-scale, scale, scale);
+        GL11.glRotatef(180, 0, 0, 1);
+        float bodyYaw = caster.renderYawOffset;
+        float prevBodyYaw = caster.prevRenderYawOffset;
+        float yaw = caster.rotationYaw;
+        float prevYaw = caster.prevRotationYaw;
+        float pitch = caster.rotationPitch;
+        float prevPitch = caster.prevRotationPitch;
+        float headYaw = caster.rotationYawHead;
+        float prevHeadYaw = caster.prevRotationYawHead;
+        GL11.glRotatef(135, 0, 1, 0);
+        RenderHelper.enableStandardItemLighting();
+        GL11.glRotatef(-135, 0, 1, 0);
+        GL11.glRotatef(-6, 1, 0, 0);
+        caster.renderYawOffset = 22;
+        caster.prevRenderYawOffset = 22;
+        caster.rotationYaw = 14;
+        caster.prevRotationYaw = 14;
+        caster.rotationPitch = 0;
+        caster.prevRotationPitch = 0;
+        caster.rotationYawHead = 14;
+        caster.prevRotationYawHead = 14;
+        float viewY = RenderManager.instance.playerViewY;
+        RenderManager.instance.playerViewY = 180;
+        drawingPlayer = true;
+        FuturaBridge.INSTANCE.screenDraw(true);
+        try {
+            RenderManager.instance.renderEntityWithPosYaw(caster, 0, 0, 0, 0, 1);
+        } finally {
+            float seen = FuturaBridge.INSTANCE.headHeight(caster);
+            if (!Float.isNaN(seen) && seen > -4 && seen < 4) {
+                if (Boolean.getBoolean("ryoiki.devHarness") && Math.abs(seen - headHeight) > 0.01F) {
+                    com.akashic.ryoiki.RyoikiTenkai.LOG.info("cut-in: head at {} blocks above the draw point", seen);
+                }
+                headHeight = seen;
+            }
+            FuturaBridge.INSTANCE.screenDraw(false);
+            drawingPlayer = false;
+            RenderManager.instance.playerViewY = viewY;
+            caster.renderYawOffset = bodyYaw;
+            caster.prevRenderYawOffset = prevBodyYaw;
+            caster.rotationYaw = yaw;
+            caster.prevRotationYaw = prevYaw;
+            caster.rotationPitch = pitch;
+            caster.prevRotationPitch = prevPitch;
+            caster.rotationYawHead = headYaw;
+            caster.prevRotationYawHead = prevHeadYaw;
+        }
+        GL11.glPopMatrix();
+        RenderHelper.disableStandardItemLighting();
+        GL11.glDisable(GL12.GL_RESCALE_NORMAL);
+        OpenGlHelper.setActiveTexture(OpenGlHelper.lightmapTexUnit);
+        GL11.glDisable(GL11.GL_TEXTURE_2D);
+        OpenGlHelper.setActiveTexture(OpenGlHelper.defaultTexUnit);
+        GL11.glDisable(GL11.GL_SCISSOR_TEST);
+        GL11.glDisable(GL11.GL_DEPTH_TEST);
+        GL11.glDisable(GL11.GL_LIGHTING);
+        GL11.glEnable(GL11.GL_TEXTURE_2D);
         GL11.glColor4f(1, 1, 1, 1);
     }
 

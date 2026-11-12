@@ -9,6 +9,8 @@ import net.minecraft.util.MovingObjectPosition;
 import net.minecraftforge.client.event.DrawBlockHighlightEvent;
 import net.minecraftforge.client.event.EntityViewRenderEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
+import net.minecraftforge.client.event.RenderLivingEvent;
+import net.minecraftforge.client.event.RenderPlayerEvent;
 import net.minecraftforge.client.event.RenderWorldLastEvent;
 
 import org.lwjgl.opengl.GL11;
@@ -26,6 +28,8 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
  */
 public final class DomainRenderer {
 
+    /** Ticks into the domain the caster still holds the sign, the last twelve letting it go. */
+    private static final int HOLD_SIGN_TICKS = 34;
     private static final DomainLook VOID = new VoidLook();
     private static final DomainLook SHRINE = new ShrineLook();
 
@@ -215,6 +219,38 @@ public final class DomainRenderer {
             int argb = (int) (alpha * 255) << 24 | domain.flashColor;
             Gui.drawRect(0, 0, res.getScaledWidth(), res.getScaledHeight(), argb);
             GL11.glColor4f(1, 1, 1, 1);
+        }
+    }
+
+    /**
+     * The caster makes the hand sign in the world too, where its model can: through the sign, and for a moment
+     * after the domain has opened.
+     */
+    @SubscribeEvent
+    public void onRenderPlayer(RenderPlayerEvent.Pre event) {
+        if (CutIn.drawingPlayer) {
+            return;
+        }
+        ClientDomain domain = ClientDomain.INSTANCE;
+        int id = event.entityPlayer.getEntityId();
+        for (ClientDomain.Dome dome : domain.domes.values()) {
+            if (dome.windup > 0 && dome.casterEntity == id) {
+                float age = dome.windupTotal - dome.windup + event.partialRenderTick;
+                FuturaBridge.INSTANCE.pose(event.entityPlayer, dome.type, CutIn.sign(age));
+                return;
+            }
+        }
+        if (domain.inside != null && domain.casterEntity == id && domain.age < HOLD_SIGN_TICKS) {
+            float left = HOLD_SIGN_TICKS - domain.age - event.partialRenderTick;
+            FuturaBridge.INSTANCE.pose(event.entityPlayer, domain.inside, Draw.clamp01(left / 12F));
+        }
+    }
+
+    /** No name tag over the figure in the cut-in. */
+    @SubscribeEvent
+    public void onNameTag(RenderLivingEvent.Specials.Pre event) {
+        if (CutIn.drawingPlayer) {
+            event.setCanceled(true);
         }
     }
 

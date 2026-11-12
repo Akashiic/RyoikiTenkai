@@ -19,6 +19,10 @@ O que existe no código (um mod Forge 1.7.10 para os dois lados, `com.akashic.ry
 | `/ryoiki expandir <vazio\|santuario> [jogador]`, `/ryoiki encerrar`, `/ryoiki preparar` (operadores) | `command/` | Feito |
 | Harness: o cliente conjura sozinho, grava cada quadro dos teleportes e tira capturas | `dev/TransportHarness` | Feito (`./gradlew runClient -Pharness`, com `-Pangelica` para rodar com a Angelica). Também entra num servidor de verdade e obedece a um arquivo de comandos: [`tools/teste-real/`](../tools/teste-real/LEIA-ME.md) |
 
+Depende de uma versão do **3D Futura Engine com a API 6** (`setBonePose`, `setScreenDraw`), que está no branch
+`ccr-21bf04a1-vn1lyk` do repositório YesSteveModel e ainda não foi mesclada: sem ela o mod funciona, mas o gesto usa a
+skin comum.
+
 O que **não** existe ainda: sons, efeitos garantidos (congelar no Vazio, dano dos cortes no Santuário), o sinal de mão
 no modelo do jogador, choque de domínios, tecla ou item para conjurar, recarga.
 
