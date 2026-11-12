@@ -1,0 +1,8 @@
+tile.ryoikitenkai.veu.name=Véu do Domínio
+ryoikitenkai.comando.uso=/ryoiki expandir <vazio|santuario> [jogador] | /ryoiki encerrar | /ryoiki preparar
+ryoikitenkai.comando.preparando=Arenas prontas. Chunks em volta ainda por esvaziar: %s
+ryoikitenkai.erro.dentro=Você já está em um domínio.
+ryoikitenkai.erro.no_ar=Não dá para expandir o domínio no ar.
+ryoikitenkai.erro.perto=Há outro domínio perto demais.
+ryoikitenkai.erro.cheio=Já há domínios demais abertos.
+ryoikitenkai.erro.regiao=A região das arenas já foi usada por jogadores. Mude arena.x e arena.z no config.

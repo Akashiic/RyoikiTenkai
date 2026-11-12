@@ -1,7 +1,27 @@
 # Handoff: para o agente que assume o RyoikiTenkai
 
-Olá. Você está assumindo um projeto que até agora só tem **pesquisa e discussão**: nenhuma linha de código foi escrita.
-Este documento junta tudo o que foi estudado, discutido e decidido com o dono, para você não começar do zero.
+Olá. Você está assumindo um projeto que já tem o **esqueleto do mod e o teleporte para a arena funcionando e medido**
+(seção 0). O visual ainda é um rascunho. Este documento junta o que foi estudado, discutido, decidido e construído, para
+você não começar do zero.
+
+## 0. Estado em 2026-11-12
+
+O que existe no código (um mod Forge 1.7.10 para os dois lados, `com.akashic.ryoiki`):
+
+| Peça | Onde | Estado |
+|---|---|---|
+| Arena longe do mapa, feita de um bloco invisível (`ryoikitenkai:veu`), 4 chunks por arena, terreno em volta esvaziado | `arena/`, `block/BlockVeil` | Feito, testado no harness |
+| Sessão de domínio: sinal de mão (25 ticks), captura por raio, teleporte com a posição relativa ao conjurador, duração, volta ao ponto de origem | `domain/DomainManager` | Feito, testado no harness com 1 jogador |
+| Pré-envio dos chunks da arena no sinal de mão; o cliente guarda os chunks da cidade durante o domínio | `domain/DomainManager#cast`, `net/ChunkKeep`, `mixin/` | Feito, medido (ver [`TRANSPORTE.md`](TRANSPORTE.md)) |
+| Segurança: logout, morte, queda do servidor, pérola do ender, outro teleporte no meio | `domain/DomainManager` | Feito, **a verificar** no jogo |
+| Domo para quem ficou de fora, flash na ida e na volta, céu e chão por código | `client/` | Rascunho |
+| `/ryoiki expandir <vazio\|santuario> [jogador]`, `/ryoiki encerrar`, `/ryoiki preparar` (operadores) | `command/` | Feito |
+| Harness: o cliente conjura sozinho, grava cada quadro dos teleportes e tira capturas | `dev/TransportHarness` | Feito (`./gradlew runClient -Pharness`, com `-Pangelica` para rodar com a Angelica) |
+
+O que **não** existe ainda: faixa de mangá, decalque, modelos (esfera com halo, torii, árvores), cortes, tremor, sons,
+efeitos garantidos (congelar no Vazio, cortes no Santuário), choque de domínios, tecla ou item para conjurar, recarga.
+
+Nada foi visto num servidor Crucible nem com dois jogadores: tudo isso está **a verificar**.
 
 ## Antes de tudo: você tem carta branca
 
@@ -58,67 +78,63 @@ Shenanigans** (JJS), para o servidor Minecraft **1.7.10** da Rede Akashic.
 | Monetização | Nenhuma. Pode usar nomes, falas e o visual de Jujutsu Kaisen e do JJS como referência livremente |
 | Plugin Bukkit | O dono disse que **não quer plugin**. O resto da arquitetura é com você |
 | O domo quebra por fora? | **Não.** Nenhum golpe quebra o domo |
-| Onde o domínio pode ser usado | **Akashic/Spawn**, como o dono escreveu. Confirme com ele se é um mundo só (`Akashic/Spawn`) ou dois (`Akashic` e `Spawn`). Cada mundo permitido precisa da própria região de arenas, se você seguir o caminho das arenas |
+| Onde o domínio pode ser usado | Por enquanto **em qualquer mundo**: em 2026-11-12 o dono disse "pode testar sem restrições, depois a gente pensa em restringir". A intenção original era **Akashic/Spawn** (não ficou claro se é um mundo ou dois). Cada dimensão ganha a própria região de arenas na primeira conjuração |
+| Plugin ou mod | **Mod**, confirmado pelo dono em 2026-11-12 ("pode ficar à vontade" para a divisão proposta) |
 | Domínios ao mesmo tempo | **No máximo 2.** Decida e documente se um choque (2 domínios numa arena só) ocupa uma vaga ou duas |
 
-## 4. O plano que saiu da discussão (proposta, pode mudar)
+## 4. O caminho escolhido (e o que mudou do plano original)
 
-### 4.1 O problema central: instantâneo, sem tela de carregamento
+O detalhe técnico e as medições estão em [`TRANSPORTE.md`](TRANSPORTE.md). Em resumo:
 
-* No 1.7.10, o **"Downloading terrain" só aparece quando o jogador troca de dimensão** (ou entra no servidor). Um
-  teleporte dentro do **mesmo mundo** nunca mostra essa tela.
-* O que aparece num teleporte longo dentro do mesmo mundo é um **vazio por alguns instantes**: o servidor manda os
-  chunks do lugar novo em lotes pequenos por tick, e o cliente ainda precisa montar a malha 3D.
-* O dono quer uma **dinâmica instantânea**.
+### 4.1 O que ficou do plano original
 
-### 4.2 A proposta: como o JJS (domo no mapa e arena longe), mas entregando os chunks antes
+* Domo no mapa para quem ficou de fora, arena longe no mesmo mundo, com teleporte (como o JJS).
+* Os chunks da arena vão para o cliente durante o sinal de mão; o cliente guarda os chunks da cidade (um Mixin ignora
+  os descartes) e os tem na memória na volta.
+* Um flash cobre o corte.
 
-1. **Domo só para quem ficou de fora.** Uma exibição do Kunftig (esfera GeckoLib: preta no Sukuna, branca no Gojo) no
-   ponto da conjuração. Não quebra (decisão do dono).
-2. **Arena no mesmo mundo, longe do mapa.**
-   * Uma região reservada (por exemplo, x = 100.000), uma vaga por domínio.
-   * Construída uma vez e **cercada de chunks vazios**, para o resto do raio de visão carregar quase de graça.
-   * Chunks mantidos **sempre carregados** no servidor (tickets do ForgeChunkManager, pelo lado servidor do Kunftig).
-3. **Pré-envio durante o preparo.** O preparo dura 1,25 s (25 ticks). Nesse tempo o servidor manda os chunks da arena
-   para os clientes que vão ser pegos.
-   * O cliente 1.7.10 guarda chunks recebidos mesmo longe dele, então no teleporte a arena já está na memória.
-   * Uma arena de raio ~16 ocupa de 9 a 16 chunks: poucas dezenas de KB por jogador.
-4. **Volta instantânea.**
-   * No teleporte, o servidor manda o cliente descartar os chunks da cidade (no 1.7.10, o descarte é um
-     `S21PacketChunkData` com bitmask 0 e `groundUp`).
-   * **Cliente:** um Mixin ignora esses descartes para os chunks em volta do domo enquanto o domínio durar.
-   * **Servidor:** no fim, reenvia esses chunks antes do teleporte de volta.
-5. **O flash esconde a remontagem.** Os poucos quadros que o cliente leva para montar a malha 3D ficam escondidos pela
-   sequência faixa de mangá → flash → arena. O JJS faz o mesmo: o bug "domínio cegando a tela" (versão 1.61) era o
-   flash que esconde o teleporte.
+### 4.2 O que mudou, e por quê
 
-### 4.3 Caminhos considerados e descartados (reavalie se quiser)
+| Mudança | Motivo |
+|---|---|
+| **A arena é feita de um bloco invisível** e todo o visual é desenhado pelo cliente por cima | Sem blocos visíveis, os chunks da arena não têm malha para montar: o risco nº 1 (a Angelica desenhar a arena com atraso) deixa de existir na ida. De quebra, o visual não fica preso a blocos: chão que ondula, céu próprio, tudo é desenho |
+| **O terreno em volta das arenas é apagado** (uma vez, em segundo plano) | Sem isso, cada teleporte faria o servidor carregar e mandar centenas de chunks de terreno que ninguém vê |
+| **O piso da arena emite luz** | Quem está dentro fica iluminado igual de dia e de noite |
+| **O código começou todo neste repositório**, sem depender do Kunftig | O lado servidor do Kunftig só existe como API para plugins Bukkit (`com.akashic.kunftig.bukkit`), e o dono não quer plugin. Um mod sozinho também roda inteiro no ambiente de desenvolvimento (servidor integrado), o que permitiu o teste automático. O que se provar genérico (flash, tremor, céu, pré-envio de chunks) pode subir para o Kunftig depois |
+| **Canal próprio** (`ryoiki:dom`, mensagens cruas tratadas na thread principal do cliente, como no Kunftig) | A ordem com os pacotes do jogo é garantida: o "você entrou" chega sempre antes do teleporte |
+| **A volta é para o ponto exato de onde cada um saiu** | A posição dentro da arena não tem equivalente seguro no terreno real (paredes, desníveis) |
+
+### 4.3 Caminhos considerados e descartados
 
 | Caminho | Por que foi descartado |
 |---|---|
 | **Outra dimensão** | A tela de "Downloading terrain" é inevitável. Dá para escondê-la com Mixin, mas o cliente recria o `WorldClient` e descarta todos os chunks: vários quadros pretos |
-| **Domínio no próprio lugar**, desenhado só no cliente por cima do terreno | Instantâneo, mas o terreno real continua lá (árvores, casas, desníveis). Esconder blocos só no cliente faz o servidor discordar da colisão, e o jogador é puxado de volta ("moved wrongly") |
-| **Teleporte simples sem pré-envio** | Mostra de meio segundo a alguns segundos de vazio. Bom para um primeiro teste, não para o resultado final |
+| **Domínio no próprio lugar**, desenhado só no cliente por cima do terreno | Instantâneo, mas o terreno real continua lá (árvores, casas, desníveis). Esconder blocos só no cliente faz o servidor discordar da colisão |
+| **Arena no céu, em cima do lugar da conjuração** | Não troca chunk nenhum, mas exige pôr e tirar milhares de blocos no mundo real a cada conjuração (com religamento de luz), esbarra no limite de altura e deixa lixo no mundo se o servidor cair. Fica como plano B se o teleporte longe der problema no servidor real |
+| **Teleporte simples sem pré-envio** | O jogador fica parado até o chunk chegar. Com o pré-envio ele tem chão no primeiro quadro |
 
-### 4.4 O que o Kunftig precisaria ganhar (API 14, sugestão)
+### 4.4 Próximos passos sugeridos
 
-* **Chunks:** pré-envio para jogadores escolhidos, retenção de chunks no cliente durante o domínio, tickets para as
-  arenas.
-* **Tela e ambiente:**
-  * flash de tela inteira com textura e cor;
-  * céu por jogador (`IRenderHandler`);
-  * neblina (`FogColors` / `FogDensity`);
-  * tremor de câmera;
-  * pós-processamento (`ShaderGroup`);
-  * HUD com movimento (faixas de mangá entrando em diagonal);
-  * câmera cinematográfica (entidade de câmera em `renderViewEntity`).
-* O que a **API 13 já tem** e serve para os domínios:
-  * exibições GeckoLib com escala, animação e movimento (domo, estruturas, torii, esfera com halo);
-  * HUD com texto, barra e imagem (contador e barras do choque);
-  * teclas próprias com limite e validação (`KunftigInput`);
-  * cortes estilo SlashBlade (`KunftigEffects.slash`);
-  * partículas coloridas e modernas;
-  * trava de voo e `pushVelocity`.
+1. **Ver no servidor real** (Crucible, com o modpack): o que está em "a verificar" no `TRANSPORTE.md`. Em especial:
+   plugins que cancelam teleportes, borda de mundo, o custo de esvaziar a região, e a volta com placa de vídeo de
+   verdade.
+2. **O visual de verdade**, na ordem em que mais aparece:
+   * a entrada: faixa de mangá com o rosto da skin, decalque de 8 pontas, sinal de mão, o domo crescendo;
+   * Vazio Infinito: túnel de hiperespaço, esfera preta com halo, névoa, faíscas;
+   * Santuário Malevolente: torii com a boca, árvores, cortes, tremor de tela;
+   * a saída: cacos (brancos ou pretos) em vez do flash liso.
+   Os modelos podem ser GeckoLib (o modpack já tem) ou desenho por código; os dois cabem em `client/`.
+3. **Efeitos garantidos**: congelar quem está no Vazio (14 s), cortes no Santuário (2 de dano por corte, bloqueio reduz).
+4. **Choque de domínios** (seção 4 do `ESTUDO.md`): dois conjuradores na mesma arena, contador de 15 s, barras.
+5. **Como se conjura**: tecla, item ou habilidade de outro sistema (Overkill?), recarga, permissões, mundos permitidos.
+6. **Som**: voz, trilha de cada domínio, trilha do choque.
+7. **Voz** (AkashicVoiceChat): decidir se o domínio isola ou se vale uma ponte (seção 5).
+
+### 4.5 O que ainda pode ir para o Kunftig
+
+A lista original da "API 14" continua valendo como destino do que for genérico: flash de tela, tremor de câmera, céu e
+neblina por jogador, HUD com movimento, câmera cinematográfica, pré-envio e retenção de chunks. Só não é mais
+pré-requisito.
 
 ## 5. Fatos do ambiente que você vai precisar
 
@@ -134,14 +150,18 @@ Shenanigans** (JJS), para o servidor Minecraft **1.7.10** da Rede Akashic.
 * É o mod próprio da rede, no cliente e no servidor.
 * Gradle no padrão GTNH (RetroFuturaGradle). Bytecode Java 8 (Jabel) no `src/`. Spotless obrigatório.
 * API atual: **13** (`KunftigApi.API_VERSION`), commit `7d4c7ff` da `main` em 2026-11-12.
+* O lado servidor do Kunftig é a implementação da `kunftig-api` para **plugins Bukkit** (pacote
+  `com.akashic.kunftig.bukkit`, instalado só em híbridos). Não há ainda uma entrada para outro mod Forge usar as
+  exibições, o HUD ou as teclas pelo servidor.
 * Cada canal novo é registrado pelo cliente só se ele sabe desenhar. Os plugins e o servidor sabem quem precisa de
   alternativa (`drawsDisplays`...).
 
 ### Builds nesta nuvem
 
-* O **Maven Central devolveu HTTP 429** (limite de requisições) num build do Kunftig. O repositório da Spigot
-  (`hub.spigotmc.org/nexus`) respondeu normal.
-* O `:api` do Kunftig foi compilado direto com `javac --release 8` contra a `spigot-api` 1.8.8 quando o Gradle falhou.
+* O **Maven Central devolve HTTP 429** (limite de requisições) quando o Gradle baixa em paralelo. Rodar com
+  `--max-workers=1 -Dorg.gradle.parallel=false` e repetir até as dependências ficarem em cache resolve.
+* O cliente roda sem tela: `xvfb-run -a -s "-screen 0 1280x720x24 +extension RANDR"` com `LIBGL_ALWAYS_SOFTWARE=1`; o
+  LWJGL 2 precisa do `xrandr` (`apt-get update && apt-get install -y x11-xserver-utils`).
 
 ### Voz (AkashicVoiceChat, conferido em 2026-11-12, commit `6a7ecad`)
 
@@ -160,15 +180,23 @@ Shenanigans** (JJS), para o servidor Minecraft **1.7.10** da Rede Akashic.
 * **Overkill:** combate, usa as teclas, o HUD e os efeitos do Kunftig.
 * **Expeditions:** navios. Exibições em que se anda por cima (API 12) e ossos girados pelo servidor (API 13).
 
-## 6. Riscos para atacar cedo
+## 6. Riscos
 
-1. **O cliente desenha imediatamente os chunks recebidos antes do teleporte?** Pelo código do vanilla deveria, mas a
-   Angelica muda a renderização. Faça esse teste antes de construir em cima.
-2. **Teleportes concorrentes:** homes, /tpa e golpes durante o domínio precisam ser bloqueados (o JJS teve esse bug com
-   o Switcher).
-3. **Sair pelas paredes da arena:** o JJS desligou o parkour dentro dos domínios (1.75).
-4. **Custo:** várias exibições grandes ao mesmo tempo num choque (domo, estruturas, chão).
-5. **Voz:** veja a seção 5.
+1. ~~O cliente desenha imediatamente os chunks recebidos antes do teleporte?~~ **Resolvido** de outro jeito: a arena
+   não tem o que desenhar. No harness, com e sem Angelica 2.2.45, o jogador tem chão no quadro 0 (ver `TRANSPORTE.md`).
+2. **A volta com placa de vídeo de verdade.** O cliente guarda os dados da cidade, mas precisa remontar as malhas. No
+   harness (renderização por software) a cidade já aparece inteira por baixo do flash; num PC real, **a verificar**.
+3. **Teleportes concorrentes:** quem sai da arena por outro teleporte é tirado do domínio (e a pérola do ender é
+   bloqueada). Homes e /tpa de plugins **a verificar** no Crucible.
+4. **Plugins que cancelam teleportes** (proteção de região, borda de mundo) podem impedir a ida para x = 200.000:
+   **a verificar**. As coordenadas são configuráveis.
+5. **Sair pelas paredes da arena:** a casca é de blocos sólidos e inquebráveis, fechada inclusive nas diagonais (teste
+   unitário). Golpes de outros mods que atravessam blocos, **a verificar**.
+6. **Custo** de várias exibições grandes num choque.
+7. **Voz:** veja a seção 5.
+8. **CubicChunks:** a rede tem os repositórios `CubicChunks1710` e `Akashic-CubicChunks-CrucibleCompat` (este, vazio em
+   2026-11-12). Se o servidor passar a usar CubicChunks, o formato dos pacotes de chunk muda e o pré-envio e a
+   retenção precisam ser revistos.
 
 ## 7. Ideias soltas (use, descarte ou supere)
 
@@ -185,6 +213,10 @@ Shenanigans** (JJS), para o servidor Minecraft **1.7.10** da Rede Akashic.
 
 * Responda ao dono em **português do Brasil**.
 * Trabalhe em branches e abra PRs. **Não use force-push.** Um PR mesclado não é reaproveitado.
+* `./gradlew spotlessApply build` precisa passar. Bytecode Java 8 (Jabel): sintaxe moderna pode, tipos e APIs do
+  Java 9+ não.
+* Lógica pura (formas, vagas, protocolo) fica sem classes do Minecraft e com teste unitário.
+* O harness (`com.akashic.ryoiki.dev`) nunca vai no jar: só entra com `-Pharness`.
 * Marque o que não foi visto no jogo como "a verificar".
 * Sempre confira os repositórios do Akashiic (`list_repos`) antes de supor qualquer coisa sobre o ambiente.
 * Mudou o plano? Atualize este arquivo para o próximo agente.

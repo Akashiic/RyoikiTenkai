@@ -4,13 +4,17 @@
 Shenanigans) para o servidor Minecraft **1.7.10** da rede. Mecânica sobretudo visual: quase inútil no combate, mas boa
 para o servidor (clipes, eventos, engajamento). Não será monetizado.
 
+É um **mod Forge para os dois lados** (`com.akashic.ryoiki`, Gradle no padrão GTNH, bytecode Java 8 com Jabel). O dono
+não quer plugin Bukkit.
+
 ## Comece por aqui
 
-1. **[`docs/HANDOFF.md`](docs/HANDOFF.md)**: o estado do projeto, as decisões do dono, o plano proposto, os riscos e
+1. **[`docs/HANDOFF.md`](docs/HANDOFF.md)**: o estado do projeto, as decisões do dono, o caminho escolhido, os riscos e
    os fatos do ambiente. **Leia primeiro.**
-2. [`docs/ESTUDO.md`](docs/ESTUDO.md): regras e visual do Infinite Void, do Malevolent Shrine e do choque, a escala e
+2. [`docs/TRANSPORTE.md`](docs/TRANSPORTE.md): como a ida para a arena e a volta funcionam, e o que foi medido.
+3. [`docs/ESTUDO.md`](docs/ESTUDO.md): regras e visual do Infinite Void, do Malevolent Shrine e do choque, a escala e
    o que cada elemento precisa no Kunftig.
-3. [`docs/ESTUDO-TECNICO.md`](docs/ESTUDO-TECNICO.md): como o JJS provavelmente faz por dentro (Roblox/Luau), com
+4. [`docs/ESTUDO-TECNICO.md`](docs/ESTUDO-TECNICO.md): como o JJS provavelmente faz por dentro (Roblox/Luau), com
    fato, dedução e prática comum separados.
 
 ## Carta branca
@@ -33,5 +37,12 @@ atrapalhando, converse com ele.
 ## Regras
 
 * Trabalhe em branches e abra PRs. Não use force-push.
+* `./gradlew spotlessApply build` precisa passar. Se o Maven Central devolver HTTP 429, rode com
+  `--max-workers=1 -Dorg.gradle.parallel=false` e repita.
+* Lógica pura (formas, vagas, protocolo) não usa classes do Minecraft e tem teste unitário.
+* Harness de desenvolvimento (`com.akashic.ryoiki.dev`, nunca no jar): `echo warm > run/client/ryoiki-harness` e
+  `./gradlew runClient -Pharness` (com `-Pangelica` para a renderização do modpack). Sem tela:
+  `xvfb-run -a -s "-screen 0 1280x720x24 +extension RANDR"`, `LIBGL_ALWAYS_SOFTWARE=1` e o pacote
+  `x11-xserver-utils`.
 * O que não foi visto no jogo fica marcado como "a verificar".
 * Mudou o plano? Atualize o `docs/HANDOFF.md`.

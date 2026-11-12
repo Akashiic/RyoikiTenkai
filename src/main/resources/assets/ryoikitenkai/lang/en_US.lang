@@ -1,0 +1,8 @@
+tile.ryoikitenkai.veu.name=Domain Veil
+ryoikitenkai.comando.uso=/ryoiki expandir <vazio|santuario> [player] | /ryoiki encerrar | /ryoiki preparar
+ryoikitenkai.comando.preparando=Arenas ready. Chunks around them still to empty: %s
+ryoikitenkai.erro.dentro=You are already in a domain.
+ryoikitenkai.erro.no_ar=You cannot expand a domain in the air.
+ryoikitenkai.erro.perto=Another domain is too close.
+ryoikitenkai.erro.cheio=Too many domains are open.
+ryoikitenkai.erro.regiao=Players have been in the arena region. Change arena.x and arena.z in the config.

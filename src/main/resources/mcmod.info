@@ -1,0 +1,21 @@
+{
+	"modListVersion": 2,
+	"modList": [{
+		"modid": "${modId}",
+		"name": "${modName}",
+		"description": "Expansão de Domínio e Choque de Domínios para a Rede Akashic (inspirado em Jujutsu Kaisen e Jujutsu Shenanigans).",
+		"version": "${modVersion}",
+		"mcversion": "${minecraftVersion}",
+		"url": "https://github.com/Akashiic/RyoikiTenkai",
+		"updateUrl": "",
+		"authorList": ["Akashiic"],
+		"credits": "",
+		"logoFile": "",
+		"screenshots": [],
+		"parent": "",
+		"requiredMods": [],
+		"dependencies": [],
+		"dependants": [],
+		"useDependencyInformation": false
+	}]
+}
