@@ -224,7 +224,7 @@ quando o domínio pedir. Deixar **B** como evolução, se quisermos arenas feita
 | Domo e borda (branca ou preta) | Exibição em esfera, faces para dentro, escala até 64 | — |
 | Céu do vazio, estrelas, preto puro | — | **Céu por jogador** (`IRenderHandler`) |
 | Névoa vermelha, névoa cinza | Partículas (aproximação) | **Neblina** (`FogColors` / `FogDensity`) |
-| Esfera preta com halo dourado, torii com boca, árvores | Exibições GeckoLib (modelos próprios), com partes que brilham (`luz`) | — |
+| Esfera preta com halo dourado, torii com boca, árvores | Exibições GeckoLib, com partes que brilham (`luz`) | — |
 | Túnel de hiperespaço (Gojo) | Exibição de cilindro animado | — |
 | Chão de sangue ondulando | Exibição plana animada (textura que ondula) | — |
 | Cortes brancos e vermelhos cruzando o espaço | **`KunftigEffects.slash`** (arco que gira e some em 10 ticks) | — |
@@ -254,14 +254,6 @@ Usamos as regras atuais do JJS como base, adaptadas ao combate do 1.7.10:
   * alternância entre os cenários dos participantes a cada 2 a 4 ticks, com tremor;
   * contador grande no centro de baixo;
   * flash na cor do vencedor ao resolver, o perdedor se estilhaçando, e o efeito garantido do vencedor começando.
-
-### 5.5 Identidade (direitos)
-
-* Nomes, falas ("Ryōiki Tenkai"), sinais de mão e o desenho dos domínios são de **Jujutsu Kaisen**.
-* A arte, os modelos, os sons e as trilhas do JJS são **do jogo do Roblox**.
-* **Não reaproveitar nada do JJS.** Fazer modelos, texturas e sons próprios, inspirados no anime.
-* Num servidor de fãs sem cobrança, o tema JJK costuma passar. Se houver venda (VIP, loja), vale dar nomes e visuais
-  próprios aos domínios e manter só a mecânica (mesma postura do `docs/API.md` do Kunftig sobre a arte do SlashBlade).
 
 ## 6. A verificar
 
