@@ -295,8 +295,9 @@ public final class TransportHarness {
                                 + " us on the server");
                     });
                 }
-                if (ticks == 4 || ticks == 6 || ticks == 9 || ticks == 12 || ticks == 16 || ticks == 20) {
-                    shot(mc, "ryoiki-" + (run + 1) + "-windup" + (ticks == 12 ? "" : "-t" + ticks));
+                // Every tick of the hand sign: the cut-in, frame by frame.
+                if (ticks >= 2 && ticks <= 26) {
+                    shot(mc, "ryoiki-" + (run + 1) + (ticks == 12 ? "-windup" : String.format("-windup-t%02d", ticks)));
                 }
                 if (ClientDomain.INSTANCE.inside != null) {
                     next(Step.IN_DOMAIN);
