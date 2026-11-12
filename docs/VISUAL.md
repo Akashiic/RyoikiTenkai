@@ -18,6 +18,7 @@ modelo, textura nem som no mod. A arena é feita de blocos invisíveis, então o
 | Momento | O que aparece | Onde |
 |---|---|---|
 | Sinal de mão (25 ticks) | Uma **faixa inclinada** cruza a tela de quem está perto (o conjurador e quem está a até raio + 12 blocos). Nela, o **boneco do conjurador com a skin dele faz o gesto**: ergue os braços do repouso até o sinal do domínio (uma mão diante do rosto no vazio, as duas unidas no peito no santuário), com um clarão no instante em que o sinal se completa. Ao lado, o nome do domínio e o do jogador, e riscos de velocidade. Entra em 5 ticks e sai nos 4 últimos | `CutIn` |
+| | **A câmera sobre o boneco** (`CutIn#shot`). No santuário, um três-quartos que fecha devagar. No vazio a faixa é mais alta e a câmera se move: começa de perfil, de baixo e inclinada, longe; varre até a frente enquanto avança até um close do rosto e da mão erguida, com um tranco de zoom quando o sinal se completa. Por trás, dentro da faixa, o próprio vazio: braços de luz girando em volta do conjurador e estrelas saindo em riscos | `CutIn` |
 | | Um **selo** no chão sob o conjurador (anéis e doze raios que giram) e uma onda que corre até onde o domo vai ficar | `DomainRenderer#seal` |
 | | O **domo** cresce do conjurador, devagar e depois de uma vez | `DomainRenderer` |
 | Entrada | Flash branco (cobre o teleporte) | `DomainRenderer#onOverlay` |

@@ -46,8 +46,10 @@ final class CutIn {
         float out = Draw.clamp01((age - (total - OUT_TICKS)) / OUT_TICKS);
         // From off the left edge to its place, then on to the right.
         float slide = (in - 1) * w * 1.25F + out * out * w * 1.25F;
+        boolean starVoid = "vazio".equals(domainId);
         float yc = h * 0.40F;
-        float half = h * 0.155F;
+        // The star void's band is taller: its figure moves, and has the room to.
+        float half = h * (starVoid ? 0.185F : 0.155F);
         float skew = half * 0.75F;
         float x0 = -w * 0.2F + slide;
         float x1 = w * 1.2F + slide;
@@ -69,10 +71,22 @@ final class CutIn {
         band(t, x0, x1, yc + half * 0.12F, half * 1.12F, skew, 0x000000, 0.55F, 0x000000, 0.55F);
         band(t, x0, x1, yc, half, skew, look.bandFrom(), 0.96F, look.bandTo(), 0.96F);
         t.draw();
+        if (starVoid) {
+            // Inside the band, the void itself: arms of light turning about the caster, and stars streaming out.
+            int factor = Math.max(1, Math.round((float) mc.displayHeight / h));
+            GL11.glEnable(GL11.GL_SCISSOR_TEST);
+            GL11.glScissor(
+                0,
+                mc.displayHeight - (int) ((yc + half) * factor),
+                mc.displayWidth,
+                (int) (half * 2 * factor));
+            vortex(t, w * 0.19F + slide, yc, w, half, age);
+            GL11.glDisable(GL11.GL_SCISSOR_TEST);
+        }
         // Streaks rushing along it.
         Draw.additive();
         t.startDrawingQuads();
-        for (int i = 0; i < 22; i++) {
+        for (int i = 0; i < (starVoid ? 8 : 22); i++) {
             float lane = Draw.hash(i, 31) * 2 - 1;
             float y = yc + lane * half * 0.86F;
             float length = w * (0.12F + Draw.hash(i, 32) * 0.3F);
@@ -128,9 +142,18 @@ final class CutIn {
             if (FuturaBridge.INSTANCE.modelled((AbstractClientPlayer) caster)) {
                 // The caster's own model makes the sign (the bones are posed just before it is drawn).
                 FuturaBridge.INSTANCE.pose((AbstractClientPlayer) caster, DomainType.byId(domainId), sign);
-                model(mc, (AbstractClientPlayer) caster, faceX, yc + half, half, h);
+                model(mc, (AbstractClientPlayer) caster, faceX, yc + half, half, h, shot(starVoid, age));
             } else {
-                figure(mc, (AbstractClientPlayer) caster, domainId, faceX, yc + half * 0.95F, half * 3.0F, sign, age);
+                figure(
+                    mc,
+                    (AbstractClientPlayer) caster,
+                    domainId,
+                    faceX,
+                    yc + half * 0.95F,
+                    half * 3.0F,
+                    sign,
+                    age,
+                    shot(starVoid, age));
             }
         }
 
@@ -178,6 +201,83 @@ final class CutIn {
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
     }
 
+    /**
+     * The camera on the caster's figure, this many ticks into the hand sign: {yaw, pitch, roll, zoom}. The crimson
+     * shrine holds a three-quarter view and closes in slowly. The star void starts low and from the side, far back,
+     * and sweeps round to the front as it rushes in on the face and the raised hand.
+     */
+    static float[] shot(boolean starVoid, float age) {
+        if (!starVoid) {
+            return new float[] { 22, -6, 0, 1 + 0.008F * age };
+        }
+        float a = Draw.easeOut(age / 12F);
+        float drift = Math.max(0, age - 12);
+        // A jolt of zoom at the instant the sign is complete.
+        float punch = 0.16F * Draw.clamp01(1 - Math.abs(age - SIGN_START - SIGN_TICKS) / 2.2F);
+        return new float[] { 112 - 98 * a - drift * 0.8F, -34 + 28 * a, -17 + 23 * a,
+            0.62F + 1.2F * a + drift * 0.018F + punch };
+    }
+
+    /** The star void behind its caster, inside the band: arms of light turning about a point, stars streaming out. */
+    private static void vortex(Tessellator t, float cx, float cy, float w, float half, float age) {
+        Draw.additive();
+        float turn = age * 0.11F;
+        t.startDrawingQuads();
+        int arms = 5;
+        int steps = 36;
+        for (int k = 0; k < arms; k++) {
+            int tint = k % 2 == 0 ? 0x9A6BFF : 0x58D0FF;
+            for (int i = 0; i < steps; i++) {
+                float r0 = w * 0.95F * i / steps;
+                float r1 = w * 0.95F * (i + 1) / steps;
+                double a0 = turn + k * Math.PI * 2 / arms + r0 * 0.011F;
+                double a1 = turn + k * Math.PI * 2 / arms + r1 * 0.011F;
+                float w0 = 0.22F + 0.16F * i / steps;
+                float f0 = (1 - (float) i / steps) * 0.78F;
+                float f1 = (1 - (float) (i + 1) / steps) * 0.78F;
+                // Squashed to the band: wide, not tall.
+                Draw.color(t, tint, f0);
+                t.addVertex(cx + Math.cos(a0) * r0, cy + Math.sin(a0) * r0 * 0.5F, 0);
+                Draw.color(t, tint, 0);
+                t.addVertex(cx + Math.cos(a0 + w0) * r0, cy + Math.sin(a0 + w0) * r0 * 0.5F, 0);
+                t.addVertex(cx + Math.cos(a1 + w0) * r1, cy + Math.sin(a1 + w0) * r1 * 0.5F, 0);
+                Draw.color(t, tint, f1);
+                t.addVertex(cx + Math.cos(a1) * r1, cy + Math.sin(a1) * r1 * 0.5F, 0);
+            }
+        }
+        // Stars streaming out from the centre, each a short streak.
+        for (int i = 0; i < 70; i++) {
+            double a = Draw.hash(i, 41) * Math.PI * 2;
+            float speed = 0.035F + Draw.hash(i, 42) * 0.07F;
+            float phase = (Draw.hash(i, 43) + age * speed) % 1F;
+            float r0 = w * 0.9F * phase * phase;
+            float r1 = r0 + w * (0.01F + 0.09F * phase);
+            float thick = 0.5F + phase * 1.3F;
+            float cos = (float) Math.cos(a);
+            float sin = (float) Math.sin(a) * 0.5F;
+            Draw.color(t, 0xFFFFFF, 0);
+            t.addVertex(cx + cos * r0 - sin * thick, cy + sin * r0 + cos * thick, 0);
+            t.addVertex(cx + cos * r0 + sin * thick, cy + sin * r0 - cos * thick, 0);
+            Draw.color(t, i % 3 == 0 ? 0xBFD4FF : 0xFFFFFF, 0.75F * (1 - phase * 0.4F));
+            t.addVertex(cx + cos * r1 + sin * thick, cy + sin * r1 - cos * thick, 0);
+            t.addVertex(cx + cos * r1 - sin * thick, cy + sin * r1 + cos * thick, 0);
+        }
+        // A core of light where the caster is.
+        float glow = half * 2.4F;
+        for (int j = 0; j < 24; j++) {
+            double a0 = Math.PI * 2 * j / 24;
+            double a1 = Math.PI * 2 * (j + 1) / 24;
+            Draw.color(t, 0xFFFFFF, 0.7F);
+            t.addVertex(cx, cy, 0);
+            t.addVertex(cx, cy, 0);
+            Draw.color(t, 0x4060FF, 0);
+            t.addVertex(cx + Math.cos(a1) * glow, cy + Math.sin(a1) * glow, 0);
+            t.addVertex(cx + Math.cos(a0) * glow, cy + Math.sin(a0) * glow, 0);
+        }
+        t.draw();
+        Draw.translucent();
+    }
+
     /** How far the hand sign has come, 0 to 1, this many ticks into it. */
     static float sign(float age) {
         return Draw.easeOut((age - SIGN_START) / SIGN_TICKS);
@@ -218,7 +318,7 @@ final class CutIn {
      * @param scale screen units per block of figure
      */
     private static void figure(Minecraft mc, AbstractClientPlayer caster, String domainId, float x, float feetY,
-        float scale, float sign, float age) {
+        float scale, float sign, float age, float[] shot) {
         mc.getTextureManager()
             .bindTexture(caster.getLocationSkin());
         int texHeight = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_HEIGHT);
@@ -274,11 +374,12 @@ final class CutIn {
         GL11.glPushMatrix();
         // The model's own space has Y down, as the screen has: the waist (12 pixels below the neck) goes on feetY.
         GL11.glTranslatef(x, feetY - scale * 0.75F, 200);
-        GL11.glScalef(scale, scale, scale);
+        GL11.glRotatef(shot[2], 0, 0, 1);
+        GL11.glScalef(scale * shot[3], scale * shot[3], scale * shot[3]);
         float punch = 1 + 0.06F * Draw.clamp01(1 - Math.abs(age - SIGN_START - SIGN_TICKS) / 2.5F);
         GL11.glScalef(punch, punch, punch);
-        GL11.glRotatef(-8, 1, 0, 0);
-        GL11.glRotatef(180 - 24, 0, 1, 0);
+        GL11.glRotatef(shot[1], 1, 0, 0);
+        GL11.glRotatef(180 - shot[0], 0, 1, 0);
         RenderHelper.enableStandardItemLighting();
         GL11.glColor4f(1, 1, 1, 1);
         float unit = 0.0625F;
@@ -309,11 +410,11 @@ final class CutIn {
      * @param half       half the band's height
      */
     private static void model(Minecraft mc, AbstractClientPlayer caster, float x, float bandBottom, float half,
-        int screenHeight) {
-        float scale = half * 2.7F;
+        int screenHeight, float[] shot) {
+        float scale = half * 2.7F * shot[3];
         // The neck goes a little above the middle of the band, wherever this model has it: the head rises over the
-        // band and the hands, before the chest, stay inside it.
-        float feetY = bandBottom - half * 1.15F + scale * headHeight;
+        // band and the hands, before the chest, stay inside it. The camera turns about that point.
+        float neckY = bandBottom - half * 1.15F;
         // Nothing below the band: the legs are cut off there.
         int factor = Math.max(1, Math.round((float) mc.displayHeight / screenHeight));
         GL11.glEnable(GL11.GL_SCISSOR_TEST);
@@ -324,7 +425,8 @@ final class CutIn {
         GL11.glEnable(GL11.GL_ALPHA_TEST);
         GL11.glEnable(GL11.GL_COLOR_MATERIAL);
         GL11.glPushMatrix();
-        GL11.glTranslatef(x, feetY, 200);
+        GL11.glTranslatef(x, neckY, 200);
+        GL11.glRotatef(shot[2], 0, 0, 1);
         GL11.glScalef(-scale, scale, scale);
         GL11.glRotatef(180, 0, 0, 1);
         float bodyYaw = caster.renderYawOffset;
@@ -338,15 +440,16 @@ final class CutIn {
         GL11.glRotatef(135, 0, 1, 0);
         RenderHelper.enableStandardItemLighting();
         GL11.glRotatef(-135, 0, 1, 0);
-        GL11.glRotatef(-6, 1, 0, 0);
-        caster.renderYawOffset = 22;
-        caster.prevRenderYawOffset = 22;
-        caster.rotationYaw = 14;
-        caster.prevRotationYaw = 14;
+        GL11.glRotatef(shot[1], 1, 0, 0);
+        GL11.glTranslatef(0, -headHeight, 0);
+        caster.renderYawOffset = shot[0];
+        caster.prevRenderYawOffset = shot[0];
+        caster.rotationYaw = shot[0] - 8;
+        caster.prevRotationYaw = shot[0] - 8;
         caster.rotationPitch = 0;
         caster.prevRotationPitch = 0;
-        caster.rotationYawHead = 14;
-        caster.prevRotationYawHead = 14;
+        caster.rotationYawHead = shot[0] - 8;
+        caster.prevRotationYawHead = shot[0] - 8;
         float viewY = RenderManager.instance.playerViewY;
         RenderManager.instance.playerViewY = 180;
         drawingPlayer = true;
