@@ -5,8 +5,13 @@ package com.akashic.ryoiki.mode;
  * pulls what is near it, and where a blade that flies straight meets a body. No Minecraft classes.
  *
  * <p>
- * <b>Atração</b> (the star void's first): a point where the caster aims, up to {@link #PULL_AIM} blocks away, pulls
- * to itself for {@link #PULL_TICKS} ticks whoever is within {@link #PULL_RADIUS} blocks of it.
+ * <b>Atração</b> (the star void's first): an orb that goes where its caster looks. It appears before the caster, as
+ * far as {@link #ORB_AIM} blocks, and for {@link #ORB_TICKS} ticks it follows the caster's eyes, at
+ * {@link #ORB_SPEED} blocks a tick at most, drawing to itself whoever is within {@link #ORB_RADIUS} blocks of it and
+ * carrying them along; when it ends, or when it is swung away faster than they can follow, they are let go with the
+ * speed it had. It has two ways of being, by where its caster was when it began: on the <b>ground</b>, the caster
+ * walks and the orb sweeps before it at about the height of a body; in the <b>air</b>, the caster hangs where it is
+ * and the orb goes wherever the eyes go, the sky included.
  *
  * <p>
  * <b>Talho</b> (the crimson shrine's first): a blade nobody sees leaves the caster and flies straight, up to
@@ -15,21 +20,37 @@ package com.akashic.ryoiki.mode;
 public final class AbilityMath {
 
     /** The kinds of effect a client is told of. */
-    public static final int PULL = 1;
     public static final int CUT = 2;
     /** A flying cut met someone: it ends there. */
     public static final int CUT_HIT = 3;
+    public static final int PULL_MOVE = 4;
+    public static final int PULL_END = 5;
 
-    public static final double PULL_AIM = 8;
-    public static final double PULL_RADIUS = 4;
-    public static final int PULL_TICKS = 20;
-    /** Ticks until it may be used again: 8 s. */
-    public static final int PULL_RECHARGE = 160;
-    /** Blocks a tick, at most, that the point draws someone in; and the part of the way left it covers each tick. */
-    public static final double PULL_FASTEST = 0.5;
-    public static final double PULL_GAIN = 0.3;
-    /** This near the point there is nowhere left to go: whoever is there is held. */
-    public static final double PULL_HELD = 0.35;
+    /** The orb's beginning, its move, and its end. */
+    public static final int PULL = 1;
+
+    public static final double ORB_AIM = 7;
+    public static final double ORB_RADIUS = 3.5;
+    /** 3.5 s. */
+    public static final int ORB_TICKS = 70;
+    /** Ticks until it may be used again: 12 s. */
+    public static final int ORB_RECHARGE = 240;
+    /** Blocks a tick the orb moves, at most, after its caster's eyes. */
+    public static final double ORB_SPEED = 0.9;
+    /** On the ground the orb keeps between these heights over its caster's feet. */
+    public static final double ORB_LOW = 0.9;
+    public static final double ORB_HIGH = 2.6;
+    /** Ticks between two times it harms whoever it holds. */
+    public static final int ORB_PULSE = 10;
+    /** How much of the orb's speed those it lets go keep, the most they can leave with, and the lift they get. */
+    public static final double ORB_THROW = 1.25;
+    public static final double ORB_THROW_MOST = 1.7;
+    public static final double ORB_THROW_LIFT = 0.18;
+    /** Blocks a tick, at most, that the orb draws someone in; and the part of the way left it covers each tick. */
+    public static final double PULL_FASTEST = 0.75;
+    public static final double PULL_GAIN = 0.35;
+    /** This near the orb there is nowhere left to go: whoever is there is held, and goes where it goes. */
+    public static final double PULL_HELD = 0.5;
 
     public static final double CUT_RANGE = 12;
     public static final double CUT_SPEED = 1.5;
@@ -50,8 +71,8 @@ public final class AbilityMath {
      * The velocity the point gives someone, for one tick.
      *
      * @param dx  from that someone to the point
-     * @param out the velocity, in blocks a tick: straight at the point, faster from farther (never past the point in
-     *            one tick, never faster than {@link #PULL_FASTEST}), and none at all when held at it
+     * @param out the velocity, in blocks a tick: straight at the orb, faster from farther (never past it in one
+     *            tick, never faster than {@link #PULL_FASTEST}), and none at all when held at it
      */
     public static void pull(double dx, double dy, double dz, double[] out) {
         double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
@@ -65,6 +86,41 @@ public final class AbilityMath {
         out[0] = dx / distance * speed;
         out[1] = dy / distance * speed;
         out[2] = dz / distance * speed;
+    }
+
+    /**
+     * One tick of the orb after its caster's eyes: from where it is toward where the eyes put it, no farther than
+     * {@link #ORB_SPEED}.
+     *
+     * @param out the step it takes, which is also its velocity
+     */
+    public static void follow(double fromX, double fromY, double fromZ, double toX, double toY, double toZ,
+        double[] out) {
+        double dx = toX - fromX;
+        double dy = toY - fromY;
+        double dz = toZ - fromZ;
+        double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        double scale = distance > ORB_SPEED ? ORB_SPEED / distance : 1;
+        out[0] = dx * scale;
+        out[1] = dy * scale;
+        out[2] = dz * scale;
+    }
+
+    /**
+     * What those the orb lets go leave with: its own velocity and a little more, never more than
+     * {@link #ORB_THROW_MOST}, and a lift off the ground.
+     */
+    public static void thrown(double vx, double vy, double vz, double[] out) {
+        double speed = Math.sqrt(vx * vx + vy * vy + vz * vz) * ORB_THROW;
+        double scale = speed > ORB_THROW_MOST ? ORB_THROW_MOST / speed : 1;
+        out[0] = vx * ORB_THROW * scale;
+        out[1] = vy * ORB_THROW * scale + ORB_THROW_LIFT;
+        out[2] = vz * ORB_THROW * scale;
+    }
+
+    /** The height the orb is put at on the ground: where the eyes look, kept about the height of a body. */
+    public static double grounded(double aimedY, double feetY) {
+        return Math.max(feetY + ORB_LOW, Math.min(feetY + ORB_HIGH, aimedY));
     }
 
     /** How far a flying cut has gone, this many ticks after it left, in a flight of {@code range} blocks. */

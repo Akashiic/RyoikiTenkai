@@ -10,25 +10,32 @@ class ModeRulesTest {
 
     @Test
     void inAndOutAreFreeWithABreathBetween() {
-        assertEquals(ModeRules.OK, ModeRules.ask(true, true, true, false, 1000, 20));
-        assertEquals(ModeRules.OK, ModeRules.ask(false, true, true, false, 20, 20));
-        assertEquals(ModeRules.SOON, ModeRules.ask(true, true, true, false, 19, 20));
-        assertEquals(ModeRules.SOON, ModeRules.ask(false, true, true, false, 0, 20));
+        assertEquals(ModeRules.OK, ModeRules.ask(true, true, true, true, false, 1000, 20));
+        assertEquals(ModeRules.OK, ModeRules.ask(false, true, true, true, false, 20, 20));
+        assertEquals(ModeRules.SOON, ModeRules.ask(true, true, true, true, false, 19, 20));
+        assertEquals(ModeRules.SOON, ModeRules.ask(false, true, true, true, false, 0, 20));
     }
 
     @Test
     void notInADomainAndNotDead() {
         // Neither way: who was in the mode when the domain opened stays in it.
-        assertEquals(ModeRules.DOMAIN, ModeRules.ask(true, true, true, true, 1000, 20));
-        assertEquals(ModeRules.DOMAIN, ModeRules.ask(false, true, true, true, 1000, 20));
-        assertEquals(ModeRules.DEAD, ModeRules.ask(true, true, false, false, 1000, 20));
-        assertEquals(ModeRules.DEAD, ModeRules.ask(false, true, false, true, 0, 20));
+        assertEquals(ModeRules.DOMAIN, ModeRules.ask(true, true, true, true, true, 1000, 20));
+        assertEquals(ModeRules.DOMAIN, ModeRules.ask(false, true, true, true, true, 1000, 20));
+        assertEquals(ModeRules.DEAD, ModeRules.ask(true, true, true, false, false, 1000, 20));
+        assertEquals(ModeRules.DEAD, ModeRules.ask(false, true, true, false, true, 0, 20));
     }
 
     @Test
     void whereTheModeIsOffNobodyGoesInButAnyoneGoesOut() {
-        assertEquals(ModeRules.DISABLED, ModeRules.ask(true, false, true, false, 1000, 20));
-        assertEquals(ModeRules.OK, ModeRules.ask(false, false, true, false, 1000, 20));
+        assertEquals(ModeRules.DISABLED, ModeRules.ask(true, false, true, true, false, 1000, 20));
+        assertEquals(ModeRules.OK, ModeRules.ask(false, false, true, true, false, 1000, 20));
+    }
+
+    @Test
+    void onlyWhoHasThePermissionGoesInAndAnyoneGoesOut() {
+        assertEquals(ModeRules.NO_PERMISSION, ModeRules.ask(true, true, false, true, false, 1000, 20));
+        assertEquals(ModeRules.OK, ModeRules.ask(false, true, false, true, false, 1000, 20));
+        assertNotNull(ModeRules.key(ModeRules.NO_PERMISSION));
     }
 
     @Test

@@ -9,7 +9,6 @@ import java.util.UUID;
 
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.EntityDamageSource;
@@ -19,34 +18,40 @@ import net.minecraft.world.World;
 
 import com.akashic.ryoiki.Config;
 import com.akashic.ryoiki.DomainType;
+import com.akashic.ryoiki.domain.DomainManager;
 
 /**
  * The techniques of the sorcerer mode, on the server: what each does to the world, tick by tick.
  *
  * <p>
- * A technique touches only <b>other players who are in the mode too</b>, where the server lets players fight at
- * all. What it does to them goes through the game's own damage, as a blow from the one who used it: whatever
- * guards a place or a player against another player's blows (a protection plugin, a team) guards against this, and
- * someone so guarded is not moved either. The damage is small and the same whatever the armour: the mode's fights
- * are not decided by equipment.
+ * A technique touches only <b>other players who are in the mode too</b>. The owner's rule (2026-11-13): the mode is
+ * for who has its permission, and among them <b>nothing protects</b>: not a region, not a rule against players
+ * fighting, not a plugin's shield. So what a technique does is done directly, life taken and bodies moved, and never
+ * asked of the game's own damage, which every protection listens to. The damage is small and the same whatever the
+ * armour: the mode's fights are not decided by equipment.
  */
 final class Abilities {
 
     /** How far around a technique players are told of it. */
     private static final double SEEN = 64;
 
-    private final List<Pull> pulls = new ArrayList<>();
+    private final List<Orb> orbs = new ArrayList<>();
     private final List<Cut> cuts = new ArrayList<>();
 
-    private static final class Pull {
+    private static final class Orb {
 
         EntityPlayerMP caster;
         double x;
         double y;
         double z;
+        final double[] velocity = new double[3];
+        /** How far before its caster's eyes it keeps. */
+        double reach;
+        /** Begun in the air: the caster hangs there and the orb goes anywhere. */
+        boolean air;
         int age;
+        /** Who it has drawn in, and has not let go yet. */
         final Set<UUID> caught = new HashSet<>();
-        final Set<UUID> guarded = new HashSet<>();
     }
 
     private static final class Cut {
@@ -63,7 +68,7 @@ final class Abilities {
     }
 
     void reset() {
-        pulls.clear();
+        orbs.clear();
         cuts.clear();
     }
 
@@ -76,33 +81,37 @@ final class Abilities {
         double ey = caster.posY + caster.getEyeHeight();
         double ez = caster.posZ;
         if (technique == DomainType.INFINITE_VOID) {
-            // Atração: the point is where the caster aims, on the first thing solid in the way or at the end of
-            // its reach.
-            double reach = clear(caster.worldObj, ex, ey, ez, look, AbilityMath.PULL_AIM) - 0.3;
-            Pull pull = new Pull();
-            pull.caster = caster;
-            pull.x = ex + look.xCoord * reach;
-            pull.y = ey + look.yCoord * reach;
-            pull.z = ez + look.zCoord * reach;
-            pulls.add(pull);
+            // Atração: the orb appears where the caster looks, before the first thing solid in the way.
+            Orb orb = new Orb();
+            orb.caster = caster;
+            orb.air = !caster.onGround;
+            orb.reach = AbilityMath.ORB_AIM;
+            double reach = Math.max(1.2, clear(caster.worldObj, ex, ey, ez, look, orb.reach) - 0.4);
+            orb.x = ex + look.xCoord * reach;
+            orb.y = ey + look.yCoord * reach;
+            orb.z = ez + look.zCoord * reach;
+            if (!orb.air) {
+                orb.y = AbilityMath.grounded(orb.y, caster.posY);
+            }
+            orbs.add(orb);
             tell(
                 caster.worldObj,
-                pull.x,
-                pull.y,
-                pull.z,
+                orb.x,
+                orb.y,
+                orb.z,
                 ModeWire.effect(
                     AbilityMath.PULL,
                     caster.getEntityId(),
-                    pull.x,
-                    pull.y,
-                    pull.z,
-                    look.xCoord,
-                    look.yCoord,
-                    look.zCoord,
-                    AbilityMath.PULL_RADIUS,
-                    AbilityMath.PULL_TICKS),
+                    orb.x,
+                    orb.y,
+                    orb.z,
+                    orb.air ? 1 : 0,
+                    0,
+                    0,
+                    AbilityMath.ORB_RADIUS,
+                    AbilityMath.ORB_TICKS),
                 mode);
-            return AbilityMath.PULL_RECHARGE;
+            return AbilityMath.ORB_RECHARGE;
         }
         // Talho: the blade leaves from before the caster's chest and flies until something solid.
         Cut cut = new Cut();
@@ -151,130 +160,191 @@ final class Abilities {
     }
 
     void tick(SorcererMode mode) {
-        double[] v = new double[3];
-        for (Iterator<Pull> i = pulls.iterator(); i.hasNext();) {
-            Pull pull = i.next();
-            if (++pull.age > AbilityMath.PULL_TICKS || pull.caster.isDead) {
+        for (Iterator<Orb> i = orbs.iterator(); i.hasNext();) {
+            Orb orb = i.next();
+            if (!orb(orb, mode)) {
                 i.remove();
-                continue;
-            }
-            for (EntityPlayerMP target : targets(pull.caster, mode)) {
-                // Its middle, not its feet, is what the point pulls.
-                double dx = pull.x - target.posX;
-                double dy = pull.y - (target.posY + target.height / 2);
-                double dz = pull.z - target.posZ;
-                UUID id = target.getUniqueID();
-                if (pull.guarded.contains(id)
-                    || dx * dx + dy * dy + dz * dz > AbilityMath.PULL_RADIUS * AbilityMath.PULL_RADIUS) {
-                    continue;
-                }
-                if (!pull.caught.contains(id)) {
-                    if (strike(pull.caster, target, Config.pullDamage, "ryoiki.atracao")) {
-                        pull.caught.add(id);
-                    } else {
-                        pull.guarded.add(id);
-                        continue;
-                    }
-                }
-                AbilityMath.pull(dx, dy, dz, v);
-                target.motionX = v[0];
-                target.motionY = v[1];
-                target.motionZ = v[2];
-                target.fallDistance = 0;
-                target.velocityChanged = true;
             }
         }
         for (Iterator<Cut> i = cuts.iterator(); i.hasNext();) {
             Cut cut = i.next();
-            double from = AbilityMath.cutGone(cut.age, cut.range);
-            double to = AbilityMath.cutGone(++cut.age, cut.range);
-            EntityPlayerMP met = null;
-            double at = Double.MAX_VALUE;
-            for (EntityPlayerMP target : targets(cut.caster, mode)) {
-                AxisAlignedBB box = target.boundingBox;
-                double enters = AbilityMath.enters(
-                    cut.x,
-                    cut.y,
-                    cut.z,
-                    cut.dx,
-                    cut.dy,
-                    cut.dz,
-                    box.minX - AbilityMath.CUT_WIDTH,
-                    box.minY - AbilityMath.CUT_WIDTH,
-                    box.minZ - AbilityMath.CUT_WIDTH,
-                    box.maxX + AbilityMath.CUT_WIDTH,
-                    box.maxY + AbilityMath.CUT_WIDTH,
-                    box.maxZ + AbilityMath.CUT_WIDTH);
-                // Met on the stretch the blade covers this tick. (One it has already passed stepped in behind it.)
-                if (enters >= 0 && enters <= to && enters >= from - AbilityMath.CUT_SPEED && enters < at) {
-                    met = target;
-                    at = enters;
-                }
-            }
-            if (met != null && strike(cut.caster, met, Config.cutDamage, "ryoiki.talho")) {
-                met.motionX += cut.dx * AbilityMath.CUT_THROW;
-                met.motionY = Math.max(met.motionY, AbilityMath.CUT_LIFT);
-                met.motionZ += cut.dz * AbilityMath.CUT_THROW;
-                met.velocityChanged = true;
-                double hx = cut.x + cut.dx * at;
-                double hy = cut.y + cut.dy * at;
-                double hz = cut.z + cut.dz * at;
-                tell(
-                    met.worldObj,
-                    hx,
-                    hy,
-                    hz,
-                    ModeWire.effect(
-                        AbilityMath.CUT_HIT,
-                        cut.caster.getEntityId(),
-                        hx,
-                        hy,
-                        hz,
-                        cut.dx,
-                        cut.dy,
-                        cut.dz,
-                        at,
-                        0),
-                    mode);
-                i.remove();
-            } else if (to >= cut.range || cut.caster.isDead) {
+            if (!cut(cut, mode)) {
                 i.remove();
             }
         }
     }
 
-    /** Who a player's techniques can touch: the others in the mode, in its world, that it may fight. */
+    /** One tick of an orb. False when it is over. */
+    private boolean orb(Orb orb, SorcererMode mode) {
+        EntityPlayerMP caster = orb.caster;
+        boolean over = ++orb.age > AbilityMath.ORB_TICKS || !caster.isEntityAlive()
+            || !mode.isOn(caster)
+            || caster.worldObj.getPlayerEntityByName(caster.getCommandSenderName()) != caster
+            || DomainManager.INSTANCE.frozen(caster);
+        double[] v = new double[3];
+        if (!over) {
+            // After the caster's eyes: where they look, as far out as it keeps, short of anything solid.
+            Vec3 look = caster.getLookVec();
+            double ex = caster.posX;
+            double ey = caster.posY + caster.getEyeHeight();
+            double ez = caster.posZ;
+            double reach = Math.max(1.2, clear(caster.worldObj, ex, ey, ez, look, orb.reach) - 0.4);
+            double tx = ex + look.xCoord * reach;
+            double ty = ey + look.yCoord * reach;
+            double tz = ez + look.zCoord * reach;
+            if (!orb.air) {
+                ty = AbilityMath.grounded(ty, caster.posY);
+            }
+            AbilityMath.follow(orb.x, orb.y, orb.z, tx, ty, tz, orb.velocity);
+            orb.x += orb.velocity[0];
+            orb.y += orb.velocity[1];
+            orb.z += orb.velocity[2];
+            if (orb.air) {
+                // Begun in the air, it holds its caster there.
+                caster.motionX = 0;
+                caster.motionY = 0;
+                caster.motionZ = 0;
+                caster.fallDistance = 0;
+                caster.velocityChanged = true;
+            }
+        } else if (orb.air) {
+            caster.fallDistance = 0;
+        }
+        for (EntityPlayerMP target : targets(caster, mode)) {
+            // Its middle, not its feet, is what the orb pulls.
+            double dx = orb.x - target.posX;
+            double dy = orb.y - (target.posY + target.height / 2);
+            double dz = orb.z - target.posZ;
+            UUID id = target.getUniqueID();
+            boolean near = dx * dx + dy * dy + dz * dz <= AbilityMath.ORB_RADIUS * AbilityMath.ORB_RADIUS;
+            if (over || !near) {
+                if (orb.caught.remove(id)) {
+                    // Let go, by its end or by a swing it could not follow: it leaves with the orb's speed.
+                    AbilityMath.thrown(orb.velocity[0], orb.velocity[1], orb.velocity[2], v);
+                    move(target, v);
+                }
+                continue;
+            }
+            if (orb.caught.add(id) || orb.age % AbilityMath.ORB_PULSE == 0) {
+                strike(caster, target, Config.pullDamage, "ryoiki.atracao");
+            }
+            AbilityMath.pull(dx, dy, dz, v);
+            if (v[0] == 0 && v[1] == 0 && v[2] == 0) {
+                // Held at the orb: it goes where the orb goes.
+                v[0] = orb.velocity[0];
+                v[1] = orb.velocity[1];
+                v[2] = orb.velocity[2];
+            }
+            move(target, v);
+        }
+        tell(
+            caster.worldObj,
+            orb.x,
+            orb.y,
+            orb.z,
+            ModeWire.effect(
+                over ? AbilityMath.PULL_END : AbilityMath.PULL_MOVE,
+                caster.getEntityId(),
+                orb.x,
+                orb.y,
+                orb.z,
+                orb.velocity[0],
+                orb.velocity[1],
+                orb.velocity[2],
+                AbilityMath.ORB_RADIUS,
+                Math.max(0, AbilityMath.ORB_TICKS - orb.age)),
+            mode);
+        return !over;
+    }
+
+    /** One tick of a flying cut. False when it is over. */
+    private boolean cut(Cut cut, SorcererMode mode) {
+        double from = AbilityMath.cutGone(cut.age, cut.range);
+        double to = AbilityMath.cutGone(++cut.age, cut.range);
+        EntityPlayerMP met = null;
+        double at = Double.MAX_VALUE;
+        for (EntityPlayerMP target : targets(cut.caster, mode)) {
+            AxisAlignedBB box = target.boundingBox;
+            double enters = AbilityMath.enters(
+                cut.x,
+                cut.y,
+                cut.z,
+                cut.dx,
+                cut.dy,
+                cut.dz,
+                box.minX - AbilityMath.CUT_WIDTH,
+                box.minY - AbilityMath.CUT_WIDTH,
+                box.minZ - AbilityMath.CUT_WIDTH,
+                box.maxX + AbilityMath.CUT_WIDTH,
+                box.maxY + AbilityMath.CUT_WIDTH,
+                box.maxZ + AbilityMath.CUT_WIDTH);
+            // Met on the stretch the blade covers this tick. (One it has already passed stepped in behind it.)
+            if (enters >= 0 && enters <= to && enters >= from - AbilityMath.CUT_SPEED && enters < at) {
+                met = target;
+                at = enters;
+            }
+        }
+        if (met == null) {
+            return to < cut.range && !cut.caster.isDead;
+        }
+        strike(cut.caster, met, Config.cutDamage, "ryoiki.talho");
+        move(
+            met,
+            new double[] { met.motionX + cut.dx * AbilityMath.CUT_THROW, Math.max(met.motionY, AbilityMath.CUT_LIFT),
+                met.motionZ + cut.dz * AbilityMath.CUT_THROW });
+        double hx = cut.x + cut.dx * at;
+        double hy = cut.y + cut.dy * at;
+        double hz = cut.z + cut.dz * at;
+        tell(
+            met.worldObj,
+            hx,
+            hy,
+            hz,
+            ModeWire.effect(AbilityMath.CUT_HIT, cut.caster.getEntityId(), hx, hy, hz, cut.dx, cut.dy, cut.dz, at, 0),
+            mode);
+        return false;
+    }
+
+    /** Who a player's techniques can touch: the others in the mode, in its world. Creative players are not touched. */
     private static List<EntityPlayerMP> targets(EntityPlayerMP caster, SorcererMode mode) {
         List<EntityPlayerMP> out = new ArrayList<>();
-        if (!MinecraftServer.getServer()
-            .isPVPEnabled()) {
-            return out;
-        }
         for (Object o : caster.worldObj.playerEntities) {
             EntityPlayerMP other = (EntityPlayerMP) o;
-            if (other != caster && other.isEntityAlive()
-                && mode.isOn(other)
-                && !other.capabilities.disableDamage
-                && caster.canAttackPlayer(other)) {
+            if (other != caster && other.isEntityAlive() && mode.isOn(other) && !other.capabilities.disableDamage) {
                 out.add(other);
             }
         }
         return out;
     }
 
+    private static void move(EntityPlayerMP target, double[] velocity) {
+        target.motionX = velocity[0];
+        target.motionY = velocity[1];
+        target.motionZ = velocity[2];
+        target.fallDistance = 0;
+        target.velocityChanged = true;
+    }
+
     /**
-     * The technique's blow, through the game's own damage: true if it landed. One that deals no damage lands
-     * wherever players may fight.
+     * The technique's blow: life taken directly, absorption first, with the wince of a blow for all to see; and
+     * death, by the one who used it, if it takes the last of it.
      */
-    private static boolean strike(EntityPlayerMP caster, EntityPlayer target, float damage, String name) {
+    private static void strike(EntityPlayerMP caster, EntityPlayer target, float damage, String name) {
         if (damage <= 0) {
-            return true;
+            return;
         }
-        // A technique lands even right after another blow: the game's moment of grace is for its own fights.
-        target.hurtResistantTime = 0;
+        float absorbed = Math.min(target.getAbsorptionAmount(), damage);
+        target.setAbsorptionAmount(target.getAbsorptionAmount() - absorbed);
+        float left = target.getHealth() - (damage - absorbed);
+        target.worldObj.setEntityState(target, (byte) 2);
+        if (left > 0) {
+            target.setHealth(left);
+            return;
+        }
         DamageSource source = new EntityDamageSource(name, caster).setDamageBypassesArmor()
             .setDamageIsAbsolute();
-        return target.attackEntityFrom(source, damage);
+        target.setHealth(0);
+        target.onDeath(source);
     }
 
     private static void tell(World world, double x, double y, double z, byte[] data, SorcererMode mode) {

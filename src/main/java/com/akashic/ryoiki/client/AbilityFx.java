@@ -39,8 +39,10 @@ public final class AbilityFx {
     private static final int RED = 0xFF2A1A;
     private static final int EMBER = 0xFF6A38;
 
-    /** Ticks a pull goes on being drawn after it is over: the point closes. */
+    /** Ticks an orb goes on being drawn after it is over: it closes on itself. */
     private static final int PULL_CLOSES = 7;
+    private static final int LOBES = 9;
+    private static final int INK = 0x0A1FB8;
     private static final int NEEDLES = 40;
     private static final float NEEDLE_PERIOD = 9;
     /** The flying cut: how big its crescent is, how far it leans, and how long what it leaves stays. */
@@ -51,20 +53,37 @@ public final class AbilityFx {
     private static final int SCAR_STAYS = 50;
     private static final float SCAR_STEP = 0.5F;
 
-    private final List<Pull> pulls = new ArrayList<>();
+    /** The orbs of the star void, each by the entity that guides it. */
+    private final Map<Integer, Orb> orbs = new HashMap<>();
     private final List<Cut> cuts = new ArrayList<>();
-    /** Who is making the gesture of a technique: its kind and how long ago it began, by entity. */
+    /** Who is making the gesture of a technique: its kind, how long ago it began and how long it lasts, by entity. */
     private final Map<Integer, int[]> gestures = new HashMap<>();
 
-    private static final class Pull {
+    private static final class Orb {
 
+        int caster;
+        /** Where it is this tick and where it was the last, and how fast it goes. */
         double x;
         double y;
         double z;
+        double beforeX;
+        double beforeY;
+        double beforeZ;
+        /** Where the server last put it. */
+        double toX;
+        double toY;
+        double toZ;
+        float speed;
         float radius;
         int ticks;
         int age;
+        /** Begun in the air: its caster hangs there. */
+        boolean air;
+        /** Ticks since it ended; negative while it lasts. */
+        int closing = -1;
         final float[] needles = new float[NEEDLES * 4];
+        /** The dark lobes that turn about it: for each, the tilt of its orbit, where on it, how far out, how fast. */
+        final float[] lobes = new float[LOBES * 4];
     }
 
     private static final class Cut {
@@ -89,7 +108,7 @@ public final class AbilityFx {
     private AbilityFx() {}
 
     void clear() {
-        pulls.clear();
+        orbs.clear();
         cuts.clear();
         gestures.clear();
     }
@@ -97,25 +116,49 @@ public final class AbilityFx {
     void heard(ModeWire.Message m) {
         Minecraft mc = Minecraft.getMinecraft();
         if (m.kind == AbilityMath.PULL) {
-            Pull p = new Pull();
-            p.x = m.x;
-            p.y = m.y;
-            p.z = m.z;
-            p.radius = m.size;
-            p.ticks = m.ticks;
+            Orb o = new Orb();
+            o.caster = m.entity;
+            o.x = o.beforeX = o.toX = m.x;
+            o.y = o.beforeY = o.toY = m.y;
+            o.z = o.beforeZ = o.toZ = m.z;
+            o.radius = m.size;
+            o.ticks = m.ticks;
+            o.air = m.dx > 0.5F;
             Random random = new Random(Double.doubleToLongBits(m.x * 31 + m.z) ^ m.entity);
             for (int i = 0; i < NEEDLES; i++) {
                 // A direction, evenly over the sphere; where in its run the needle starts; and how long it is.
                 double up = random.nextDouble() * 2 - 1;
                 double around = random.nextDouble() * Math.PI * 2;
                 double flat = Math.sqrt(1 - up * up);
-                p.needles[i * 4] = (float) (Math.cos(around) * flat);
-                p.needles[i * 4 + 1] = (float) up;
-                p.needles[i * 4 + 2] = (float) (Math.sin(around) * flat);
-                p.needles[i * 4 + 3] = random.nextFloat();
+                o.needles[i * 4] = (float) (Math.cos(around) * flat);
+                o.needles[i * 4 + 1] = (float) up;
+                o.needles[i * 4 + 2] = (float) (Math.sin(around) * flat);
+                o.needles[i * 4 + 3] = random.nextFloat();
             }
-            pulls.add(p);
-            gesture(mc, m.entity, CastPose.PULL);
+            for (int i = 0; i < LOBES; i++) {
+                o.lobes[i * 4] = (random.nextFloat() - 0.5F) * 2.4F;
+                o.lobes[i * 4 + 1] = random.nextFloat() * 6.283F;
+                o.lobes[i * 4 + 2] = 0.75F + random.nextFloat() * 0.75F;
+                o.lobes[i * 4 + 3] = (0.32F + random.nextFloat() * 0.3F) * (i % 2 == 0 ? 1 : -1);
+            }
+            orbs.put(m.entity, o);
+            gesture(mc, m.entity, CastPose.PULL, m.ticks + 6);
+        } else if (m.kind == AbilityMath.PULL_MOVE || m.kind == AbilityMath.PULL_END) {
+            Orb o = orbs.get(m.entity);
+            if (o != null && o.closing < 0) {
+                o.toX = m.x;
+                o.toY = m.y;
+                o.toZ = m.z;
+                o.speed = (float) Math.sqrt(m.dx * m.dx + m.dy * m.dy + m.dz * m.dz);
+                if (m.kind == AbilityMath.PULL_END) {
+                    o.closing = 0;
+                    // The hand that held it out comes back now.
+                    int[] g = gestures.get(m.entity);
+                    if (g != null && g[0] == CastPose.PULL) {
+                        g[2] = Math.min(g[2], g[1] + 6);
+                    }
+                }
+            }
         } else if (m.kind == AbilityMath.CUT) {
             Cut c = new Cut();
             c.caster = m.entity;
@@ -127,7 +170,7 @@ public final class AbilityFx {
             c.dz = m.dz;
             c.range = m.size;
             cuts.add(c);
-            gesture(mc, m.entity, CastPose.CUT);
+            gesture(mc, m.entity, CastPose.CUT, (int) CastPose.CUT_TICKS);
         } else if (m.kind == AbilityMath.CUT_HIT) {
             for (int i = cuts.size() - 1; i >= 0; i--) {
                 Cut c = cuts.get(i);
@@ -140,8 +183,8 @@ public final class AbilityFx {
         }
     }
 
-    private void gesture(Minecraft mc, int entity, int kind) {
-        gestures.put(entity, new int[] { kind, 0 });
+    private void gesture(Minecraft mc, int entity, int kind, int ticks) {
+        gestures.put(entity, new int[] { kind, 0, ticks });
         if (mc.thePlayer != null && mc.thePlayer.getEntityId() == entity) {
             // In its own eyes: the arm goes out.
             mc.thePlayer.swingItem();
@@ -158,8 +201,14 @@ public final class AbilityFx {
             return 0;
         }
         float age = g[1] + partialTicks;
-        pose[0] = CastPose.sample(g[0], age);
-        return CastPose.layer(g[0], age);
+        pose[0] = CastPose.sample(g[0], age, g[2]);
+        return CastPose.layer(age, g[2]);
+    }
+
+    /** Whether a player hangs in the air by an orb it began there: it does not move until the orb is over. */
+    public boolean hangs(int entity) {
+        Orb o = orbs.get(entity);
+        return o != null && o.air && o.closing < 0;
     }
 
     @SubscribeEvent
@@ -171,9 +220,26 @@ public final class AbilityFx {
             clear();
             return;
         }
-        for (Iterator<Pull> i = pulls.iterator(); i.hasNext();) {
-            Pull p = i.next();
-            if (++p.age > p.ticks + PULL_CLOSES) {
+        Minecraft mc = Minecraft.getMinecraft();
+        for (Iterator<Orb> i = orbs.values()
+            .iterator(); i.hasNext();) {
+            Orb o = i.next();
+            o.age++;
+            o.beforeX = o.x;
+            o.beforeY = o.y;
+            o.beforeZ = o.z;
+            o.x = o.toX;
+            o.y = o.toY;
+            o.z = o.toZ;
+            if (o.closing >= 0) {
+                o.closing++;
+            } else if (o.age > o.ticks + 30) {
+                // The server never said it was over (its caster left): it is.
+                o.closing = 0;
+            } else {
+                rubble(mc.theWorld, o);
+            }
+            if (o.closing > PULL_CLOSES) {
                 i.remove();
             }
         }
@@ -190,7 +256,7 @@ public final class AbilityFx {
         for (Iterator<int[]> i = gestures.values()
             .iterator(); i.hasNext();) {
             int[] g = i.next();
-            if (++g[1] > CastPose.ticks(g[0])) {
+            if (++g[1] > g[2]) {
                 i.remove();
             }
         }
@@ -198,7 +264,7 @@ public final class AbilityFx {
 
     @SubscribeEvent
     public void onRenderWorldLast(RenderWorldLastEvent event) {
-        if (pulls.isEmpty() && cuts.isEmpty()) {
+        if (orbs.isEmpty() && cuts.isEmpty()) {
             return;
         }
         Minecraft mc = Minecraft.getMinecraft();
@@ -220,8 +286,18 @@ public final class AbilityFx {
         Draw.fade = 1;
         Draw.camera(0);
         Tessellator t = Tessellator.instance;
-        for (Pull p : pulls) {
-            pull(t, p, (float) (p.x - camX), (float) (p.y - camY), (float) (p.z - camZ), event.partialTicks);
+        for (Orb o : orbs.values()) {
+            float partial = event.partialTicks;
+            orb(
+                t,
+                o,
+                (float) (o.beforeX + (o.x - o.beforeX) * partial - camX),
+                (float) (o.beforeY + (o.y - o.beforeY) * partial - camY),
+                (float) (o.beforeZ + (o.z - o.beforeZ) * partial - camZ),
+                (float) (o.x - o.beforeX),
+                (float) (o.y - o.beforeY),
+                (float) (o.z - o.beforeZ),
+                partial);
         }
         for (Cut c : cuts) {
             if (c.ground == null) {
@@ -236,28 +312,79 @@ public final class AbilityFx {
 
     // Atração.
 
-    private static void pull(Tessellator t, Pull p, float x, float y, float z, float partialTicks) {
-        float age = p.age + partialTicks;
-        float open = Draw.clamp01(age / 3);
-        // Over: the point closes on itself, and a ring goes out from where it was.
-        float closing = Draw.clamp01((age - p.ticks) / PULL_CLOSES);
-        float alive = open * (1 - closing);
-        float beat = 0.5F + 0.5F * MathHelper.sin(age * 0.9F);
+    /** Bits of the ground under an orb, torn up toward it: the game's own, of whatever block is there. */
+    private static void rubble(World world, Orb o) {
+        if (world == null || world.rand.nextInt(2) != 0) {
+            return;
+        }
+        int bx = MathHelper.floor_double(o.x + (world.rand.nextDouble() - 0.5) * 3);
+        int bz = MathHelper.floor_double(o.z + (world.rand.nextDouble() - 0.5) * 3);
+        for (int by = MathHelper.floor_double(o.y); by >= MathHelper.floor_double(o.y) - 3; by--) {
+            net.minecraft.block.Block block = world.getBlock(bx, by, bz);
+            if (block.getMaterial()
+                .blocksMovement() && block.getRenderType() >= 0) {
+                String name = "blockcrack_" + net.minecraft.block.Block.getIdFromBlock(block)
+                    + "_"
+                    + world.getBlockMetadata(bx, by, bz);
+                world.spawnParticle(
+                    name,
+                    bx + world.rand.nextDouble(),
+                    by + 1.1,
+                    bz + world.rand.nextDouble(),
+                    (o.x - bx - 0.5) * 0.12,
+                    0.32,
+                    (o.z - bz - 0.5) * 0.12);
+                return;
+            }
+        }
+    }
 
-        // The needles: light drawn in from all around, each on its own line, faster as it nears the point.
+    private static void orb(Tessellator t, Orb o, float x, float y, float z, float vx, float vy, float vz,
+        float partialTicks) {
+        float age = o.age + partialTicks;
+        float open = Draw.clamp01(age / 4);
+        // Over: it closes on itself, and a ring goes out from where it was.
+        float closing = o.closing < 0 ? 0 : Draw.clamp01((o.closing + partialTicks) / PULL_CLOSES);
+        // Whoever is inside it sees it around them, not a white screen: its light is dimmed close to the eye.
+        float near = 0.16F + 0.84F * Draw.clamp01(((float) Math.sqrt(x * x + y * y + z * z) - 0.8F) / 2.6F);
+        float alive = open * (1 - closing) * near;
+        float beat = 0.5F + 0.5F * MathHelper.sin(age * 0.9F);
+        float size = (0.62F + 0.06F * beat) * (0.35F + 0.65F * open) * (1 - closing * closing);
+        float speed = (float) Math.sqrt(vx * vx + vy * vy + vz * vz);
+
+        // Swung through the air it leaves itself behind: paler orbs along the way it came.
         Draw.additive();
+        if (speed > 0.08F) {
+            t.startDrawing(GL11.GL_TRIANGLES);
+            for (int ghost = 1; ghost <= 4; ghost++) {
+                float back = ghost * 0.55F;
+                float fade = alive * (1 - ghost / 5F) * Draw.clamp01(speed / 0.5F);
+                Draw.glow(
+                    t,
+                    x - vx * back,
+                    y - vy * back,
+                    z - vz * back,
+                    size * (2.4F - ghost * 0.3F),
+                    BLUE,
+                    0.3F * fade);
+                Draw.glow(t, x - vx * back, y - vy * back, z - vz * back, size * 1.1F, ICE, 0.35F * fade);
+            }
+            t.draw();
+        }
+
+        // The needles: light drawn in from all around, each on its own line, faster as it nears the orb.
         t.startDrawingQuads();
         for (int i = 0; i < NEEDLES; i++) {
-            float run = (age / NEEDLE_PERIOD + p.needles[i * 4 + 3]) % 1;
+            float run = (age / NEEDLE_PERIOD + o.needles[i * 4 + 3]) % 1;
             if (age - run * NEEDLE_PERIOD < 0 || closing > 0 && run < closing) {
-                // Not sent yet; or sent after the point began to close.
+                // Not sent yet; or sent after the orb began to close.
                 continue;
             }
-            float head = p.radius * (1 - run) * (1 - run);
-            float tail = Math.min(p.radius, head + 0.5F + 1.5F * (1 - run));
-            float dx = p.needles[i * 4];
-            float dy = p.needles[i * 4 + 1];
-            float dz = p.needles[i * 4 + 2];
+            float head = o.radius * (1 - run) * (1 - run);
+            float tail = Math.min(o.radius, head + 0.5F + 1.5F * (1 - run));
+            float dx = o.needles[i * 4];
+            float dy = o.needles[i * 4 + 1];
+            float dz = o.needles[i * 4 + 2];
             int color = i % 3 == 0 ? WHITE : i % 3 == 1 ? ICE : VIOLET;
             float light = alive * Draw.clamp01(run * 5) * (0.45F + 0.55F * run);
             ribbon(
@@ -275,12 +402,44 @@ public final class AbilityFx {
                 color,
                 light);
         }
+        // Three bright arcs that turn about it, each on its own tilt: the space it winds up.
+        for (int arc = 0; arc < 3; arc++) {
+            float tilt = 0.5F + arc * 1.1F;
+            float turn = age * (0.42F + arc * 0.09F) + arc * 2.1F;
+            float reach = size * (1.9F + 0.5F * arc);
+            float[] last = null;
+            for (int step = 0; step <= 10; step++) {
+                float a = turn + step * 0.22F;
+                float ca = MathHelper.cos(a) * reach;
+                float sa = MathHelper.sin(a) * reach;
+                float[] at = { x + ca, y + sa * MathHelper.sin(tilt), z + sa * MathHelper.cos(tilt) };
+                if (last != null) {
+                    float f0 = (step - 1) / 10F;
+                    float f1 = step / 10F;
+                    ribbon(
+                        t,
+                        last[0],
+                        last[1],
+                        last[2],
+                        at[0],
+                        at[1],
+                        at[2],
+                        0.05F * f0,
+                        0.05F * f1,
+                        WHITE,
+                        0.7F * alive * f0,
+                        ICE,
+                        0.7F * alive * f1);
+                }
+                last = at;
+            }
+        }
         t.draw();
 
-        // Two rings, flat, closing on the point one after the other.
+        // Two rings, flat, closing on it one after the other.
         for (int ring = 0; ring < 2; ring++) {
             float run = (age / 11F + ring * 0.5F) % 1;
-            float radius = p.radius * (1 - run * run);
+            float radius = o.radius * (1 - run * run);
             GL11.glPushMatrix();
             GL11.glTranslatef(x, y, z);
             Draw.ring(
@@ -290,32 +449,45 @@ public final class AbilityFx {
                 ICE,
                 0,
                 Draw.mix(ICE, BLUE, run),
-                0.5F * alive * Draw.clamp01(run * 4));
+                0.4F * alive * Draw.clamp01(run * 4));
             GL11.glPopMatrix();
         }
 
-        // The point: a blue light with a white heart, and inside it a hole darker than anything around.
-        float size = (0.5F + 0.07F * beat) * (1 - closing * closing);
+        // The orb: a wide blue light, a bright one inside it, a white heart.
         t.startDrawing(GL11.GL_TRIANGLES);
-        Draw.glow(t, x, y, z, size * 4.2F, BLUE, 0.42F * alive);
-        Draw.glow(t, x, y, z, size * 2.0F, ICE, 0.75F * alive);
-        Draw.glow(t, x, y, z, size * 0.95F, WHITE, alive);
+        Draw.glow(t, x, y, z, size * 4.4F, BLUE, 0.5F * alive);
+        Draw.glow(t, x, y, z, size * 2.3F, ICE, 0.85F * alive);
+        Draw.glow(t, x, y, z, size * 1.25F, WHITE, alive);
         t.draw();
+        // And about it, dark lobes of deep blue, turning: what it has swallowed and not yet let go.
         Draw.translucent();
         t.startDrawing(GL11.GL_TRIANGLES);
-        Draw.glow(t, x, y, z, size * 0.6F, 0x000008, 0.95F * alive);
+        for (int i = 0; i < LOBES; i++) {
+            float tilt = o.lobes[i * 4];
+            float a = o.lobes[i * 4 + 1] + age * o.lobes[i * 4 + 3];
+            float reach = size * o.lobes[i * 4 + 2] * (1.5F + 0.25F * MathHelper.sin(age * 0.3F + i));
+            float ca = MathHelper.cos(a) * reach;
+            float sa = MathHelper.sin(a) * reach;
+            float lx = x + ca * MathHelper.cos(tilt);
+            float ly = y + sa * 0.8F + ca * MathHelper.sin(tilt) * 0.5F;
+            float lz = z + sa * 0.6F - ca * MathHelper.sin(tilt) * 0.4F;
+            Draw.glow(t, lx, ly, lz, size * (0.7F + 0.2F * MathHelper.sin(age * 0.5F + i * 2)), INK, 0.8F * alive);
+        }
+        t.draw();
+        Draw.additive();
+        t.startDrawing(GL11.GL_TRIANGLES);
+        Draw.glow(t, x, y, z, size * 0.7F, WHITE, 0.9F * alive);
         t.draw();
 
         if (closing > 0) {
             // What is left when it closes: a ring of light going out, thin and quick.
-            Draw.additive();
             float out = closing * (2 - closing);
             GL11.glPushMatrix();
             GL11.glTranslatef(x, y, z);
-            Draw.ring(1.6F * out, 1.6F * out + 0.35F * (1 - closing), 40, WHITE, (1 - closing) * 0.8F, ICE, 0);
+            Draw.ring(1.8F * out, 1.8F * out + 0.4F * (1 - closing), 40, WHITE, (1 - closing) * 0.8F, ICE, 0);
             GL11.glPopMatrix();
             t.startDrawing(GL11.GL_TRIANGLES);
-            Draw.glow(t, x, y, z, 1.4F * (1 - closing), WHITE, (1 - closing) * 0.9F);
+            Draw.glow(t, x, y, z, 1.6F * (1 - closing), WHITE, (1 - closing) * 0.9F);
             t.draw();
         }
     }

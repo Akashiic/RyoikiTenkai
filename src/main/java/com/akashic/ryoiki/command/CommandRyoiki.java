@@ -60,7 +60,7 @@ public final class CommandRyoiki extends CommandBase {
         } else if ("modo".equalsIgnoreCase(args[0])) {
             // The same as the player's own key, for who has none: a console, a test, an event's staff.
             EntityPlayerMP player = args.length >= 2 ? getPlayer(sender, args[1]) : getCommandSenderAsPlayer(sender);
-            int reason = SorcererMode.INSTANCE.set(player, !SorcererMode.INSTANCE.isOn(player));
+            int reason = SorcererMode.INSTANCE.set(player, !SorcererMode.INSTANCE.isOn(player), true);
             ChatComponentTranslation message = SorcererMode.words(reason);
             if (message != null) {
                 sender.addChatMessage(message);

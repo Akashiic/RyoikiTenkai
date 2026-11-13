@@ -90,6 +90,20 @@ public final class ClashInput {
             self.setSprinting(false);
             return;
         }
+        if (player == Minecraft.getMinecraft().thePlayer && AbilityFx.INSTANCE.hangs(player.getEntityId())) {
+            // Hanging in the air by the orb it guides: it turns its eyes, and nothing else. (The server holds it too.)
+            net.minecraft.client.entity.EntityPlayerSP self = (net.minecraft.client.entity.EntityPlayerSP) player;
+            self.movementInput.moveForward = 0;
+            self.movementInput.moveStrafe = 0;
+            self.movementInput.jump = false;
+            self.moveForward = 0;
+            self.moveStrafing = 0;
+            self.setJumping(false);
+            self.motionX = 0;
+            self.motionY = 0;
+            self.motionZ = 0;
+            return;
+        }
         if (player == Minecraft.getMinecraft().thePlayer && !player.isSprinting() && fighting()) {
             player.setSprinting(true);
         }

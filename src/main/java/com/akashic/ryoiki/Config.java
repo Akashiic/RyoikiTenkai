@@ -17,6 +17,8 @@ public final class Config {
     public static int clashWindow = 60;
     /** Whether players may go into the sorcerer mode at all. */
     public static boolean modeEnabled = true;
+    /** The permission node a player needs to go into the mode; empty for none. */
+    public static String modePermission = "ryoikitenkai.modo";
     /** Ticks a player must wait between two changes of mode. */
     public static int modeCooldown = 20;
     /** Seconds from a player expanding its domain with the mode until it may again. */
@@ -53,6 +55,14 @@ public final class Config {
             "modo",
             modeEnabled,
             "Se os jogadores podem entrar no modo Feiticeiro (Ctrl+R). Desligado, quem esta nele ainda pode sair.");
+        modePermission = cfg.getString(
+            "permissao",
+            "modo",
+            modePermission,
+            "Permissao (node) que o jogador precisa ter para entrar no modo Feiticeiro com Ctrl+R. Operadores tem "
+                + "por padrao. Vazio: qualquer um entra. No modo, as habilidades ignoram WorldGuard e qualquer outra "
+                + "protecao, entre os jogadores que estao nele.")
+            .trim();
         modeCooldown = cfg
             .getInt("recarga", "modo", modeCooldown, 0, 1200, "Ticks entre duas trocas de modo do mesmo jogador.");
         domainCooldown = cfg.getInt(
@@ -69,8 +79,8 @@ public final class Config {
             pullDamage,
             0,
             40,
-            "Dano da Atracao (Vazio, habilidade 1) em meios coracoes, igual com qualquer armadura. Com 0 ela so "
-                + "puxa, e nenhum plugin de protecao e consultado.");
+            "Dano da Atracao (Vazio, habilidade 1) em meios coracoes, a cada meio segundo em quem o orbe segura, "
+                + "igual com qualquer armadura. Com 0 ela so puxa.");
         cutDamage = cfg.getFloat(
             "talho",
             "dano",

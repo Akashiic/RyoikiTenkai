@@ -427,29 +427,44 @@ O dono aprovou as seis habilidades propostas (`PLANO-COMBATE.md`) e mandou fazer
 
 ![Atração e Talho](img/habilidade1.png)
 
-* **Atração (Vazio Estelar).** Um ponto na mira, a até 8 blocos (ou no primeiro bloco sólido no caminho), puxa
-  para si por 1 s quem estiver a 4 blocos dele: quem está na borda chega ao ponto em menos de 14 ticks e fica
-  preso ali até o fim. Recarga 8 s. **O que se vê:** uma luz azul de miolo branco com um **buraco escuro** dentro
-  (o mesmo motivo do céu do Vazio), agulhas de luz vindo de toda parte e acelerando ao chegar, dois anéis que se
-  fecham sobre o ponto; no fim o ponto se fecha e solta um anel fino. Quem conjura **joga a mão aberta para a
-  frente e a recolhe fechada**.
+* **Atração (Vazio Estelar): o orbe que segue o olhar.** Refeita em 2026-11-13 a pedido do dono, que mostrou a
+  dinâmica que queria num GIF do jogo de referência (o orbe azul controlável, com dois modos). O agente viu esse GIF
+  e a descrição da wiki do jogo para entender o comportamento; o desenho e o nome aqui são próprios (como nos
+  domínios), e o texto que aparece no jogo fica no arquivo de idioma, onde o dono põe o nome que quiser.
+  * Um orbe nasce à frente de quem conjura, a até 7 blocos, e por **3,5 s vai para onde a câmera aponta** (no
+    máximo 0,9 bloco por tick, sem atravessar parede). Quem estiver a 3,5 blocos dele é puxado, fica preso no
+    miolo e **é carregado junto**; a cada meio segundo leva dano. Recarga 12 s.
+  * **Soltar é arremessar:** quando o orbe acaba, ou quando um giro rápido da câmera o leva mais depressa do que
+    o preso consegue acompanhar, o preso sai com a velocidade que o orbe tinha.
+  * **Dois modos**, pelo lugar onde o conjurador estava ao usar: **no chão** ele continua andando e o orbe varre à
+    frente, mais ou menos na altura de um corpo; **no ar** ele fica **suspenso onde está** até o fim e o orbe vai
+    para qualquer lado, inclusive para o céu (levando junto quem estiver preso).
+  * **O que se vê:** um miolo branco numa luz azul, com **lóbulos de azul escuro girando em volta**, três arcos
+    claros que giram, agulhas de luz chegando de toda parte, dois anéis que se fecham e pedaços do chão arrancados
+    para cima; quando é levado depressa deixa rastro; no fim fecha-se e solta um anel. Para quem está dentro, a
+    luz é atenuada (senão a tela ficava branca). Quem conjura **mantém a mão estendida** enquanto guia o orbe e a
+    recolhe no fim.
 * **Talho (Santuário Carmesim).** Uma lâmina sai da frente do peito e voa reto por até 12 blocos, a 1,5 bloco por
   tick (dá para sair da frente), e corta o primeiro que encontrar, jogando-o um pouco para trás. Recarga 5 s.
   **O que se vê:** um crescente inclinado, de sombra preta, gume vermelho e fio branco, com três rastros atrás; a
   **cicatriz em brasa no chão** por baixo do caminho, que esfria em 2,5 s; onde acerta, um clarão e três riscos
   cruzados. Quem conjura **leva a mão ao ombro oposto e a desce em diagonal**.
-* **Quem é atingido** (padrão do agente, o dono ainda não decidiu): só **outros jogadores que também estão no
-  modo**, onde o servidor deixa jogadores lutarem. O efeito passa pelo dano normal do jogo, como golpe de quem
-  usou, então **proteção de terreno e de PvP vale**: quem está protegido não leva dano **nem é movido**.
-* **Dano** (idem): pequeno e **igual com qualquer armadura**: Atração meio coração, Talho dois corações e meio
-  (`dano.atracao` e `dano.talho` no config, em meios corações). Uma habilidade acerta mesmo logo depois de outro
-  golpe (o instante de invulnerabilidade do jogo não vale para elas).
+* **Quem é atingido:** só **outros jogadores que também estão no modo**. Decisão do dono em 2026-11-13: o modo
+  **ignora o WorldGuard e qualquer sistema de proteção**, porque só entra nele quem tem a permissão (abaixo). Por
+  isso o efeito é aplicado direto (a vida é tirada e o corpo é movido), sem passar pelo dano do jogo, que é o que
+  as proteções escutam: vale em região sem PvP, em região invencível e com o PvP do servidor desligado. Quem está
+  no criativo não é tocado.
+* **Permissão:** entrar no modo com Ctrl+R exige o node **`ryoikitenkai.modo`** (`modo.permissao` no config;
+  vazio libera para todos). Operadores têm por padrão. O comando `/ryoiki modo [jogador]`, da staff, põe qualquer
+  um no modo. Num servidor sem Bukkit não há nodes e todos entram.
+* **Dano:** pequeno e **igual com qualquer armadura**: Atração meio coração a cada meio segundo em quem está
+  preso, Talho dois corações e meio (`dano.atracao` e `dano.talho` no config, em meios corações).
 * **Código:** `mode/AbilityMath` (os números, o puxão e o encontro da lâmina com um corpo: lógica pura com teste),
   `mode/Abilities` (servidor), `client/AbilityFx` (o desenho), `fx/CastPose` (os gestos, com teste).
   O gesto só mexe peito, cabeça e braços: as pernas continuam o que estavam fazendo.
 * **Limites:** no modelo de skin comum (sem Futura3D) não há gesto, só o balanço do braço. Vista exatamente de
-  trás (terceira pessoa), a lâmina fica de perfil e o alvo fica atrás do próprio jogador. O ponto da Atração não
-  gruda no alvo: mirar no chão entre os dois puxa o alvo para perto; mirar além dele o afasta.
+  trás (terceira pessoa), a lâmina fica de perfil e o alvo fica atrás do próprio jogador. O orbe não gruda no alvo:
+  é quem conjura que o leva até ele com a câmera.
 
 ### A tecla 4: Expansão de Domínio (peça M3, 2026-11-13)
 
@@ -487,10 +502,10 @@ puro, sem plugin):
 | Tecla 4 durante a recarga (aos 30 s) | nada; a contagem segue |
 | Tecla 4 depois dos 60 s | o domínio abre de novo |
 | Tecla 4 sem técnica | nada |
-| Atração num jogador a 3,3 blocos do ponto | foi de 58,5 para 55,2 (o ponto), vida de 20 para 19 |
-| Talho a 9 blocos, e a 6 | vida de 20 para 15, jogado 3 a 4 blocos para trás; a cicatriz fica no chão |
-| As duas onde o WorldGuard nega PvP | "you can't PvP here" para quem usou; o alvo não leva dano nem se move |
-| As duas onde a região é `invincible` (o spawn da rede) | nada acontece ao alvo, sem aviso |
+| Talho a 9 blocos, e a 6 (com dano pelo jogo, antes da regra nova) | vida de 20 para 15, jogado 3 a 4 blocos para trás; a cicatriz fica no chão |
+| O orbe no chão, no spawn de teste (WorldGuard: sem PvP e `invincible`) | o outro jogador foi preso e carregado com o giro da câmera; vida de 20 para 17 e para 11 |
+| O orbe usado no ar, mirado para o céu | quem conjurou ficou parado a 0,8 bloco do chão até o fim; o outro foi levado para cima e perdeu vida |
+| Entrar no modo sem a permissão (jogador sem op) e com ela | recusado com aviso no chat; aceito |
 | A passada no visor de quatro vistas (parado, trote, disparada, pulo) e filmada de lado e de trás | trote, disparada e pulo reconhecíveis; braços para trás e queda ajustados depois da primeira vista |
 | Gestos no visor de quatro vistas | mão à frente na altura do ombro e recolhida; mão acima do ombro oposto, e baixa do lado dela no fim |
 

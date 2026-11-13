@@ -97,6 +97,8 @@ Shenanigans** (JJS), para o servidor Minecraft **1.7.10** da Rede Akashic.
 | Modo Feiticeiro | Ideia do dono em 2026-11-13: **Ctrl+R** troca entre o Minecraft normal e um modo em que o inventário some, a luta fica ligada e o rodapé mostra **4 habilidades, a última a Expansão de Domínio**; voltar devolve o inventário "salvo mesmo se tiver sido morto". Ele mandou começar pela peça M1 (o modo em si). Plano em `PLANO-COMBATE.md`, fase M |
 | Rodapé do modo | Em 2026-11-13 o dono pediu "uma barra de vida com textura bonita" para o modo e **remover a fome e a barra de experiência**. Feito na peça M2: no modo o jogador conta como alimentado (a fome dele volta ao sair) |
 | Habilidades do modo | As seis propostas pelo agente (3 por técnica, em `PLANO-COMBATE.md`) foram **aprovadas** pelo dono em 2026-11-13, que mandou fazer a 1 e, junto, **melhorar a animação de andar, correr e pular no modo** |
+| Proteção e permissão do modo | Em 2026-11-13: "o modo feiticeiro deve ignorar o world guard e sistemas de proteção, só vou liberar ele para quem tiver permissão node". Feito: node `ryoikitenkai.modo` para entrar, e as habilidades aplicam vida e movimento direto, sem o dano do jogo |
+| Habilidade 1 do Vazio | Em 2026-11-13 o dono pediu que fosse o **orbe azul controlável pela câmera, com dois modos** (mostrou um GIF do jogo de referência). Feito como "Atração": no chão e no ar. O nome e o desenho no mod são próprios; o texto visível está no arquivo de idioma |
 | Recarga do domínio | **60 s**, dito pelo dono em 2026-11-13 ao aprovar a peça M3 (a tecla 4 do modo conjura). Config `dominio.recarga` |
 | Domínios ao mesmo tempo | **No máximo 2.** Um choque (2 domínios numa arena só) ocupa **uma vaga**: o domínio do rival não ganha arena própria |
 

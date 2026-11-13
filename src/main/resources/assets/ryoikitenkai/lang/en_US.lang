@@ -19,3 +19,4 @@ ryoikitenkai.tecla.modo=Sorcerer mode (holding Ctrl)
 ryoikitenkai.tecla.categoria=RyoikiTenkai
 death.attack.ryoiki.atracao=%1$s was drawn into the void by %2$s
 death.attack.ryoiki.talho=%1$s was cut down by %2$s
+ryoikitenkai.modo.permissao=You do not have permission for the sorcerer mode.

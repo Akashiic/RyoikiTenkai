@@ -58,14 +58,15 @@ técnica (Atração e Talho)**, em 2026-11-13 (`VISUAL.md`, "A tecla 1"). Faltam
 
 | | Vazio Estelar: domina o espaço | Santuário Carmesim: corta |
 |---|---|---|
-| 1 | **Atração.** Um ponto azul na mira, a até 8 blocos, puxa para si quem estiver a 4 blocos dele por 1 s: junta os alvos e os tira do lugar. Abre a luta. Recarga 8 s | **Talho.** Uma lâmina que não se vê voa em linha reta por até 12 blocos, corta o primeiro que encontrar e deixa a cicatriz no chão. O golpe de longe. Recarga 5 s |
+| 1 | **Atração.** Um orbe que segue a câmera por 3,5 s, prende quem está perto, carrega e arremessa; no chão varre à frente, no ar suspende quem conjura e vai para qualquer lado (refeita em 2026-11-13 pela dinâmica que o dono mostrou). Recarga 12 s | **Talho.** Uma lâmina que não se vê voa em linha reta por até 12 blocos, corta o primeiro que encontrar e deixa a cicatriz no chão. O golpe de longe. Recarga 5 s |
 | 2 | **Repulsão.** Um estouro vermelho a partir da mão arremessa para longe quem estiver num cone curto à frente. Em quem foi puxado pela Atração há menos de 2 s, os dois se somam num **colapso** roxo, que arremessa o dobro. Recarga 10 s | **Retalhar.** De perto (3 blocos), uma rajada de cortes cruzados no alvo à frente: quanto mais perto, mais cortes acertam (de 3 a 6). O golpe de perto. Recarga 9 s |
 | 3 | **Passo do Vazio.** Some e reaparece até 7 blocos adiante (ou atrás do alvo na mira), deixando rastros; por um instante nada o acerta. Para chegar e para sair. Recarga 6 s | **Rede de Cortes.** Marca um quadrado de 5 blocos no chão à frente; 1 s depois a área é retalhada por 2 s. Quem ficar apanha, quem está fora pensa antes de entrar. Para negar terreno. Recarga 14 s |
 | 4 | **Expansão de Domínio: Vazio Estelar** | **Expansão de Domínio: Santuário Carmesim** |
 
 O Vazio é controle (puxar, afastar, reposicionar) e o Santuário é agressão (longe, perto, área), para os dois
-jogarem diferente. Quem pode ser atingido e quanto dano o dono ainda não disse: as habilidades feitas seguem a
-recomendação do agente (só quem está no modo, respeitando proteção; dano pequeno e fixo, no config).
+jogarem diferente. Em 2026-11-13 o dono decidiu que **o modo ignora WorldGuard e qualquer proteção** e que só
+entra nele quem tem a **permissão** (`ryoikitenkai.modo`). Continua valendo, por recomendação do agente, que só é
+atingido quem também está no modo, e que o dano é pequeno e fixo (no config).
 
 Decisões que o dono ainda não tomou (perguntadas em 2026-11-13): quem pode ser golpeado fora do choque (o agente
 recomenda só quem também está no modo, respeitando PvP e proteção de terreno); se os golpes dão dano fora do choque

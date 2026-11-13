@@ -11,7 +11,7 @@ class AbilityMathTest {
     void thePointDrawsInAndNeverThrowsPast() {
         double[] v = new double[3];
         // From the edge of its reach: straight at it, at the fastest.
-        AbilityMath.pull(AbilityMath.PULL_RADIUS, 0, 0, v);
+        AbilityMath.pull(AbilityMath.ORB_RADIUS, 0, 0, v);
         assertEquals(AbilityMath.PULL_FASTEST, v[0], 1e-9);
         assertEquals(0, v[1], 1e-9);
         assertEquals(0, v[2], 1e-9);
@@ -31,20 +31,56 @@ class AbilityMathTest {
     @Test
     void whoIsPulledArrivesWithinThePull() {
         // Someone at the edge of the reach who does nothing about it is at the point before the pull is over.
-        double x = AbilityMath.PULL_RADIUS;
+        double x = AbilityMath.ORB_RADIUS;
         double[] v = new double[3];
         int arrived = -1;
         double last = x;
-        for (int tick = 1; tick <= AbilityMath.PULL_TICKS; tick++) {
+        for (int tick = 1; tick <= AbilityMath.ORB_TICKS; tick++) {
             AbilityMath.pull(-x, 0, 0, v);
             x += v[0];
             assertTrue(x <= last && x >= 0, "closer every tick, never past");
             last = x;
-            if (arrived < 0 && x < 0.6) {
+            if (arrived < 0 && x < 0.7) {
                 arrived = tick;
             }
         }
         assertTrue(arrived > 0 && arrived <= 14, "arrived at tick " + arrived);
+    }
+
+    @Test
+    void theOrbGoesAfterTheEyesNoFasterThanItCan() {
+        double[] v = new double[3];
+        // Near: all the way there. Far: a step of its speed, straight at it.
+        AbilityMath.follow(1, 2, 3, 1.3, 2, 3.4, v);
+        assertEquals(0.3, v[0], 1e-9);
+        assertEquals(0.4, v[2], 1e-9);
+        AbilityMath.follow(0, 0, 0, 30, 0, 40, v);
+        assertEquals(AbilityMath.ORB_SPEED, Math.sqrt(v[0] * v[0] + v[2] * v[2]), 1e-9);
+        assertEquals(0.75, v[0] / v[2], 1e-9);
+        // Whoever it holds can keep up with it at its fastest only for a while: a hard swing leaves them behind.
+        assertTrue(AbilityMath.PULL_FASTEST < AbilityMath.ORB_SPEED);
+    }
+
+    @Test
+    void whoTheOrbLetsGoLeavesWithItsSpeed() {
+        double[] v = new double[3];
+        AbilityMath.thrown(0.4, 0, 0, v);
+        assertEquals(0.4 * AbilityMath.ORB_THROW, v[0], 1e-9);
+        assertEquals(AbilityMath.ORB_THROW_LIFT, v[1], 1e-9);
+        // Never more than the most, whichever way.
+        AbilityMath.thrown(3, 0, -4, v);
+        assertEquals(AbilityMath.ORB_THROW_MOST, Math.sqrt(v[0] * v[0] + v[2] * v[2]), 1e-9);
+        // At rest it only sets them down.
+        AbilityMath.thrown(0, 0, 0, v);
+        assertEquals(0, v[0], 0);
+        assertEquals(AbilityMath.ORB_THROW_LIFT, v[1], 0);
+    }
+
+    @Test
+    void onTheGroundTheOrbKeepsTheHeightOfABody() {
+        assertEquals(64 + AbilityMath.ORB_LOW, AbilityMath.grounded(60, 64), 0);
+        assertEquals(64 + AbilityMath.ORB_HIGH, AbilityMath.grounded(80, 64), 0);
+        assertEquals(65.5, AbilityMath.grounded(65.5, 64), 0);
     }
 
     @Test

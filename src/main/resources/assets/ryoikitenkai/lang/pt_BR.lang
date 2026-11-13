@@ -19,3 +19,4 @@ ryoikitenkai.tecla.modo=Modo Feiticeiro (segurando Ctrl)
 ryoikitenkai.tecla.categoria=RyoikiTenkai
 death.attack.ryoiki.atracao=%1$s foi puxado para o vazio por %2$s
 death.attack.ryoiki.talho=%1$s foi retalhado por %2$s
+ryoikitenkai.modo.permissao=Você não tem permissão para o modo Feiticeiro.

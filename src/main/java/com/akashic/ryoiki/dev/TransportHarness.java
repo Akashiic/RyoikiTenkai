@@ -663,7 +663,8 @@ public final class TransportHarness {
                     // "turn cast 1 6": the gesture of a technique (1 the pull, 2 the cut), six ticks in.
                     String[] at = rest.split(" ");
                     turnBones = com.akashic.ryoiki.fx.CastPose.BONES;
-                    turnPose = com.akashic.ryoiki.fx.CastPose.sample(Integer.parseInt(at[1]), Float.parseFloat(at[2]));
+                    turnPose = com.akashic.ryoiki.fx.CastPose
+                        .sample(Integer.parseInt(at[1]), Float.parseFloat(at[2]), 16);
                 } else if ("guard".equals(rest)) {
                     turnPose = com.akashic.ryoiki.fx.BlowPose.guard();
                 } else if (rest.startsWith("struck ")) {

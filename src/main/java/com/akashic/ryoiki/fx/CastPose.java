@@ -13,7 +13,7 @@ public final class CastPose {
     public static final int PULL = 1;
     public static final int CUT = 2;
 
-    /** Ticks each gesture lasts. */
+    /** Ticks the cut's gesture lasts, and the least the pull's does. */
     public static final float PULL_TICKS = 16;
     public static final float CUT_TICKS = 13;
 
@@ -29,33 +29,35 @@ public final class CastPose {
 
     private CastPose() {}
 
-    public static float ticks(int kind) {
-        return kind == CUT ? CUT_TICKS : PULL_TICKS;
-    }
-
-    /** How much of the gesture shows over whatever else the body does: it comes in fast and lets go slowly. */
-    public static float layer(int kind, float age) {
-        float ticks = ticks(kind);
+    /**
+     * How much of a gesture that lasts {@code ticks} shows over whatever else the body does: it comes in fast and
+     * lets go slowly.
+     */
+    public static float layer(float age, float ticks) {
         if (age <= 0 || age >= ticks) {
             return 0;
         }
         return Math.min(smooth(age / 2), smooth((ticks - age) / 5));
     }
 
-    public static float[] sample(int kind, float age) {
-        return kind == CUT ? cut(age) : pull(age);
+    /**
+     * @param ticks how long the gesture lasts: the cut's is always {@link #CUT_TICKS}; the pull's is as long as the
+     *              orb is held out, and its last six ticks are the hand coming back
+     */
+    public static float[] sample(int kind, float age, float ticks) {
+        return kind == CUT ? cut(age) : pull(age, ticks);
     }
 
     /**
-     * Atração. The open hand is thrown out at the point, the shoulder behind it; held there a moment; then the hand
-     * closes and is drawn back toward the chest, and what was out there comes with it.
+     * Atração. The open hand is thrown out at the orb, the shoulder behind it, and held there for as long as the orb
+     * is guided; then the hand closes and is drawn back toward the chest.
      */
-    private static float[] pull(float age) {
+    private static float[] pull(float age, float ticks) {
         float[] p = new float[BONES.length * 3];
         // The reach: out by tick 3, a little past where it settles.
         float out = smooth(age / 3) + 0.14F * bump((age - 3) / 3);
-        // The draw: from tick 8 to 13.
-        float in = smooth((age - 8) / 5);
+        // The draw: over the last six ticks.
+        float in = smooth((age - (ticks - 6)) / 5);
         p[R_ARM + X] = -84 * out + 26 * in;
         p[R_ARM + Z] = 6 * out;
         p[R_FORE + X] = -8 * out - 62 * in;

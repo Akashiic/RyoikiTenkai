@@ -169,6 +169,13 @@ public final class SorcererMode {
      * is told too.
      */
     public int set(EntityPlayerMP player, boolean want) {
+        return set(player, want, false);
+    }
+
+    /**
+     * @param staff by the staff's command, not the player's own key: the permission is not asked
+     */
+    public int set(EntityPlayerMP player, boolean want, boolean staff) {
         UUID id = player.getUniqueID();
         if (on.contains(id) == want) {
             // Already so: the client that asked may have lost count.
@@ -181,6 +188,7 @@ public final class SorcererMode {
         int reason = ModeRules.ask(
             want,
             Config.modeEnabled,
+            staff || permitted(player),
             player.isEntityAlive(),
             DomainManager.INSTANCE.sessionOf(id) != null,
             last == null ? Long.MAX_VALUE : now - last,
@@ -204,6 +212,32 @@ public final class SorcererMode {
         }
         tell(player, want);
         return ModeRules.OK;
+    }
+
+    /**
+     * Whether a player has the permission the mode asks ({@link Config#modePermission}). The permission is the
+     * server's own kind, a node a permissions plugin gives (operators have it unless one takes it away): it is asked
+     * of the Bukkit half of the server, which this mod does not otherwise know about. Where there is no such half
+     * (a plain Forge server, a single-player world) there are no nodes, and everyone may.
+     */
+    private static boolean permitted(EntityPlayerMP player) {
+        if (Config.modePermission.isEmpty()) {
+            return true;
+        }
+        try {
+            Object bukkit = player.getClass()
+                .getMethod("getBukkitEntity")
+                .invoke(player);
+            return Boolean.TRUE.equals(
+                bukkit.getClass()
+                    .getMethod("hasPermission", String.class)
+                    .invoke(bukkit, Config.modePermission));
+        } catch (NoSuchMethodException e) {
+            return true;
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            RyoikiTenkai.LOG.warn("Could not ask the server for the permission {}", Config.modePermission, e);
+            return false;
+        }
     }
 
     /** The player and everyone who sees it learn its mode. */
