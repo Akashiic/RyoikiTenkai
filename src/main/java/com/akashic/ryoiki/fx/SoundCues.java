@@ -20,13 +20,15 @@ public final class SoundCues {
     public static final String EXIT = "saida";
     /** The hum of a dome, for those outside. */
     public static final String DOME = "domo";
+    /** The track of a clash of domains, over whichever domain track was playing. */
+    public static final String CLASH_TRACK = "clash_trilha";
 
     /**
      * Per domain, as {@code <domain id>_<name>}: the track of the whole expansion, from the hand sign to the end of
      * the shatter, for the caster and those caught.
      */
     public static final String TRACK = "trilha";
-    /** Per domain: the caster's voice line, at the caster. */
+    /** Per domain: the caster's voice line, from the first tick of the hand sign, for those who see the cut-in. */
     public static final String VOICE = "voz";
     /** Per domain: the domain closing, for those inside and, at the dome, for those outside. */
     public static final String ENTER = "entrada";
@@ -35,7 +37,7 @@ public final class SoundCues {
     /** Per domain: one cut. Only the domains that cut have it. */
     public static final String SLASH = "corte";
 
-    private static final String[] SHARED = { SIGN, BAND_CUT, EXIT, DOME };
+    private static final String[] SHARED = { SIGN, BAND_CUT, EXIT, DOME, CLASH_TRACK };
     private static final String[] PER_DOMAIN = { TRACK, VOICE, ENTER, AMBIENT };
     private static final String PREFIX = "sounds/";
     private static final String SUFFIX = ".ogg";
@@ -65,12 +67,17 @@ public final class SoundCues {
 
     /** Whether a sound is heard from a place in the world, and so must be mono. */
     public static boolean mono(String name) {
-        return name.equals(SIGN) || name.equals(DOME) || name.endsWith("_" + VOICE) || name.endsWith("_" + ENTER);
+        return name.equals(SIGN) || name.equals(DOME) || name.endsWith("_" + ENTER);
     }
 
     /** Whether a sound is long, and so read from the file as it plays. */
     public static boolean streamed(String name) {
         return name.endsWith("_" + TRACK) || name.endsWith("_" + AMBIENT);
+    }
+
+    /** Whether a sound is one of the owner's tracks: the game's own music is silent while one plays. */
+    public static boolean track(String name) {
+        return name.endsWith("_" + TRACK);
     }
 
     /** The {@code sounds.json} for the sounds whose files are there. */

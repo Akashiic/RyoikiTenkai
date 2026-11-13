@@ -136,9 +136,11 @@ O detalhe técnico e as medições estão em [`TRANSPORTE.md`](TRANSPORTE.md). E
 3. **Efeitos garantidos**: congelar quem está no Vazio (14 s), cortes no Santuário (2 de dano por corte, bloqueio reduz).
 4. **Choque de domínios** (seção 4 do `ESTUDO.md`): dois conjuradores na mesma arena, contador de 15 s, barras.
 5. **Como se conjura**: tecla, item ou habilidade de outro sistema (Overkill?), recarga, permissões, mundos permitidos.
-6. **Som**: o mod não traz som (o dono pediu para tirar os sintetizados e usar só a trilha dele). A trilha de
-   cada expansão e os sons por momento são `.ogg` do dono em `config/ryoikitenkai/sons/` (ver "Som" em
-   `docs/VISUAL.md` e `tools/sons/`). Falta: ouvir num PC de verdade e o som do choque.
+6. **Som**: o mod não traz som (decisão do dono: nada sintetizado, nenhum áudio no jar). Trilha de cada expansão,
+   voz no sinal de mão, trilha do choque (`clash_trilha`) e sons por momento são `.ogg` do dono em
+   `config/ryoikitenkai/sons/`; a música do jogo é calada enquanto uma trilha toca (ver "Som" em `docs/VISUAL.md` e
+   `tools/sons/`). O sinal do choque (`DomainWire.CLASH`, `DomainManager#clash`) já existe para o som, ligado só
+   pelo comando `/ryoiki choque`: a mecânica do choque (item 4) deve chamá-lo. Falta: ouvir num PC de verdade.
 7. **Voz** (AkashicVoiceChat): decidir se o domínio isola ou se vale uma ponte (seção 5).
 
 ### 4.5 O que ainda pode ir para o Kunftig

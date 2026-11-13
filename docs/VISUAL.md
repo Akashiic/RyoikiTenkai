@@ -62,16 +62,25 @@ modelo, textura nem som no mod (os sons são arquivos do dono, ver "Som"). A are
 * **A trilha da expansão:** `vazio_trilha` e `santuario_trilha` tocam uma vez, em estéreo, do sinal de mão ao fim da
   quebra (16,45 s e 20,45 s), para o conjurador e quem vê a faixa. Some em meio segundo se o domínio acabar antes ou
   se o jogador não for pego.
-* **Por momento, opcionais:** `sinal` e `<domínio>_voz` (no conjurador, mono), `faixa_corte`, `<domínio>_entrada`
-  (mono; do domo para quem está fora), `<domínio>_ambiente` (laço), `santuario_corte`, `saida`, `domo` (laço, mono).
-
-Verificado no cliente de teste, com o OpenAL gravando num arquivo: sem arquivos, o mod não toca nada (o que se ouve
-num domínio são os passos e a música de fundo do próprio jogo); com `santuario_trilha.ogg`, a trilha toca do sinal de
-mão ao fim da quebra. **A verificar:** ouvir num PC de verdade, com dois jogadores e no modpack completo; se a música
-de fundo do jogo atrapalha a trilha.
+* **A voz:** `vazio_voz` e `santuario_voz` tocam uma vez, em estéreo, no primeiro tick do sinal de mão, por cima da
+  trilha, para os mesmos jogadores.
+* **O choque:** `clash_trilha`. Quando o servidor avisa que o domínio entrou em choque (`DomainWire.CLASH`), a trilha
+  do domínio some em 0,5 s e a do choque começa, para quem está no domínio e quem está a até raio + 12 blocos do
+  domo; no fim do choque (`CLASH_END`, o fim do domínio, 15 s, ou o jogador de fora se afastar) ela some em 0,5 s.
+  **O choque ainda não existe como mecânica**: o sinal é dado por `DomainManager#clash`, hoje só pelo comando de
+  operador `/ryoiki choque <iniciar|encerrar>`.
+* **A música do jogo** (`MusicHush`): enquanto uma trilha do dono toca, a música que estava tocando é parada e
+  nenhuma começa (categoria "música"). Depois o jogo volta a tocar no tempo dele, uma faixa nova.
+* **Por momento, opcionais:** `sinal` (no conjurador, mono), `faixa_corte`, `<domínio>_entrada` (mono; do domo para
+  quem está fora), `<domínio>_ambiente` (laço), `santuario_corte`, `saida`, `domo` (laço, mono).
 
 Os nomes, os tempos e o conversor (`tools/sons/converter.py`) estão em
 [`tools/sons/LEIA-ME.md`](../tools/sons/LEIA-ME.md).
+
+Verificado no cliente de teste, com o OpenAL gravando num arquivo e um tom puro por som: sem arquivos, o mod não toca
+nada e o log fica limpo; com arquivos, voz e trilha começam juntas no sinal de mão, os fades do choque duram 0,5 s na
+entrada e na saída, e a música do jogo para quando a trilha começa. **A verificar:** ouvir num PC de verdade, com dois
+jogadores (quem está fora, perto do domo, num choque) e no modpack completo.
 
 ## A arte do dono na faixa
 

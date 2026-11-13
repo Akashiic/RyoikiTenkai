@@ -19,12 +19,27 @@ o arquivo for mais longo que o domínio, é cortado do mesmo jeito. Segue o volu
 Marcos dentro da trilha, se quiser casar o áudio com a imagem: cortes de câmera da faixa em 0,3 s e 0,6 s; o domínio
 fecha em 1,25 s; termina em 15,25 s (Vazio) ou 19,25 s (Santuário), quando começa a quebra.
 
+## A voz e o choque
+
+| Arquivo | Quando | Como |
+|---|---|---|
+| `vazio_voz.ogg`, `santuario_voz.ogg` | no primeiro tick do sinal de mão | uma vez, em estéreo, por cima da trilha, para o conjurador e quem vê a faixa |
+| `clash_trilha.ogg` | quando o choque de domínios começa | a trilha do domínio some em 0,5 s e esta começa, em estéreo, para quem está no domínio e quem está perto do domo; some em 0,5 s quando o choque acaba |
+
+Se `clash_trilha.ogg` for mais curto que o choque (15 s no máximo), ele simplesmente acaba; se for mais longo, é
+cortado no fim do choque. A trilha do domínio não volta depois do choque.
+
+O choque ainda não existe como mecânica: por enquanto um operador o liga e desliga no domínio em que está, com
+`/ryoiki choque iniciar` e `/ryoiki choque encerrar`.
+
+**A música do jogo** é calada enquanto uma trilha sua (de domínio ou de choque) está tocando: a que estava tocando
+para, e nenhuma começa. Depois, o jogo volta a tocar música no tempo dele (uma faixa nova, não a mesma de onde parou).
+
 ## Os outros sons (opcionais)
 
 | Nome | O que é | Canais |
 |---|---|---|
 | `sinal` | o sinal de mão, no conjurador (1,25 s) | mono |
-| `vazio_voz`, `santuario_voz` | a fala do conjurador, nele | mono |
 | `faixa_corte` | a batida em cada corte de câmera da faixa | estéreo |
 | `vazio_entrada`, `santuario_entrada` | o domínio se fechando; quem está fora ouve do domo | mono |
 | `vazio_ambiente`, `santuario_ambiente` | laço enquanto se está dentro | estéreo |

@@ -1,11 +1,15 @@
 package com.akashic.ryoiki.client;
 
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 import java.util.function.BooleanSupplier;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.audio.ISound;
 import net.minecraft.client.audio.MovingSound;
 import net.minecraft.client.audio.PositionedSound;
+import net.minecraft.client.audio.SoundHandler;
 import net.minecraft.util.ResourceLocation;
 
 import com.akashic.ryoiki.DomainType;
@@ -14,6 +18,9 @@ import com.akashic.ryoiki.fx.SoundCues;
 
 /** Plays the sounds of a domain on this client. The names are in {@link SoundCues}. */
 final class DomainSounds {
+
+    /** The owner's tracks that were started and may still be playing. */
+    private static final List<Loop> TRACKS = new ArrayList<>();
 
     private DomainSounds() {}
 
@@ -60,11 +67,31 @@ final class DomainSounds {
         if (!OwnerSounds.has(name)) {
             return;
         }
+        trackPlaying();
         Loop track = new Loop(event(name), volume, alive);
         track.once();
+        TRACKS.add(track);
         Minecraft.getMinecraft()
             .getSoundHandler()
             .playSound(track);
+    }
+
+    /** Whether one of the owner's tracks is sounding right now. */
+    static boolean trackPlaying() {
+        SoundHandler handler = Minecraft.getMinecraft()
+            .getSoundHandler();
+        for (Iterator<Loop> it = TRACKS.iterator(); it.hasNext();) {
+            if (handler.isSoundPlaying(it.next())) {
+                return true;
+            }
+            it.remove();
+        }
+        return false;
+    }
+
+    /** Whether a sound is one of this mod's. */
+    static boolean ours(ISound sound) {
+        return sound instanceof Cue || sound instanceof Loop;
     }
 
     /** A loop from a place in the world while {@code alive} holds. */
@@ -99,7 +126,8 @@ final class DomainSounds {
 
     private static final class Loop extends MovingSound {
 
-        private static final float STEP = 0.08F;
+        /** Half a second from full to silent, and back. */
+        private static final float STEP = 0.1F;
 
         private final float full;
         private final BooleanSupplier alive;

@@ -1,9 +1,11 @@
 package com.akashic.ryoiki.domain;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import net.minecraft.entity.player.EntityPlayer;
@@ -146,6 +148,11 @@ public final class DomainManager {
                     open(s, world, caster);
                 }
             } else if (s.phase == Phase.ACTIVE) {
+                if (s.clash == 1) {
+                    clash(s, false);
+                } else if (s.clash > 1) {
+                    s.clash--;
+                }
                 dropThoseWhoLeft(s, world);
                 if (caster == null || !caster.isEntityAlive() || !s.holds(s.caster) || s.age >= s.type.durationTicks) {
                     end(s, world);
@@ -273,6 +280,30 @@ public final class DomainManager {
                 s.told.add(p.getUniqueID());
             }
         }
+    }
+
+    /** The longest a clash is announced for: 15 s, as in the study. */
+    public static final int CLASH_TICKS = 15 * 20;
+
+    /**
+     * Starts or ends the clash of an open domain, for those inside and those who see its dome. The clash itself (two
+     * casters in one arena) is not built yet: this is the signal it will send, and what the clients hear by it.
+     */
+    public boolean clash(DomainSession s, boolean on) {
+        if (s.phase != Phase.ACTIVE || on == (s.clash > 0)) {
+            return false;
+        }
+        s.clash = on ? CLASH_TICKS : 0;
+        byte[] data = on ? DomainWire.clash(s.id, CLASH_TICKS) : DomainWire.clashEnd(s.id);
+        Set<UUID> all = new HashSet<>(s.told);
+        all.addAll(s.inside.keySet());
+        for (UUID id : all) {
+            EntityPlayerMP p = anywhere(id);
+            if (p != null) {
+                send(p, data);
+            }
+        }
+        return true;
     }
 
     /** Ends a domain in any phase: everyone inside goes back to where it was caught. */

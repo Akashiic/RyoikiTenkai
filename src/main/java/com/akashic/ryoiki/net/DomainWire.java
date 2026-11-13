@@ -27,6 +27,10 @@ public final class DomainWire {
     public static final byte DOME = 4;
     /** That domain is gone. */
     public static final byte DOME_END = 5;
+    /** The domain of this session is in a clash, for at most {@code ticks}. */
+    public static final byte CLASH = 6;
+    /** That clash is over (the end of the domain ends it too). */
+    public static final byte CLASH_END = 7;
 
     /** One decoded message; which fields are set depends on {@link #op}. */
     public static final class Message {
@@ -84,6 +88,23 @@ public final class DomainWire {
         return bare(DOME_END, session);
     }
 
+    public static byte[] clash(int session, int ticks) {
+        try {
+            ByteArrayOutputStream bytes = new ByteArrayOutputStream(8);
+            DataOutputStream out = new DataOutputStream(bytes);
+            out.writeByte(CLASH);
+            out.writeInt(session);
+            out.writeShort(ticks);
+            return bytes.toByteArray();
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    public static byte[] clashEnd(int session) {
+        return bare(CLASH_END, session);
+    }
+
     private static byte[] bare(byte op, int session) {
         try {
             ByteArrayOutputStream bytes = new ByteArrayOutputStream(8);
@@ -127,7 +148,11 @@ public final class DomainWire {
             Message m = new Message();
             m.op = in.readByte();
             m.session = in.readInt();
-            if (m.op == EXIT || m.op == DOME_END) {
+            if (m.op == EXIT || m.op == DOME_END || m.op == CLASH_END) {
+                return m;
+            }
+            if (m.op == CLASH) {
+                m.ticks = in.readUnsignedShort();
                 return m;
             }
             if (m.op != WINDUP && m.op != ENTER && m.op != DOME) {

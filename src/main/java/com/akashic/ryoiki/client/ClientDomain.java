@@ -77,6 +77,11 @@ public final class ClientDomain {
     public Dome cutIn;
     final DomainSky sky = new DomainSky();
 
+    /** The session whose clash this player is in or watching from close by, or -1. */
+    public int clash = -1;
+    private int clashLeft;
+    private int clashRun;
+
     private int keepRadius;
     private int releaseIn = -1;
     private WorldClient world;
@@ -108,18 +113,20 @@ public final class ClientDomain {
                     d.windupTotal = m.ticks;
                     d.left = m.ticks + 20 * 60;
                     DomainSounds.playAt(SoundCues.SIGN, m.x, m.y + 1, m.z, SIGN_VOLUME);
-                    DomainSounds.playAt(SoundCues.of(m.type.id, SoundCues.VOICE), m.x, m.y + 1, m.z, SIGN_VOLUME);
                     Minecraft mc = Minecraft.getMinecraft();
                     // The cut-in is for those who may be caught: the caster and whoever is close.
                     if (mc.thePlayer != null && (mc.thePlayer.getEntityId() == m.casterEntity
                         || mc.thePlayer.getDistanceSq(m.x, m.y, m.z) <= (m.radius + 12.0) * (m.radius + 12.0))) {
                         cutIn = d;
-                        // The owner's track of the whole expansion: from the hand sign to the end of the shatter.
+                        // The owner's track of the whole expansion, from the hand sign to the end of the shatter, and
+                        // the caster's voice over it. A clash takes the track's place.
                         Dome dome = d;
                         DomainSounds.track(
                             SoundCues.of(m.type.id, SoundCues.TRACK),
                             1F,
-                            () -> cutIn == dome || session == dome.session && (inside != null || shatter > 0));
+                            () -> clash < 0
+                                && (cutIn == dome || session == dome.session && (inside != null || shatter > 0)));
+                        DomainSounds.play(m.type, SoundCues.VOICE, 1F, 1F);
                     }
                 } else {
                     d.windup = 0;
@@ -161,7 +168,20 @@ public final class ClientDomain {
                 DomainSounds
                     .loop(SoundCues.of(type.id, SoundCues.AMBIENT), 0.6F, () -> inside == type && session == entered);
                 break;
+            case DomainWire.CLASH:
+                // For those in the domain and those close enough to its dome to have seen its cut-in.
+                if (clash != m.session && (inside != null && session == m.session || nearDome(m.session))) {
+                    clash = m.session;
+                    clashLeft = m.ticks + 20;
+                    int run = ++clashRun;
+                    DomainSounds.track(SoundCues.CLASH_TRACK, 1F, () -> clash >= 0 && clashRun == run);
+                }
+                break;
+            case DomainWire.CLASH_END:
+                endClash(m.session);
+                break;
             case DomainWire.EXIT:
+                endClash(m.session);
                 if (inside != null && session == m.session) {
                     shatter = Shatter.TICKS;
                     shatterType = inside;
@@ -172,10 +192,24 @@ public final class ClientDomain {
                 }
                 break;
             case DomainWire.DOME_END:
+                endClash(m.session);
                 domes.remove(m.session);
                 break;
             default:
                 break;
+        }
+    }
+
+    private boolean nearDome(int id) {
+        Dome d = domes.get(id);
+        Minecraft mc = Minecraft.getMinecraft();
+        return d != null && mc.thePlayer != null
+            && mc.thePlayer.getDistanceSq(d.x, d.y, d.z) <= (d.radius + 12.0) * (d.radius + 12.0);
+    }
+
+    private void endClash(int id) {
+        if (clash == id) {
+            clash = -1;
         }
     }
 
@@ -198,6 +232,7 @@ public final class ClientDomain {
             sky.restore();
             inside = null;
             cutIn = null;
+            clash = -1;
             flash = 0;
             shatter = 0;
             releaseIn = -1;
@@ -206,8 +241,13 @@ public final class ClientDomain {
         if (world == null || mc.isGamePaused()) {
             return;
         }
+        MusicHush.INSTANCE.tick();
         if (flash > 0) {
             flash--;
+        }
+        // A clash ends by its message; failing that, by its time, or when a watcher outside walks away.
+        if (clash >= 0 && (--clashLeft <= 0 || !(inside != null && session == clash) && !nearDome(clash))) {
+            clash = -1;
         }
         if (shatter > 0) {
             shatter--;

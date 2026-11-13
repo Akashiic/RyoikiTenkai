@@ -55,6 +55,8 @@ public final class DomainSession {
     Phase phase = Phase.WINDUP;
     /** Ticks in the current phase. */
     int age;
+    /** Ticks of clash left; 0 when there is none. */
+    int clash;
     /** Who is in the arena, and where each goes back to. */
     final Map<UUID, ReturnPoint> inside = new LinkedHashMap<>();
     /** Who was told about this domain (the hand sign or the dome) and must be told when it ends. */

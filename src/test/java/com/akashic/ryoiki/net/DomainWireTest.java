@@ -58,4 +58,15 @@ class DomainWireTest {
         newType[5] = 50;
         assertNull(DomainWire.read(newType));
     }
+
+    @Test
+    void aClashCarriesItsSessionAndItsLength() {
+        DomainWire.Message m = DomainWire.read(DomainWire.clash(41, 300));
+        assertEquals(DomainWire.CLASH, m.op);
+        assertEquals(41, m.session);
+        assertEquals(300, m.ticks);
+        m = DomainWire.read(DomainWire.clashEnd(41));
+        assertEquals(DomainWire.CLASH_END, m.op);
+        assertEquals(41, m.session);
+    }
 }

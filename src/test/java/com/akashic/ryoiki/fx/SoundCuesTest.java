@@ -25,7 +25,8 @@ class SoundCuesTest {
     @Test
     void everyDomainHasItsSounds() {
         List<String> all = all();
-        assertEquals(13, all.size());
+        assertEquals(14, all.size());
+        assertTrue(all.contains("clash_trilha"));
         assertTrue(all.contains("vazio_trilha"));
         assertTrue(all.contains("santuario_trilha"));
         assertTrue(all.contains("santuario_corte"));
@@ -45,7 +46,11 @@ class SoundCuesTest {
     void whatIsHeardFromAPlaceIsMono() {
         assertTrue(SoundCues.mono(SoundCues.SIGN));
         assertTrue(SoundCues.mono(SoundCues.DOME));
-        assertTrue(SoundCues.mono(SoundCues.of("vazio", SoundCues.VOICE)));
+        assertFalse(SoundCues.mono(SoundCues.of("vazio", SoundCues.VOICE)));
+        assertFalse(SoundCues.mono(SoundCues.CLASH_TRACK));
+        assertTrue(SoundCues.streamed(SoundCues.CLASH_TRACK));
+        assertTrue(SoundCues.track(SoundCues.CLASH_TRACK));
+        assertFalse(SoundCues.track(SoundCues.of("vazio", SoundCues.AMBIENT)));
         assertTrue(SoundCues.mono(SoundCues.of("santuario", SoundCues.ENTER)));
         assertFalse(SoundCues.mono(SoundCues.of("vazio", SoundCues.AMBIENT)));
         assertFalse(SoundCues.mono(SoundCues.EXIT));

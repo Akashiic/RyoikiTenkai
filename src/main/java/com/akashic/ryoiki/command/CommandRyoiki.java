@@ -17,7 +17,8 @@ import com.akashic.ryoiki.domain.DomainSession;
 
 /**
  * /ryoiki expandir &lt;vazio|santuario&gt; [jogador] : casts a domain; /ryoiki encerrar : ends the caller's;
- * /ryoiki preparar : builds this world's arenas ahead of the first cast. For operators, while the domains have no
+ * /ryoiki preparar : builds this world's arenas ahead of the first cast; /ryoiki choque &lt;iniciar|encerrar&gt; :
+ * the signal of a clash in the caller's domain. For operators, while the domains have no
  * key and no item of their own.
  */
 public final class CommandRyoiki extends CommandBase {
@@ -61,6 +62,16 @@ public final class CommandRyoiki extends CommandBase {
             if (s != null) {
                 DomainManager.INSTANCE.end(s, player.getServerForPlayer());
             }
+        } else if ("choque".equalsIgnoreCase(args[0]) && args.length >= 2) {
+            // Until the clash exists as a mechanic: its signal, for the domain the caller is in.
+            DomainSession s = DomainManager.INSTANCE.sessionOf(getCommandSenderAsPlayer(sender).getUniqueID());
+            boolean on = "iniciar".equalsIgnoreCase(args[1]);
+            if (!on && !"encerrar".equalsIgnoreCase(args[1])) {
+                throw new WrongUsageException(getCommandUsage(sender));
+            }
+            if (s != null) {
+                DomainManager.INSTANCE.clash(s, on);
+            }
         } else if ("preparar".equalsIgnoreCase(args[0])) {
             WorldServer world = getCommandSenderAsPlayer(sender).getServerForPlayer();
             for (int slot = 0; slot < ArenaManager.INSTANCE.slots(world)
@@ -82,7 +93,10 @@ public final class CommandRyoiki extends CommandBase {
     @SuppressWarnings("rawtypes")
     public List addTabCompletionOptions(ICommandSender sender, String[] args) {
         if (args.length == 1) {
-            return getListOfStringsMatchingLastWord(args, "expandir", "encerrar", "preparar");
+            return getListOfStringsMatchingLastWord(args, "expandir", "encerrar", "preparar", "choque");
+        }
+        if (args.length == 2 && "choque".equalsIgnoreCase(args[0])) {
+            return getListOfStringsMatchingLastWord(args, "iniciar", "encerrar");
         }
         if (args.length == 2 && "expandir".equalsIgnoreCase(args[0])) {
             return getListOfStringsMatchingLastWord(args, "vazio", "santuario");
