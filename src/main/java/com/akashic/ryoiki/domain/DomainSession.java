@@ -1,5 +1,6 @@
 package com.akashic.ryoiki.domain;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -73,6 +74,8 @@ public final class DomainSession {
     final long[] arrives = new long[2];
     /** Who is in the arena, and where each goes back to. */
     final Map<UUID, ReturnPoint> inside = new LinkedHashMap<>();
+    /** Where the star void holds each of those it caught. */
+    final Map<UUID, double[]> held = new HashMap<>();
     /** Who was told about this domain (the hand sign or the dome) and must be told when it ends. */
     final Set<UUID> told = new HashSet<>();
 

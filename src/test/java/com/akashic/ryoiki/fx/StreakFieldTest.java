@@ -1,7 +1,6 @@
 package com.akashic.ryoiki.fx;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
@@ -15,23 +14,16 @@ class StreakFieldTest {
     private static final float EZ = -0.883F;
 
     @Test
-    void theOpeningIsARushThatSettlesToASteadyStreamAndVolleysFollow() {
+    void theRushIsTheDomainStartingAndThenTheVoidIsStill() {
         assertEquals(1, StreakField.rush(0));
-        assertTrue(StreakField.rush(10) > 0.7F && StreakField.rush(10) < StreakField.rush(5));
-        assertEquals(StreakField.STEADY, StreakField.rush(StreakField.OPENING));
-        assertEquals(StreakField.STEADY, StreakField.rush(StreakField.FIRST_VOLLEY - 1));
-        // A volley rises in three ticks, holds, and falls; then the steady stream until the next.
-        assertTrue(StreakField.volleyStartsAt(StreakField.FIRST_VOLLEY));
-        assertTrue(StreakField.volleyStartsAt(StreakField.FIRST_VOLLEY + 2 * StreakField.VOLLEY_PERIOD));
-        assertFalse(StreakField.volleyStartsAt(StreakField.FIRST_VOLLEY + 1));
-        assertFalse(StreakField.volleyStartsAt(0));
-        assertEquals(0.8F, StreakField.rush(StreakField.FIRST_VOLLEY + 5), 1e-4F);
-        assertEquals(StreakField.STEADY, StreakField.rush(StreakField.FIRST_VOLLEY + 30));
-        assertEquals(0.8F, StreakField.rush(StreakField.FIRST_VOLLEY + StreakField.VOLLEY_PERIOD + 5), 1e-4F);
+        assertEquals(1, StreakField.rush(StreakField.OPENING / 2));
+        assertTrue(StreakField.rush(StreakField.OPENING * 0.75F) < 0.5F);
+        assertEquals(0, StreakField.rush(StreakField.OPENING));
+        assertEquals(0, StreakField.rush(200));
+        assertEquals(0, StreakField.rush(-1));
         float before = StreakField.rush(0);
-        for (float t = 0.1F; t < 300; t += 0.1F) {
+        for (float t = 0.1F; t < 80; t += 0.1F) {
             float now = StreakField.rush(t);
-            assertTrue(now >= StreakField.STEADY - 1e-4F, "never less than the steady stream");
             assertTrue(Math.abs(now - before) < 0.05F, "a jump at " + t);
             before = now;
         }
@@ -48,7 +40,7 @@ class StreakFieldTest {
         int lanes = StreakField.lanes(R);
         for (int la = -lanes; la <= lanes; la++) {
             for (int lb = -lanes; lb <= lanes; lb++) {
-                for (int moment = 8; moment < 20; moment++) {
+                for (int moment = 0; moment < 3; moment++) {
                     float born = (moment + 1) * StreakField.PERIOD / (float) StreakField.SLOTS;
                     if (!StreakField.at(5, la, lb, moment, born + 4, R, EX, EY, EZ, a)
                         || !StreakField.at(5, la, lb, moment, born + 5, R, EX, EY, EZ, b)) {
@@ -73,7 +65,7 @@ class StreakFieldTest {
                 }
             }
         }
-        assertTrue(checked > 100, "streaks checked: " + checked);
+        assertTrue(checked > 60, "streaks checked: " + checked);
     }
 
     @Test
@@ -84,7 +76,7 @@ class StreakFieldTest {
         float lowest = 100;
         int[] colors = new int[StreakField.COLORS];
         int lanes = StreakField.lanes(R);
-        for (float time = 60; time < 200; time += 9.7F) {
+        for (float time = 10; time < 40; time += 2F) {
             int latest = StreakField.moment(time);
             for (int la = -lanes; la <= lanes; la++) {
                 for (int lb = -lanes; lb <= lanes; lb++) {
@@ -113,13 +105,11 @@ class StreakFieldTest {
     }
 
     @Test
-    void theOpeningSendsMoreThanTheSteadyStreamAndEveryClientSeesTheSame() {
-        int opening = sent(0, 2);
-        // Between the opening and the first volley: the moments sent from tick 36 to tick 54.
-        int steady = sent(4, 6);
-        assertTrue(opening > steady * 1.6, opening + " in the opening, " + steady + " steady");
-        assertTrue(steady > 150, "the steady stream is thick: " + steady);
-        assertEquals(opening, sent(0, 2));
+    void streaksAreSentOnlyWhileTheDomainStartsAndEveryClientSeesTheSame() {
+        int starting = sent(0, 2);
+        assertTrue(starting > 300, "sent as it starts: " + starting);
+        assertEquals(0, sent(8, 12));
+        assertEquals(starting, sent(0, 2));
     }
 
     private static int sent(int fromMoment, int toMoment) {

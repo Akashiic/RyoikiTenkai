@@ -35,34 +35,46 @@ modelo, textura nem som no mod (os sons são arquivos do dono, ver "Som"). A are
   por cima: o reflexo é de verdade. Anéis de luz correm do centro; uma linha marca a borda do domínio.
 * **No ar:** 110 pontos de luz subindo devagar.
 
-### A rajada do Vazio (`fx/StreakField`, `StreakFx`; peça B2 do `PLANO-COMBATE.md`, 2026-11-13)
+### Os dois modos do Vazio (decisão do dono em 2026-11-13)
+
+O dono descreveu o domínio do Vazio em dois modos, e é assim que ele funciona:
+
+**1. Iniciando** (`fx/StreakField`, `StreakFx`; 50 ticks): a rajada. Agulhas de luz **saem todas de um ponto, o
+astrolábio no céu do Vazio, e irradiam para fora dele por toda a arena**, retas e muito rápidas, em direção a quem
+olha e para além, dezenas na tela. Inteira na primeira metade desse tempo, apagando-se na segunda; depois **não há
+mais feixes**.
 
 ![Rajada](img/rajada.png)
 
-Agulhas de luz que **saem todas de um ponto, o astrolábio no céu do Vazio, e irradiam para fora dele por toda a
-arena**, retas e rápidas, em direção a quem olha e para além. Muitas a qualquer instante, **do começo ao fim do
-domínio**. É a assinatura do Vazio, como os cortes são a do Santuário.
-
-A primeira versão desta peça tinha feixes em faixas paralelas, de uma parede à outra, só junto ao chão, ralos fora
-das rajadas e em branco e azul. O dono disse que não era o esperado e apontou um vídeo do Jujutsu Shenanigans. O
-comportamento que ele mostra, e que esta versão segue no nosso desenho: fonte num ponto com os feixes irradiando em
-perspectiva para a câmera, **denso e contínuo** o domínio inteiro, velocidade alta e constante, várias cores, o
-volume todo e não só o chão.
-
 * **A fonte:** o foco fica a 150 blocos do centro da arena, na direção em que o astrolábio está pendurado. Do
   centro, os feixes parecem sair dele; quem olha para o outro lado os vê passar por cima e convergir à frente.
-* **O fluxo:** forte na abertura (os 40 primeiros ticks, até 1,8 vez mais comprido e 1,9 vez mais rápido), assenta
-  num **fluxo firme** (42 % do auge, com perto de 180 feixes vivos na arena a cada instante) e sobe de novo numa
-  **rajada** a cada 64 ticks (a primeira aos 56), com um tremor e `vazio_rajada.ogg`, se o dono o pôs.
 * **O feixe:** a cabeça é um ponto branco; atrás dela a agulha afina até sumir, branca perto da cabeça, depois da
   sua cor, depois uma mais funda que some na cauda, dentro de um brilho mais largo e fraco. As cores são as do
-  Vazio: **branco, azul-gelo, violeta e magenta**. No auge de uma rajada o feixe **se desdobra**: um fio ciano de
-  um lado e um violeta do outro.
+  Vazio: branco, azul-gelo, violeta e magenta. No auge o feixe se desdobra: um fio ciano de um lado e um violeta
+  do outro.
 * **Como é montado:** cada feixe corre num raio que parte do foco. Os raios são tomados em faixas: uma grade de
   3,2 blocos no plano que passa pelo centro da arena e encara o foco. Cada faixa pode mandar um feixe em 2 momentos
-  a cada 18 ticks, com chance proporcional à força do fluxo; o feixe guarda a velocidade com que saiu e é visto de
+  a cada 18 ticks, com chance proporcional à força da rajada; o feixe guarda a velocidade com que saiu e é visto de
   onde o raio entra na arena até onde sai dela ou encontra o chão. Sai do número do domínio, da faixa e do momento:
-  todos veem os mesmos. O que passa rente à câmera é atenuado.
+  todos veem os mesmos. O que passa rente à câmera é atenuado. `vazio_rajada.ogg`, se o dono o pôs, toca na entrada.
+* Histórico: a primeira versão tinha feixes paralelos de parede a parede, junto ao chão; a segunda os fazia irradiar
+  do astrolábio, mas o domínio inteiro, com rajadas periódicas. O dono esclareceu que a rajada é só o início.
+
+**2. Completo** (o resto dos 14 s): o Vazio **parado** (céu, astrolábio, poeira) e o seu efeito garantido: **todos
+os que foram pegos, menos o conjurador, ficam congelados**, sem poder fazer nada até o domínio acabar.
+
+* **No servidor** (`DomainManager#hold`, `#frozen`): cada um é mantido onde estava (se sair 0,14 bloco do lugar é
+  posto de volta), e os seus cliques em blocos, ataques e quebras são recusados.
+* **No cliente** (`ClientDomain#frozen`, `ClashInput#beforeMove`): as teclas de andar e pular não fazem nada e
+  nenhum clique do mouse passa, para o jogador não ficar sendo puxado de volta. Ele pode olhar em volta.
+* **Decisões do agente, a confirmar com o dono:** o congelamento vale desde o instante em que a pessoa é pega (não
+  só depois da rajada); **não vale durante um choque** nem enquanto alguém responde com o próprio domínio; quem foi
+  pego ainda pode responder com um domínio dentro da janela do choque; e os congelados **podem levar dano** de quem
+  não está congelado.
+* Medido com dois clientes em sobrevivência: quem foi pego tentou andar para a frente, de lado, cavar e bater, e
+  ficou no mesmo lugar nas quatro leituras; o conjurador andou a 0,22 bloco por tick.
+* **A verificar:** teclas de habilidade de outros mods e comandos (`/home`, `/tpa`), que este congelamento não
+  barra; e o congelado parado no ar, se foi pego pulando.
 
 ## Santuário Carmesim (`ShrineLook`)
 

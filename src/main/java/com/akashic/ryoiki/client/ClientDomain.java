@@ -17,7 +17,6 @@ import com.akashic.ryoiki.fx.BlowPose;
 import com.akashic.ryoiki.fx.Frontier;
 import com.akashic.ryoiki.fx.SlashField;
 import com.akashic.ryoiki.fx.SoundCues;
-import com.akashic.ryoiki.fx.StreakField;
 import com.akashic.ryoiki.net.ChunkKeep;
 import com.akashic.ryoiki.net.DomainWire;
 
@@ -443,6 +442,18 @@ public final class ClientDomain {
         }
     }
 
+    /**
+     * Whether this client's player is held still by the star void: caught in one that is not its own, and no clash
+     * going on or being answered. It can look about and nothing else, until the domain ends.
+     */
+    public boolean frozen() {
+        Minecraft mc = Minecraft.getMinecraft();
+        return inside == DomainType.INFINITE_VOID && mc.thePlayer != null
+            && mc.thePlayer.getEntityId() != casterEntity
+            && clash < 0
+            && rivalSign == null;
+    }
+
     /** Whether two domains share the arena now: each is drawn in its half ({@link #sceneSeam}). */
     public boolean fused() {
         return inside != null && clash == session && clashTypes[0] != null && front != null;
@@ -579,10 +590,9 @@ public final class ClientDomain {
             age++;
             sky.install(world.provider);
             // Each cut of the crimson shrine jolts the view.
-            if (inside == DomainType.INFINITE_VOID && StreakField.volleyStartsAt(age)) {
-                // Each volley of the void's rush is felt, and sounds.
-                CameraShake.INSTANCE.kick(0.6F);
-                DomainSounds.play(inside, SoundCues.RUSH, 0.5F, 1F);
+            if (inside == DomainType.INFINITE_VOID && age == 1) {
+                // The rush of the void starting, if the owner gave it a sound.
+                DomainSounds.play(inside, SoundCues.RUSH, 0.6F, 1F);
             }
             if (inside == DomainType.MALEVOLENT_SHRINE && SlashField.flurryStartsAt(age)) {
                 // Each flurry of cuts jolts the view, and sounds: its pitch varies, the same on every client.

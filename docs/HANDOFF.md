@@ -176,7 +176,8 @@ feita), B (efeitos de assinatura de cada domínio), C (golpes, um por vez) e D (
    num PC de verdade.
 2. ~~O visual de verdade~~ **Feito** numa primeira versão ([`VISUAL.md`](VISUAL.md)). Falta ver com placa de vídeo e
    com shaderpack, e ouvir o dono sobre o resultado.
-3. **Efeitos garantidos**: congelar quem está no Vazio (14 s), cortes no Santuário (2 de dano por corte, bloqueio reduz).
+3. **Efeitos garantidos**: ~~congelar quem está no Vazio~~ **feito** em 2026-11-13 (ver "Os dois modos do Vazio" em
+   `VISUAL.md`); falta o dano dos cortes no Santuário (2 por corte, bloqueio reduz).
 4. ~~Choque de domínios~~ **Feito** numa primeira versão (seção "Choque de Domínios" abaixo e em `VISUAL.md`). Falta
    ver com jogadores de verdade e com alguém assistindo de fora.
 5. **Como se conjura**: tecla, item ou habilidade de outro sistema (Overkill?), recarga, permissões, mundos permitidos.

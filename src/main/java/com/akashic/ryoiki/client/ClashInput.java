@@ -49,6 +49,11 @@ public final class ClashInput {
         Minecraft mc = Minecraft.getMinecraft();
         // The attack is a mouse button unless the player bound it elsewhere: buttons are key codes from -100 up.
         int attack = mc.gameSettings.keyBindAttack.getKeyCode() + 100;
+        if (event.button >= 0 && ClientDomain.INSTANCE.frozen()) {
+            // Held by the void: no click does anything.
+            event.setCanceled(true);
+            return;
+        }
         if (event.button < 0 || event.button != attack || !fighting()) {
             return;
         }
@@ -71,6 +76,20 @@ public final class ClashInput {
      * client's player, fighting, runs.
      */
     public static void beforeMove(EntityPlayer player) {
+        if (player == Minecraft.getMinecraft().thePlayer && ClientDomain.INSTANCE.frozen()) {
+            // Held by the void: no step, no jump, whatever keys are down. (The server holds it too.)
+            net.minecraft.client.entity.EntityPlayerSP self = (net.minecraft.client.entity.EntityPlayerSP) player;
+            self.movementInput.moveForward = 0;
+            self.movementInput.moveStrafe = 0;
+            self.movementInput.jump = false;
+            self.moveForward = 0;
+            self.moveStrafing = 0;
+            self.setJumping(false);
+            self.motionX = 0;
+            self.motionZ = 0;
+            self.setSprinting(false);
+            return;
+        }
         if (player == Minecraft.getMinecraft().thePlayer && !player.isSprinting() && fighting()) {
             player.setSprinting(true);
         }

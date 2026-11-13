@@ -348,21 +348,70 @@ public final class DomainManager {
         }
     }
 
-    /** In a clash the two fight with their hands: a click is a blow, never a block struck or broken. */
+    /**
+     * Whether the star void holds this player: caught in one that is not its own, complete, with no clash going on
+     * or being answered. The void's sure effect: whoever it holds does nothing until it ends.
+     */
+    private boolean frozen(EntityPlayer player) {
+        DomainSession s = sessionOf(player.getUniqueID());
+        return s != null && s.type == DomainType.INFINITE_VOID
+            && s.phase == Phase.ACTIVE
+            && s.clash == 0
+            && s.rival == null
+            && s.holds(player.getUniqueID())
+            && !player.getUniqueID()
+                .equals(s.caster);
+    }
+
+    /** Keeps those the void holds where they are. */
+    private void hold(DomainSession s, WorldServer world) {
+        if (s.type != DomainType.INFINITE_VOID || s.rival != null) {
+            s.held.clear();
+            return;
+        }
+        for (UUID id : s.inside.keySet()) {
+            EntityPlayerMP p = player(world, id);
+            if (p == null || id.equals(s.caster)) {
+                continue;
+            }
+            double[] at = s.held.get(id);
+            if (at == null) {
+                s.held.put(id, new double[] { p.posX, p.boundingBox.minY, p.posZ });
+            } else if (distanceSq(p, at[0], at[1], at[2]) > 0.02) {
+                teleport(p, at[0], at[1], at[2], p.rotationYaw, p.rotationPitch);
+            }
+        }
+    }
+
+    /**
+     * In a clash the two fight with their hands: a click is a blow, never a block struck or broken. And whoever the
+     * void holds does nothing with a click at all.
+     */
     @SubscribeEvent
     public void onClickBlock(PlayerInteractEvent event) {
-        if (event.action == PlayerInteractEvent.Action.LEFT_CLICK_BLOCK && event.entityPlayer instanceof EntityPlayerMP
+        if (!(event.entityPlayer instanceof EntityPlayerMP)) {
+            return;
+        }
+        if (frozen(event.entityPlayer) || event.action == PlayerInteractEvent.Action.LEFT_CLICK_BLOCK
             && clashOf(event.entityPlayer.getUniqueID()) != null) {
+            event.setCanceled(true);
+        }
+    }
+
+    /** Whoever the void holds strikes nobody. */
+    @SubscribeEvent
+    public void onFrozenAttack(AttackEntityEvent event) {
+        if (event.entityPlayer instanceof EntityPlayerMP && frozen(event.entityPlayer)) {
             event.setCanceled(true);
         }
     }
 
     @SubscribeEvent
     public void onBreak(BlockEvent.BreakEvent event) {
-        if (event.getPlayer() != null && clashOf(
+        if (event.getPlayer() != null && (frozen(event.getPlayer()) || clashOf(
             event.getPlayer()
                 .getUniqueID())
-            != null) {
+            != null)) {
             event.setCanceled(true);
         }
     }
@@ -503,6 +552,7 @@ public final class DomainManager {
                 }
             } else if (s.phase == Phase.ACTIVE) {
                 dropThoseWhoLeft(s, world);
+                hold(s, world);
                 if (caster == null || !caster.isEntityAlive() || !s.holds(s.caster) || s.age >= s.type.durationTicks) {
                     end(s, world);
                 } else if (s.age % 20 == 0) {

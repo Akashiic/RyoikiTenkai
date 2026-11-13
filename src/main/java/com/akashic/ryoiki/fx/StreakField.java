@@ -3,8 +3,8 @@ package com.akashic.ryoiki.fx;
 /**
  * The rush of the star void: needles of light that pour out of one point (the armillary in its sky) and fly
  * outward from it through the whole arena, straight and fast, toward whoever looks at it and past them. Many at any
- * moment, for as long as the domain lasts: thickest and fastest as it opens, settling to a steady stream, with a
- * volley every few seconds. No Minecraft classes.
+ * moment, while the domain is starting ({@link #OPENING} ticks); then they stop, and the void is still. No Minecraft
+ * classes.
  *
  * <p>
  * Every streak runs along a ray from the focus. The rays are taken in lanes: a grid, {@link #LANE} blocks a side,
@@ -25,16 +25,7 @@ public final class StreakField {
     public static final int COLORS = 4;
 
     /** Ticks the rush of the opening takes to settle. */
-    public static final float OPENING = 40;
-    /** How much of a rush the steady stream is. */
-    public static final float STEADY = 0.42F;
-    /** The first volley, and how often after it. */
-    public static final int FIRST_VOLLEY = 56;
-    public static final int VOLLEY_PERIOD = 64;
-    private static final float VOLLEY_RISE = 3;
-    private static final float VOLLEY_HOLD = 6;
-    private static final float VOLLEY_FALL = 11;
-    private static final float VOLLEY_PEAK = 0.8F;
+    public static final float OPENING = 50;
 
     /** How likely a slot sends a streak, at the height of a rush. */
     private static final float CHANCE = 0.9F;
@@ -70,33 +61,16 @@ public final class StreakField {
     private StreakField() {}
 
     /**
-     * How much of a rush there is at a time: 1 at the instant the domain opens, settling to {@link #STEADY}, and
-     * up again for each volley.
+     * How much of a rush there is at a time: 1 as the domain opens, and none once it has: the rush is the domain
+     * starting. When it is complete the void is still.
      */
     public static float rush(float time) {
-        float opening = STEADY;
-        if (time >= 0 && time < OPENING) {
-            float left = 1 - time / OPENING;
-            opening = STEADY + (1 - STEADY) * left * left;
+        if (time < 0 || time >= OPENING) {
+            return 0;
         }
-        float volley = 0;
-        if (time >= FIRST_VOLLEY) {
-            float into = (time - FIRST_VOLLEY) % VOLLEY_PERIOD;
-            if (into < VOLLEY_RISE) {
-                volley = into / VOLLEY_RISE;
-            } else if (into < VOLLEY_RISE + VOLLEY_HOLD) {
-                volley = 1;
-            } else if (into < VOLLEY_RISE + VOLLEY_HOLD + VOLLEY_FALL) {
-                float left = 1 - (into - VOLLEY_RISE - VOLLEY_HOLD) / VOLLEY_FALL;
-                volley = left * left;
-            }
-        }
-        return Math.max(opening, STEADY + (VOLLEY_PEAK - STEADY) * volley);
-    }
-
-    /** Whether a volley begins exactly at this tick. */
-    public static boolean volleyStartsAt(int tick) {
-        return tick >= FIRST_VOLLEY && (tick - FIRST_VOLLEY) % VOLLEY_PERIOD == 0;
+        // Whole for the first half of the opening, then dying away.
+        float left = Math.min(1, (1 - time / OPENING) * 2);
+        return left * left;
     }
 
     /** The number of the latest moment at which a lane may have sent a streak, at this time. */
@@ -106,8 +80,7 @@ public final class StreakField {
 
     /** Moments back from the latest whose streaks may still be crossing an arena of this radius. */
     public static int momentsAlive(int arenaRadius) {
-        float longest = (2 * (arenaRadius + BEYOND) + MAX_LENGTH * RUSH_LENGTH)
-            / (SPEED * 0.8F * (1 + (RUSH_SPEED - 1) * STEADY));
+        float longest = (2 * (arenaRadius + BEYOND) + MAX_LENGTH * RUSH_LENGTH) / (SPEED * 0.8F);
         return (int) Math.ceil(longest * SLOTS / PERIOD) + 1;
     }
 
