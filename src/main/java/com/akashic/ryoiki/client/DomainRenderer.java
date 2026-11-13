@@ -21,6 +21,7 @@ import com.akashic.ryoiki.DomainType;
 import com.akashic.ryoiki.RyoikiTenkai;
 import com.akashic.ryoiki.fx.BlowPose;
 import com.akashic.ryoiki.fx.Frontier;
+import com.akashic.ryoiki.fx.StreakField;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 
@@ -303,6 +304,14 @@ public final class DomainRenderer {
                 domain.shatter - event.partialTicks,
                 res.getScaledWidth(),
                 res.getScaledHeight());
+        }
+        if (domain.inside == DomainType.INFINITE_VOID && !domain.fused()) {
+            // The white between the void starting and the void complete.
+            float white = StreakField.flash(domain.age + event.partialTicks);
+            if (white > 0.004F) {
+                Gui.drawRect(0, 0, res.getScaledWidth(), res.getScaledHeight(), (int) (white * 255) << 24 | 0xFFFFFF);
+                GL11.glColor4f(1, 1, 1, 1);
+            }
         }
         if (domain.flash > 0) {
             float left = domain.flash - event.partialTicks;

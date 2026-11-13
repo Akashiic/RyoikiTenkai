@@ -17,14 +17,36 @@ class StreakFieldTest {
     void theRushIsTheDomainStartingAndThenTheVoidIsStill() {
         assertEquals(1, StreakField.rush(0));
         assertEquals(1, StreakField.rush(StreakField.OPENING / 2));
-        assertTrue(StreakField.rush(StreakField.OPENING * 0.75F) < 0.5F);
+        assertEquals(1, StreakField.rush(StreakField.OPENING * 0.8F));
+        assertTrue(StreakField.rush(StreakField.OPENING * 0.95F) < 0.5F);
         assertEquals(0, StreakField.rush(StreakField.OPENING));
         assertEquals(0, StreakField.rush(200));
         assertEquals(0, StreakField.rush(-1));
         float before = StreakField.rush(0);
         for (float t = 0.1F; t < 80; t += 0.1F) {
             float now = StreakField.rush(t);
-            assertTrue(Math.abs(now - before) < 0.05F, "a jump at " + t);
+            assertTrue(Math.abs(now - before) < 0.06F, "a jump at " + t);
+            before = now;
+        }
+    }
+
+    @Test
+    void aWhiteFlashJoinsTheStartingToTheComplete() {
+        float opening = StreakField.OPENING;
+        assertEquals(0, StreakField.flash(0));
+        assertEquals(0, StreakField.flash(opening - StreakField.FLASH_IN));
+        assertEquals(1, StreakField.flash(opening), 1e-4F);
+        assertEquals(0, StreakField.flash(opening + StreakField.FLASH_OUT));
+        assertEquals(0, StreakField.flash(200));
+        // It eases in: half way through its gathering it is still faint.
+        assertTrue(StreakField.flash(opening - StreakField.FLASH_IN / 2) < 0.2F);
+        float before = 0;
+        for (float t = 0; t < 80; t += 0.1F) {
+            float now = StreakField.flash(t);
+            assertTrue(now >= 0 && now <= 1 && Math.abs(now - before) < 0.03F, "a jump at " + t);
+            if (t < opening) {
+                assertTrue(now >= before - 1e-5F, "it only gathers until the opening ends");
+            }
             before = now;
         }
     }

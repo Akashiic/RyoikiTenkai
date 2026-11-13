@@ -60,6 +60,11 @@ mais feixes**.
 * Histórico: a primeira versão tinha feixes paralelos de parede a parede, junto ao chão; a segunda os fazia irradiar
   do astrolábio, mas o domínio inteiro, com rajadas periódicas. O dono esclareceu que a rajada é só o início.
 
+**O clarão entre os dois modos** (`StreakField#flash`, com teste; pedido do dono em 2026-11-13): um branco que
+toma a tela na passagem do "iniciando" para o "completo". Junta-se devagar e depois depressa nos últimos 16 ticks
+da rajada (entrada suave, ao cubo), é inteiro no instante em que ela acaba, e se dissolve em 14 ticks sobre o Vazio
+já parado. A rajada fica inteira até 82 % do início e some por baixo dele.
+
 **O céu nos dois modos** (`VoidLook`; ajustado com o dono em 2026-11-13). *Iniciando*: as estrelas vão **na mesma
 direção dos feixes**, para fora do buraco negro, cada uma arrastando um rastro reto; as nebulosas acendem (até 2,3
 vezes), o horizonte clareia em violeta e o halo do buraco negro abre num clarão, com os anéis acelerados. *Completo*:

@@ -26,6 +26,11 @@ public final class StreakField {
 
     /** Ticks the rush of the opening takes to settle. */
     public static final float OPENING = 50;
+    /** The share of the opening the rush is whole for. */
+    private static final float FULL = 0.82F;
+    /** Ticks the flash gathers for before the opening ends, and clears in after it. */
+    public static final float FLASH_IN = 16;
+    public static final float FLASH_OUT = 14;
 
     /** How likely a slot sends a streak, at the height of a rush. */
     private static final float CHANCE = 0.9F;
@@ -68,26 +73,41 @@ public final class StreakField {
         if (time < 0 || time >= OPENING) {
             return 0;
         }
-        // Whole for the first half of the opening, then dying away.
-        float left = Math.min(1, (1 - time / OPENING) * 2);
+        // Whole until the flash that ends the opening has taken the screen, then gone under it.
+        float left = Math.min(1, (1 - time / OPENING) / (1 - FULL));
         return left * left;
     }
 
     /**
-     * The rush so far, summed: ticks' worth of full rush since the domain opened. What turns with the rush (the
-     * void's sky) has turned by this much.
+     * The rush so far, summed: ticks' worth of full rush since the domain opened. What moves with the rush (the
+     * stars of the void's sky) has moved by this much.
      */
     public static float rushed(float time) {
-        float half = OPENING / 2;
+        float full = OPENING * FULL;
         if (time <= 0) {
             return 0;
         }
-        if (time <= half) {
+        if (time <= full) {
             return time;
         }
-        // Past the half the rush is the square of what is left, twice over: its sum is a cube.
-        float left = Math.max(0, 1 - time / OPENING) * 2;
-        return half + OPENING / 6 * (1 - left * left * left);
+        // Past that the rush is the square of what is left: its sum is a cube.
+        float left = Math.max(0, 1 - time / OPENING) / (1 - FULL);
+        return full + (OPENING - full) / 3 * (1 - left * left * left);
+    }
+
+    /**
+     * The white that takes the screen between the domain starting and the domain complete, 0 to 1: it gathers
+     * slowly and then fast over the last of the opening, is whole at the instant the rush ends, and clears as the
+     * still void appears.
+     */
+    public static float flash(float time) {
+        float before = OPENING - time;
+        if (before >= 0) {
+            float in = 1 - before / FLASH_IN;
+            return in <= 0 ? 0 : in * in * in;
+        }
+        float out = 1 + before / FLASH_OUT;
+        return out <= 0 ? 0 : out * out;
     }
 
     /** The number of the latest moment at which a lane may have sent a streak, at this time. */
