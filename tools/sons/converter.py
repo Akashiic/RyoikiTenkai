@@ -48,6 +48,7 @@ SONS = {
     "santuario_voz": (2, False, "a fala do conjurador ao expandir o Santuário, desde o início do sinal de mão"),
     "santuario_entrada": (1, False, "o Santuário se fechando"),
     "santuario_ambiente": (2, True, "o que se ouve dentro do Santuário (laço; 18 s de domínio)"),
+    "vazio_rajada": (2, False, "uma rajada de feixes do Vazio (a cada 3,2 s, menos de 1 s)"),
     "santuario_corte": (2, False, "um corte do Santuário (toca a cada 8 ticks, bem curto)"),
 }
 

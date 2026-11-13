@@ -35,6 +35,28 @@ modelo, textura nem som no mod (os sons são arquivos do dono, ver "Som"). A are
   por cima: o reflexo é de verdade. Anéis de luz correm do centro; uma linha marca a borda do domínio.
 * **No ar:** 110 pontos de luz subindo devagar.
 
+### A rajada do Vazio (`fx/StreakField`, `StreakFx`; peça B2 do `PLANO-COMBATE.md`, 2026-11-13)
+
+![Rajada](img/rajada.png)
+
+Agulhas de luz que **cruzam a arena em linha reta, todas no mesmo sentido**: saem do lado do astrolábio e vão até a
+parede oposta. É a assinatura do Vazio, como os cortes são a do Santuário.
+
+* **A abertura:** quando o domínio abre, os feixes vêm **densos, longos e muito rápidos** (até 3,4 vezes a
+  velocidade normal e 2,4 vezes o comprimento) e vão rareando em 40 ticks, até o céu assentar. Quem olha no sentido
+  do fluxo vê as linhas convergirem num ponto de fuga; quem olha para o astrolábio as vê sair dele e passar.
+* **Depois:** um fluxo ralo constante e, a cada 64 ticks (o primeiro aos 56), uma **rajada**: o fluxo acelera e
+  engrossa por menos de um segundo (sobe em 3 ticks, segura 6, cai em 11), com um tremor e `vazio_rajada.ogg`, se o
+  dono o pôs.
+* **O feixe:** a cabeça é um ponto branco; atrás dela a agulha afina até sumir, branca perto da cabeça, depois azul
+  clara, depois um azul fundo que some na cauda, dentro de um brilho mais largo e fraco. O feixe mandado numa
+  rajada é mais brilhante e **se desdobra**: um fio ciano de um lado e um violeta do outro.
+* **Como é montado:** a arena é tomada em faixas atravessadas ao fluxo (3 blocos de largura, quatro camadas de 2,2
+  de altura); cada faixa pode mandar um feixe em 3 momentos a cada 18 ticks, com chance de 12 % na calma e 92 % no
+  auge de uma rajada. Cada feixe guarda a velocidade com que foi mandado. A arena é redonda, então o caminho é mais
+  curto perto das laterais, e o feixe nasce de uma parede e some na outra. Sai do número do domínio, da faixa e do
+  momento: todos veem os mesmos. O que passa rente à câmera é atenuado.
+
 ## Santuário Carmesim (`ShrineLook`)
 
 * **Céu:** preto, com o horizonte em brasa e uma **lua de sangue** baixa (refletida na água).

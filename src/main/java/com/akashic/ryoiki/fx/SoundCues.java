@@ -39,6 +39,8 @@ public final class SoundCues {
     public static final String AMBIENT = "ambiente";
     /** Per domain: one cut. Only the domains that cut have it. */
     public static final String SLASH = "corte";
+    /** Per domain: a volley of its rush. Only the domains that rush have it. */
+    public static final String RUSH = "rajada";
 
     private static final String[] SHARED = { SIGN, BAND_CUT, EXIT, DOME, CLASH_TRACK, BLOW, IMPACT };
     private static final String[] PER_DOMAIN = { TRACK, VOICE, ENTER, AMBIENT };
@@ -51,8 +53,8 @@ public final class SoundCues {
         return domainId + "_" + name;
     }
 
-    /** Every sound of the mod, given the domain ids and the ids of those that cut. */
-    public static List<String> all(String[] domainIds, String[] slashing) {
+    /** Every sound of the mod, given the domain ids, the ids of those that cut and of those that rush. */
+    public static List<String> all(String[] domainIds, String[] slashing, String[] rushing) {
         List<String> out = new ArrayList<>();
         for (String s : SHARED) {
             out.add(s);
@@ -64,6 +66,9 @@ public final class SoundCues {
         }
         for (String id : slashing) {
             out.add(of(id, SLASH));
+        }
+        for (String id : rushing) {
+            out.add(of(id, RUSH));
         }
         return out;
     }

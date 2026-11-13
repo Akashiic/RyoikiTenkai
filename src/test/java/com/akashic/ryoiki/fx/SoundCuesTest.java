@@ -19,13 +19,15 @@ class SoundCuesTest {
         for (DomainType t : DomainType.values()) {
             ids[t.ordinal()] = t.id;
         }
-        return SoundCues.all(ids, new String[] { DomainType.MALEVOLENT_SHRINE.id });
+        return SoundCues
+            .all(ids, new String[] { DomainType.MALEVOLENT_SHRINE.id }, new String[] { DomainType.INFINITE_VOID.id });
     }
 
     @Test
     void everyDomainHasItsSounds() {
         List<String> all = all();
-        assertEquals(16, all.size());
+        assertEquals(17, all.size());
+        assertTrue(all.contains("vazio_rajada"));
         assertTrue(all.contains("clash_trilha"));
         assertTrue(all.contains("vazio_trilha"));
         assertTrue(all.contains("santuario_trilha"));

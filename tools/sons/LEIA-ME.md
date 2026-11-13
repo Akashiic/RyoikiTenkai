@@ -40,6 +40,7 @@ para, e nenhuma começa. Depois, o jogo volta a tocar música no tempo dele (uma
 | `faixa_corte` | a batida em cada corte de câmera da faixa | estéreo |
 | `vazio_entrada`, `santuario_entrada` | o domínio se fechando; quem está fora ouve do domo | mono |
 | `vazio_ambiente`, `santuario_ambiente` | laço enquanto se está dentro | estéreo |
+| `vazio_rajada` | uma rajada de feixes do Vazio (a cada 3,2 s; menos de 1 s) | estéreo |
 | `santuario_corte` | um corte (a cada 0,4 s: use algo bem curto) | estéreo |
 | `saida` | o domínio se quebrando | estéreo |
 | `domo` | o zumbido do domo para quem está fora (laço) | mono |

@@ -17,6 +17,7 @@ import com.akashic.ryoiki.fx.BlowPose;
 import com.akashic.ryoiki.fx.Frontier;
 import com.akashic.ryoiki.fx.SlashField;
 import com.akashic.ryoiki.fx.SoundCues;
+import com.akashic.ryoiki.fx.StreakField;
 import com.akashic.ryoiki.net.ChunkKeep;
 import com.akashic.ryoiki.net.DomainWire;
 
@@ -578,6 +579,11 @@ public final class ClientDomain {
             age++;
             sky.install(world.provider);
             // Each cut of the crimson shrine jolts the view.
+            if (inside == DomainType.INFINITE_VOID && StreakField.volleyStartsAt(age)) {
+                // Each volley of the void's rush is felt, and sounds.
+                CameraShake.INSTANCE.kick(0.6F);
+                DomainSounds.play(inside, SoundCues.RUSH, 0.5F, 1F);
+            }
             if (inside == DomainType.MALEVOLENT_SHRINE && SlashField.flurryStartsAt(age)) {
                 // Each flurry of cuts jolts the view, and sounds: its pitch varies, the same on every client.
                 CameraShake.INSTANCE.kick(0.9F);
