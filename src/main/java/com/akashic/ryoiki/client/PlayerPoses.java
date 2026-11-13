@@ -16,8 +16,9 @@ import com.akashic.ryoiki.fx.Gait;
  * it, the guard and the blows of a clash and the blow taken; over that, the gesture of a technique.
  *
  * <p>
- * The pose is of every bone the mod knows, hands and fingers included, at full weight: in the mode <b>nothing of
- * the model's own animation is left in them</b>. A model's resting pose may have a hand on a hip or a wrist turned,
+ * While the body runs, jumps, fights or makes a gesture, the pose is of every bone the mod knows, hands and fingers
+ * included: <b>nothing of the model's own animation is left in them</b>. Standing still and doing nothing, the model
+ * is left to its own resting animation. A model's resting pose may have a hand on a hip or a wrist turned,
  * and a bone the mod did not pose would keep that through a technique.
  */
 final class PlayerPoses {
@@ -66,8 +67,11 @@ final class PlayerPoses {
             Gait.State state = track.at(partial);
             // With the hands and the fingers, at rest: not as the model's own animation would leave them.
             pose = Arrays.copyOf(Gait.sample(state), ALL.length * 3);
-            shows = track.weight(partial);
             moving = state.moving;
+            // Standing still, out of a fight, the model keeps its own resting animation (the owner's rule): the
+            // mode's pose shows as the body moves or leaves the ground, and for the two of a clash.
+            float active = fighter ? 1 : Math.max(smooth(state.moving), state.air);
+            shows = track.weight(partial) * active;
             if (fighter) {
                 // Between blows the hands stay up, whatever the legs are doing.
                 float[] guard = BlowPose.guard();
@@ -111,6 +115,11 @@ final class PlayerPoses {
         }
         FuturaBridge.INSTANCE.pose(player, ALL, pose, shows);
         return true;
+    }
+
+    private static float smooth(float v) {
+        v = v < 0 ? 0 : v > 1 ? 1 : v;
+        return v * v * (3 - 2 * v);
     }
 
     private static void blend(float[] pose, float[] over, int bone, float much) {

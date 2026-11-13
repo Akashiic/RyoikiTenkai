@@ -408,7 +408,9 @@ modelo (Futura3D) deixa de usar a animação do próprio modelo para os 13 ossos
   ficar nivelada e olhando o caminho. O pé no chão fica com a sola nivelada. A passada avança pela **distância
   percorrida**, não pelo tempo, e para no ar.
 * **De lado e de costas:** a passada encurta e, de lado, as pernas abrem e fecham em vez de ir e vir.
-* **Parado:** uma postura de prontidão, um pé à frente, mãos baixas na frente do corpo, respirando.
+* **Parado:** a animação **do próprio modelo** (decisão do dono em 2026-11-13: "só quando luta que nossas animações
+  vêm à tona"). A nossa pose entra conforme o corpo anda, sai do chão, luta ou faz um gesto, e sai de novo ao parar.
+  Os dois de um choque ficam em guarda mesmo parados.
 * **Pulo:** subindo, um joelho vai alto (a perna que vinha à frente), a outra perna fica para trás e os braços vão
   para trás; descendo, as pernas se abrem sob o corpo e os braços saem para os lados; ao tocar o chão o peito cede
   para a frente e volta.
