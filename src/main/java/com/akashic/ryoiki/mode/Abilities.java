@@ -737,7 +737,7 @@ final class Abilities {
                     way[0],
                     way[1],
                     way[2],
-                    AbilityMath.PURPLE_RADIUS,
+                    Config.purpleRadius,
                     AbilityMath.PURPLE_FUSE),
                 mode);
             return true;
@@ -755,7 +755,7 @@ final class Abilities {
             double dx = purple.x - target.posX;
             double dy = purple.y - (target.posY + target.height / 2);
             double dz = purple.z - target.posZ;
-            if (dx * dx + dy * dy + dz * dz <= AbilityMath.PURPLE_RADIUS * AbilityMath.PURPLE_RADIUS) {
+            if (dx * dx + dy * dy + dz * dz <= (double) Config.purpleRadius * Config.purpleRadius) {
                 strike(caster, target, Float.MAX_VALUE, "ryoiki.roxo");
             }
         }
@@ -774,7 +774,7 @@ final class Abilities {
                 0,
                 0,
                 0,
-                AbilityMath.PURPLE_RADIUS,
+                Config.purpleRadius,
                 0),
             mode);
         return false;
@@ -874,9 +874,13 @@ final class Abilities {
     }
 
     private static void tell(World world, double x, double y, double z, byte[] data, SorcererMode mode) {
+        // The purple reaches farther than anything else is seen from: whoever it can reach is told of it.
+        double seen = data.length > 1 && (data[1] == AbilityMath.PURPLE || data[1] == AbilityMath.PURPLE_BLAST)
+            ? SEEN + Config.purpleRadius
+            : SEEN;
         for (Object o : world.playerEntities) {
             EntityPlayerMP player = (EntityPlayerMP) o;
-            if (player.getDistanceSq(x, y, z) <= SEEN * SEEN) {
+            if (player.getDistanceSq(x, y, z) <= seen * seen) {
                 mode.send(player, data);
             }
         }

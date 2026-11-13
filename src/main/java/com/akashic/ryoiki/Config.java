@@ -29,6 +29,8 @@ public final class Config {
     public static float redDamage = 6;
     public static float blackDamage = 8;
     public static float redSelfDamage = 4;
+    /** How far from the purple its burst kills, in blocks. */
+    public static int purpleRadius = 80;
     public static int arenaX = 200000;
     public static int arenaZ = 200000;
     public static int arenaY = 120;
@@ -113,6 +115,13 @@ public final class Config {
             0,
             40,
             "Dano do Talho (Santuario, habilidade 1) em meios coracoes, igual com qualquer armadura.");
+        purpleRadius = cfg.getInt(
+            "raio",
+            "roxo",
+            purpleRadius,
+            1,
+            160,
+            "Raio do estouro do roxo (azul parado + vermelho), em blocos: mata os jogadores no modo dentro dele.");
         arenaX = cfg.getInt(
             "x",
             "arena",

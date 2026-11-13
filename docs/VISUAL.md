@@ -563,14 +563,14 @@ o desenho e o nome no mod são próprios, como no resto.
 
 Pedido do dono, pela variante da wiki: se alguém **morre no orbe azul**, a esfera azul **fica parada por 5 s**
 onde matou; se o mesmo conjurador acerta o **vermelho** nela (na ida ou na volta com R), as duas viram **o roxo**,
-que 3 s depois estoura e dá **dano fatal a todos no raio** (9 blocos).
+que 3 s depois estoura e dá **dano fatal a todos no raio**: **80 blocos**, decisão do dono (`roxo.raio` no config).
 
 ![O roxo](img/roxo.png)
 
 * **Regras:** só o azul do próprio conjurador serve; o orbe parado não puxa ninguém; o vermelho some ao encontrá-lo
   (passando a até 1,7 bloco do centro). O estouro mata os outros jogadores no modo dentro do raio (quem conjurou
   não morre; criativo não é tocado), ignorando proteção como o resto do modo. **Nenhum bloco é quebrado e nenhuma
-  outra criatura é atingida** (o dono pediu sem grife). Os 3 s e o chão marcado dão tempo de sair do raio.
+  outra criatura é atingida** (o dono pediu sem grife). Com 80 blocos de raio, os 3 s **não dão tempo de sair**: quem está por perto no modo morre. O servidor avisa do roxo todos a até 144 blocos, para que vejam o que os mata.
 * **O que se vê** (`client/PurpleFx`, conferido contra o GIF da wiki quadro a quadro): no encontro, os quadros de
   impacto em duas cores; uma esfera magenta de miolo claro crescendo, com respingos roxos escuros girando, o azul
   e o vermelho ainda enrolando nela por um instante, **raios** brancos e rosa cada vez mais longos, o **chão

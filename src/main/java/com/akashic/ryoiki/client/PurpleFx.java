@@ -34,6 +34,8 @@ public final class PurpleFx {
     private static final int BURST = 34;
     private static final int WHITE = 9;
     private static final int BOLTS = 12;
+    /** However far it kills, what is drawn about its heart keeps to this many blocks: a storm, not a sky. */
+    private static final float STORM = 14;
 
     private final List<Purple> purples = new ArrayList<>();
 
@@ -74,7 +76,7 @@ public final class PurpleFx {
         p.seed = Double.doubleToLongBits(x * 13 + z * 7 + y);
         purples.add(p);
         // The instant the two meet: the frames of an impact, on every screen near.
-        BlackFlashFx.INSTANCE.impact(x, y, z, radius * 2);
+        BlackFlashFx.INSTANCE.impact(x, y, z, Math.min(radius * 2, 24));
     }
 
     /** The one nearest a place bursts. */
@@ -101,7 +103,7 @@ public final class PurpleFx {
             return 0;
         }
         float distance = (float) Math.sqrt(mc.thePlayer.getDistanceSq(p.x, p.y, p.z));
-        return Draw.clamp01(1 - (distance - p.radius) / (p.radius * 2));
+        return Draw.clamp01(1 - (distance - p.radius) / 24);
     }
 
     void tick() {
@@ -164,8 +166,8 @@ public final class PurpleFx {
             Draw.additive();
             GL11.glPushMatrix();
             GL11.glTranslatef(x, ground, z);
-            Draw.ring(0, p.radius, 48, PINK, 0.3F * born * near, MAGENTA, 0.14F * born);
-            Draw.ring(p.radius - 0.3F, p.radius, 48, PINK, 0, 0xFFFFFF, 0.85F * born * beat);
+            Draw.ring(0, p.radius, 96, PINK, 0.3F * born * near, MAGENTA, 0.14F * born);
+            Draw.ring(p.radius * 0.97F - 0.3F, p.radius, 96, PINK, 0, 0xFFFFFF, 0.85F * born * beat);
             GL11.glPopMatrix();
         }
         Draw.additive();
@@ -219,7 +221,7 @@ public final class PurpleFx {
             float dy = random.nextFloat() * 1.4F - 0.7F;
             float dz = random.nextFloat() * 2 - 1;
             float n = (float) Math.sqrt(dx * dx + dy * dy + dz * dz) + 1e-4F;
-            float reach = p.radius * (0.3F + 0.7F * full) * (0.5F + 0.5F * random.nextFloat()) / n;
+            float reach = Math.min(p.radius, STORM) * (0.3F + 0.7F * full) * (0.5F + 0.5F * random.nextFloat()) / n;
             for (int k = 0; k < 8; k++) {
                 float along = k / 7F;
                 float jag = k == 0 ? 0 : 0.14F * reach * n;
@@ -305,15 +307,15 @@ public final class PurpleFx {
         float out = 1 - (1 - Draw.clamp01(since / 10)) * (1 - Draw.clamp01(since / 10));
         Draw.additive();
         t.startDrawing(GL11.GL_TRIANGLES);
-        Draw.glow(t, x, y, z, p.radius * 2.4F * (0.3F + 0.7F * out), 0xFFFFFF, left);
-        Draw.glow(t, x, y, z, p.radius * 3.6F * out, PINK, 0.7F * left);
+        Draw.glow(t, x, y, z, p.radius * 1.3F * (0.3F + 0.7F * out), 0xFFFFFF, left);
+        Draw.glow(t, x, y, z, p.radius * 1.8F * out, PINK, 0.7F * left);
         t.draw();
         if (!Float.isNaN(ground)) {
             GL11.glPushMatrix();
             GL11.glTranslatef(x, ground, z);
-            Draw.ring(0, p.radius, 48, 0xFFFFFF, 0.9F * left, PINK, 0.5F * left);
-            float wave = p.radius * (1 + 1.6F * since / BURST);
-            Draw.ring(wave - 1.2F, wave, 48, PINK, 0, 0xFFFFFF, left);
+            Draw.ring(0, p.radius, 96, 0xFFFFFF, 0.9F * left, PINK, 0.5F * left);
+            float wave = p.radius * (1 + 0.3F * since / BURST);
+            Draw.ring(wave * 0.96F - 1.2F, wave, 96, PINK, 0, 0xFFFFFF, left);
             GL11.glPopMatrix();
         }
         // What is left of it: motes of pink light, rising.
@@ -321,7 +323,7 @@ public final class PurpleFx {
         Random random = new Random(p.seed + 5);
         for (int i = 0; i < 40; i++) {
             float a = random.nextFloat() * 6.283F;
-            float far = p.radius * (float) Math.sqrt(random.nextFloat());
+            float far = Math.min(p.radius, STORM * 2) * (float) Math.sqrt(random.nextFloat());
             float up = random.nextFloat() * 3 + since * (0.05F + 0.1F * random.nextFloat());
             Draw.glow(
                 t,

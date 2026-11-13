@@ -55,9 +55,8 @@ public final class AbilityMath {
     public static final int ORB_LINGER = 100;
     /** How near its middle a red orb's line must pass to meet it. */
     public static final double LINGER_HIT = 1.7;
-    /** Ticks from the purple forming to its burst (3 s), and how far from it the burst kills. */
+    /** Ticks from the purple forming to its burst (3 s). How far the burst kills is the server's to say. */
     public static final int PURPLE_FUSE = 60;
-    public static final double PURPLE_RADIUS = 9;
 
     /** The orb's beginning, its move, and its end. */
     public static final int PULL = 1;

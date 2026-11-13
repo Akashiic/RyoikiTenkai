@@ -773,7 +773,7 @@ public final class TransportHarness {
                     mc.thePlayer.posX + look.xCoord * far,
                     mc.thePlayer.boundingBox.minY + 1.4,
                     mc.thePlayer.posZ + look.zCoord * far,
-                    (float) com.akashic.ryoiki.mode.AbilityMath.PURPLE_RADIUS,
+                    com.akashic.ryoiki.Config.purpleRadius,
                     com.akashic.ryoiki.mode.AbilityMath.PURPLE_FUSE,
                     true);
                 break;
