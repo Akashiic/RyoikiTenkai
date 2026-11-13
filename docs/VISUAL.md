@@ -75,13 +75,28 @@ No choque, cada clique dos dois conjuradores é um golpe de uma **cadeia de quat
 quando o anterior está bom. **Estado: a guarda e o golpe 1 estão feitos; os golpes 2, 3 e 4 são provisórios** (uma
 pose cada, tomada pelo corpo todo de uma vez), só para a cadeia existir.
 
+**Ordem das peças** (uma por vez; cada uma só começa com a anterior aprovada pelo dono):
+
+1. ~~a guarda e o golpe 1 (direto de direita)~~ feito;
+2. ~~levar um golpe~~ feito (abaixo);
+3. os kits, que o dono quer **diferentes por domínio e com golpes de perna**. Proposta do agente, a aprovar:
+
+   | | Vazio Estelar (leve, de longe, preciso) | Santuário Carmesim (pesado, de perto, bruto) |
+   |---|---|---|
+   | 1 | direto de direita (o que está feito) | gancho de esquerda ao corpo |
+   | 2 | jab de esquerda | cruzado de direita de cima para baixo |
+   | 3 | chute lateral alto, de direita | joelhada |
+   | 4 (finalizador) | chute giratório de costas | chute descendente (calcanhar), que derruba |
+
+4. cair no chão e levantar, junto com o primeiro finalizador.
+
 **O que cada eixo faz** (medido no modelo de teste com o visor de quatro vistas; graus como num arquivo de animação):
 
 | Eixo | Positivo |
 |---|---|
 | X | inclina o corpo para a frente; leva braço ou perna **para trás** (negativo: para a frente); dobra o joelho (`LowerLeg`) e o cotovelo é o contrário (`ForeArm` negativo dobra); aponta os dedos do pé para baixo |
 | Y | gira para a **direita do próprio modelo** (o ombro esquerdo vem à frente); num braço erguido, leva-o para a direita |
-| Z | inclina para a direita; abre o braço e a perna **direitos** para fora (os esquerdos são espelhados) |
+| Z | inclina o tronco e a cabeça para a **esquerda** do modelo; abre o braço e a perna **direitos** para fora (os esquerdos são espelhados) |
 
 Ossos usados (`BlowPose.BONES`): `AllBody` (quadril e tudo acima e abaixo), `UpBody` (tronco), `AllHead`, `RightArm`,
 `RightForeArm`, `LeftArm`, `LeftForeArm`, `RightLeg`, `RightLowerLeg`, `RightFoot` e os três da perna esquerda.
@@ -107,6 +122,26 @@ Três coisas são **calculadas a cada instante, não posadas**, e têm teste (`B
 * **os pés ficam no chão**: a sola do pé da frente fica nivelada e apontada para o alvo o tempo todo; o pé de trás
   gira sobre a ponta (de 42° para 12°) e o calcanhar sobe (de 8° para 26°) conforme o quadril vem.
 
+**Levar um golpe** (`BlowPose#struck`, 10 ticks):
+
+![Levar golpe](img/levar-golpe.png)
+
+O corpo de quem leva é **lançado e volta como uma mola amortecida** (`BlowPose#recoil`): chega ao máximo em meio
+tick, volta ao ponto de partida aos 2,75 ticks, passa 21 % para o outro lado (o corpo se segurando) e assenta por
+volta do tick 8. No máximo:
+
+* a cabeça vai 24° para trás e 20° para o lado oposto ao do golpe, com 6° de tombo;
+* o tronco recua 20° **na linha do golpe** e 5° para o lado, e gira 10°. O corpo fica virado em relação a essa
+  linha (20° na guarda, mais no meio de um golpe), então o recuo é repartido entre as duas inclinações do tronco
+  conforme o giro em que ele está: sem isso a cabeça saía para o lado errado;
+* a guarda abre (braços 10° a 14° para trás e para fora, cotovelos 26° a 30° mais abertos) e o peso cai na perna de
+  trás;
+* as solas não saem do lugar: cada pé desfaz o que foi somado acima dele.
+
+A reação é **somada à pose em que o corpo estiver** (a guarda ou um golpe próprio), e é espelhada conforme a mão que
+bate (golpes ímpares vêm da esquerda de quem leva). Por enquanto é só visual: levar um golpe não interrompe a
+cadeia de quem leva.
+
 **No jogo:** a pose entra em 1,5 tick e o lutador fica na guarda enquanto a cadeia pode continuar (16 ticks), saindo
 em 4; um golpe emenda no seguinte em 2 ticks, de onde o corpo estiver. O acerto é decidido **quando o punho chega**
 (3 ticks depois do clique), não no clique: é aí que vêm o clarão no peito de quem leva, o tranco, o tremor e o
@@ -117,12 +152,13 @@ som.
 * **Acerto:** vale o rival a até 3,6 blocos e dentro de 60° da direção do olhar (ou colado). Cada um enche 6,25 %.
 * **Movimento:** cada golpe dá um passo à frente (maior no quarto), e o quarto arremessa o rival.
 * **Som (opcional):** `golpe.ogg` e `impacto.ogg` em `config/ryoikitenkai/sons/`.
-* **Como trabalhar num golpe:** no harness, `turn guard` e `turn <golpe> <tick>` mostram o modelo de frente, de três
+* **Como trabalhar num golpe:** no harness, `turn guard`, `turn <golpe> <tick>` e `turn struck <tick>` (negativo: do outro lado) mostram o modelo de frente, de três
   quartos, de perfil e de cima; com `ryoiki-bones.txt` na pasta do jogo (linhas `<osso> <x> <y> <z>`), `turn on`
   mostra essa pose crua.
 
 Verificado com dois clientes no servidor de teste: rival vencendo por tempo e por barra cheia, anfitrião vencendo por
-barra cheia, empate, resposta durante o sinal de mão e depois de o domínio abrir. O golpe 1 foi visto quadro a quadro no modelo de teste e rodou num choque com dois clientes. **A verificar:** a
+barra cheia, empate, resposta durante o sinal de mão e depois de o domínio abrir. O golpe 1 e a reação a levar golpe foram vistos quadro a quadro no modelo de teste e rodaram num choque com dois
+clientes. **A verificar:** a
 sensação do combo com jogadores de verdade (ritmo, alcance, força do arremesso), os golpes em outros modelos (ossos
 com outros nomes ou outra pose de repouso), a alternância de
 cenários vista ao vivo (as capturas pegam um quadro só), quem assiste de fora perto do domo, mais de um jogador pego

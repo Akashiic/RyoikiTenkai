@@ -285,12 +285,17 @@ public final class DomainRenderer {
             }
         }
         ClientDomain.Blow blow = domain.blows.get(id);
-        if (blow != null) {
-            FuturaBridge.INSTANCE.pose(
-                event.entityPlayer,
-                BlowPose.BONES,
-                blow.pose(event.partialRenderTick),
-                blow.layer(event.partialRenderTick));
+        ClientDomain.Struck struck = domain.strucks.get(id);
+        if (blow != null || struck != null) {
+            // The blow it gives, or its guard; and the blow it takes on top of that.
+            float partial = event.partialRenderTick;
+            float[] pose = blow != null ? blow.pose(partial) : BlowPose.guard();
+            float layer = blow != null ? blow.layer(partial) : 0;
+            if (struck != null) {
+                pose = BlowPose.struck(pose, struck.age + partial, struck.side);
+                layer = Math.max(layer, struck.layer(partial));
+            }
+            FuturaBridge.INSTANCE.pose(event.entityPlayer, BlowPose.BONES, pose, layer);
             return;
         }
         if (domain.rivalSign != null && domain.rivalSign.casterEntity == id) {

@@ -84,6 +84,23 @@ public final class ClientDomain {
         }
     }
 
+    /** A blow taken by a caster in a clash, as it is drawn ({@link BlowPose#struck}). */
+    public static final class Struck {
+
+        private static final float TAKE = 0.5F;
+        private static final float LET_GO = 3;
+
+        /** 1 for a blow from the body's left, -1 from its right. */
+        public int side = 1;
+        public int age;
+
+        /** How much the body is out of its ordinary animation, 0 to 1: at once, and let go as it comes to rest. */
+        public float layer(float partialTicks) {
+            float t = age + partialTicks;
+            return Math.min(Draw.clamp01(t / TAKE), Draw.clamp01((BlowPose.STRUCK_TICKS - t) / LET_GO));
+        }
+    }
+
     /** A domain seen from outside: the hand sign, then the dome. */
     public static final class Dome {
 
@@ -148,6 +165,8 @@ public final class ClientDomain {
     public Dome rivalSign;
     /** The blow each caster is in, by entity id. */
     public final Map<Integer, Blow> blows = new LinkedHashMap<>();
+    /** The blow each caster is taking, by entity id. */
+    public final Map<Integer, Struck> strucks = new LinkedHashMap<>();
     private int clashLeft;
     private int clashRun;
 
@@ -308,6 +327,10 @@ public final class ClientDomain {
                         blow.victim = other;
                         blow.landedAt = blow.age;
                     }
+                    // Who takes it is thrown by it: from its left when the other strikes with the right hand.
+                    Struck struck = new Struck();
+                    struck.side = m.blow % 2 == 1 ? 1 : -1;
+                    strucks.put(other, struck);
                     if (victim != null) {
                         DomainSounds.playAt(SoundCues.IMPACT, victim.posX, victim.posY + 1, victim.posZ, 1F);
                     }
@@ -420,6 +443,7 @@ public final class ClientDomain {
             cutIn = null;
             rivalSign = null;
             blows.clear();
+            strucks.clear();
             clash = -1;
             flash = 0;
             shatter = 0;
@@ -450,6 +474,12 @@ public final class ClientDomain {
         for (Iterator<Blow> it = blows.values()
             .iterator(); it.hasNext();) {
             if (++it.next().age >= Blow.TICKS) {
+                it.remove();
+            }
+        }
+        for (Iterator<Struck> it = strucks.values()
+            .iterator(); it.hasNext();) {
+            if (++it.next().age >= BlowPose.STRUCK_TICKS) {
                 it.remove();
             }
         }

@@ -7,8 +7,8 @@ package com.akashic.ryoiki.fx;
  * <p>
  * What each axis does, measured on a model (docs/VISUAL.md has the table): about X, positive leans the body
  * forward, swings an arm or a leg back, bends a knee and points a foot's toes down; about Y, positive turns to the
- * model's own right; about Z, positive leans to its right and lifts the right arm or leg out sideways (the left ones
- * are mirrored).
+ * model's own right; about Z, positive leans the chest and the head to its left, and lifts the right arm or leg out
+ * sideways (the left ones are mirrored).
  *
  * <p>
  * A blow is built from three poses of the same bones: the guard it starts from and returns to, a short gathering
@@ -97,7 +97,7 @@ public final class BlowPose {
      * rear leg long behind.
      */
     private static final float[] STRIKE_1 = pose(
-        new float[][] { { 0, -12, 0 }, { 12, -22, -3 }, { 0, 0, 0 }, { -84, 30, 0 }, { -5, 0, 0 }, { -48, 14, 0 },
+        new float[][] { { 0, -12, 0 }, { 12, -22, 3 }, { 0, 0, 0 }, { -84, 30, 0 }, { -5, 0, 0 }, { -48, 14, 0 },
             { -128, 0, 0 }, { 20, 0, 0 }, { 8, 0, 0 }, { 0, 0, 0 }, { -22, 0, 0 }, { 28, 0, 0 }, { 0, 0, 0 } });
 
     /**
@@ -206,11 +206,87 @@ public final class BlowPose {
         p[L_FOOT * 3 + Y] = -turn;
         p[R_FOOT * 3 + Y] = REAR_FOOT_GUARD + (REAR_FOOT_STRIKE - REAR_FOOT_GUARD) * hips - turn;
         // A sole is level when the turns above it cancel; the rear heel is off the ground by what is asked.
-        p[L_FOOT * 3 + X] = -(p[L_LEG * 3 + X] + p[L_SHIN * 3 + X]);
-        p[R_FOOT * 3 + X] = -(p[R_LEG * 3 + X] + p[R_SHIN * 3 + X]) + HEEL_GUARD + (HEEL_STRIKE - HEEL_GUARD) * hips;
+        p[L_FOOT * 3 + X] = -(p[ALL * 3 + X] + p[L_LEG * 3 + X] + p[L_SHIN * 3 + X]);
+        p[R_FOOT * 3 + X] = -(p[ALL * 3 + X] + p[R_LEG * 3 + X] + p[R_SHIN * 3 + X]) + HEEL_GUARD
+            + (HEEL_STRIKE - HEEL_GUARD) * hips;
         p[HEAD * 3 + Y] = -(turn + p[CHEST * 3 + Y]) * HEAD_TURN;
         p[HEAD * 3 + X] = -p[CHEST * 3 + X] * HEAD_LEAN;
         p[HEAD * 3 + Z] = -p[CHEST * 3 + Z];
+        return p;
+    }
+
+    /** Ticks a blow taken is drawn for. */
+    public static final float STRUCK_TICKS = 10;
+    /** When the body is thrown furthest, and when it has come back through where it was. */
+    private static final double STRUCK_RISE = 0.35;
+    private static final double STRUCK_DECAY = 2.4;
+    private static final double STRUCK_SWING = 11;
+    private static final float STRUCK_PEAK = peak();
+    /** How far the chest leans at the furthest: back along the line of the blow, and to the side it is struck to. */
+    private static final float STRUCK_BACK = 20;
+    private static final float STRUCK_ASIDE = 5;
+
+    /**
+     * What a blow to the head does to each bone when the body is thrown furthest, for a blow that comes from the
+     * body's own left (the other's right hand); from the right, the turns about Y and Z are the other way. The head
+     * goes back and round, the chest after it, the guard opens, the weight falls on the rear leg. The lean of the
+     * chest is not here: it is along the line of the blow, whichever way the body is turned ({@link #struck}).
+     */
+    private static final float[] STRUCK = pose(
+        new float[][] { { 0, 0, 0 }, { 0, 10, 0 }, { -24, 20, -6 }, { 14, 0, 10 }, { 30, 0, 0 }, { 10, 0, -10 },
+            { 26, 0, 0 }, { -6, 0, 0 }, { 12, 0, 0 }, { 0, 0, 0 }, { 8, 0, 0 }, { -8, 0, 0 }, { 0, 0, 0 } });
+
+    /**
+     * How far a struck body is thrown, by the time since the blow: at once to 1, then back through where it was (a
+     * little the other way, as it catches itself) and to rest. A swing that dies away, and is still by
+     * {@link #STRUCK_TICKS}.
+     */
+    public static float recoil(float time) {
+        if (time <= 0 || time >= STRUCK_TICKS) {
+            return 0;
+        }
+        return swing(time) / STRUCK_PEAK * (1 - smooth((time - 7) / (STRUCK_TICKS - 7)));
+    }
+
+    private static float swing(double t) {
+        return (float) ((1 - Math.exp(-t / STRUCK_RISE)) * Math.exp(-t / STRUCK_DECAY)
+            * Math.cos(2 * Math.PI * t / STRUCK_SWING));
+    }
+
+    private static float peak() {
+        float most = 0;
+        for (double t = 0; t < 3; t += 0.01) {
+            most = Math.max(most, swing(t));
+        }
+        return most;
+    }
+
+    /**
+     * A pose with a blow taken on top of it: whatever the body was doing (its guard, a blow of its own), thrown by
+     * the blow and coming back.
+     *
+     * @param time ticks since the blow landed, with fractions
+     * @param side 1 for a blow from the body's left, -1 from its right
+     */
+    public static float[] struck(float[] base, float time, int side) {
+        float[] p = base.clone();
+        float thrown = recoil(time);
+        for (int bone = 0; bone < BONES.length; bone++) {
+            p[bone * 3 + X] += STRUCK[bone * 3 + X] * thrown;
+            p[bone * 3 + Y] += STRUCK[bone * 3 + Y] * thrown * side;
+            p[bone * 3 + Z] += STRUCK[bone * 3 + Z] * thrown * (bone == CHEST || bone == HEAD ? side : 1);
+        }
+        // The chest goes back along the line of the blow and a little to the side it is struck toward. The body
+        // stands turned off that line, so "back" is shared between the chest's two leans by how far it is turned.
+        double turned = Math.toRadians(base[ALL * 3 + Y] + base[CHEST * 3 + Y]);
+        double back = STRUCK_BACK * thrown;
+        double aside = STRUCK_ASIDE * thrown * side;
+        p[CHEST * 3 + X] += (float) (-back * Math.cos(turned) + aside * Math.sin(turned));
+        // (A lean to the body's right is a turn about Z the negative way.)
+        p[CHEST * 3 + Z] -= (float) (back * Math.sin(turned) + aside * Math.cos(turned));
+        // The soles stay where they were: each foot takes back what was added above it.
+        p[L_FOOT * 3 + X] -= (STRUCK[L_LEG * 3 + X] + STRUCK[L_SHIN * 3 + X]) * thrown;
+        p[R_FOOT * 3 + X] -= (STRUCK[R_LEG * 3 + X] + STRUCK[R_SHIN * 3 + X]) * thrown;
         return p;
     }
 

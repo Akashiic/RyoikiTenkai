@@ -98,6 +98,66 @@ class BlowPoseTest {
         }
     }
 
+    @Test
+    void aStruckBodyIsThrownAtOnceAndSwingsBackToRest() {
+        assertEquals(0, BlowPose.recoil(0));
+        assertEquals(0, BlowPose.recoil(BlowPose.STRUCK_TICKS));
+        float most = 0;
+        float mostAt = 0;
+        float least = 0;
+        float before = 0;
+        for (float t = 0; t <= BlowPose.STRUCK_TICKS; t += 0.05F) {
+            float r = BlowPose.recoil(t);
+            if (r > most) {
+                most = r;
+                mostAt = t;
+            }
+            least = Math.min(least, r);
+            // A blow is sudden: the body is thrown within half a tick. But it is a movement, not a jump.
+            assertTrue(Math.abs(r - before) < 0.25F, "a jump at " + t);
+            before = r;
+        }
+        // Thrown furthest within the first tick and a half; then a little past where it was, as it catches itself.
+        assertEquals(1, most, 0.01F);
+        assertTrue(mostAt > 0.3F && mostAt < 1.5F, "furthest at " + mostAt);
+        assertTrue(least < -0.03F && least > -0.3F, "back through by " + least);
+    }
+
+    @Test
+    void aBlowTakenLeavesTheSolesWhereTheyWereAndMirrors() {
+        float[] guard = BlowPose.guard();
+        assertArrayEquals(guard, BlowPose.struck(guard, 0, 1), 1e-4F);
+        assertArrayEquals(guard, BlowPose.struck(guard, BlowPose.STRUCK_TICKS, 1), 1e-4F);
+        for (float t = 0; t <= BlowPose.STRUCK_TICKS; t += 0.25F) {
+            float[] p = BlowPose.struck(guard, t, 1);
+            float[] q = BlowPose.struck(guard, t, -1);
+            for (String leg : new String[] { "Left", "Right" }) {
+                float sole = BlowPose.angle(p, "AllBody", X) + BlowPose.angle(p, leg + "Leg", X)
+                    + BlowPose.angle(p, leg + "LowerLeg", X)
+                    + BlowPose.angle(p, leg + "Foot", X);
+                float was = BlowPose.angle(guard, "AllBody", X) + BlowPose.angle(guard, leg + "Leg", X)
+                    + BlowPose.angle(guard, leg + "LowerLeg", X)
+                    + BlowPose.angle(guard, leg + "Foot", X);
+                assertEquals(was, sole, 1e-3F, leg + " sole at " + t);
+            }
+            // From the other side the head goes round the other way, by as much, and back by the same.
+            float turn = BlowPose.angle(p, "AllHead", Y) - BlowPose.angle(guard, "AllHead", Y);
+            float other = BlowPose.angle(q, "AllHead", Y) - BlowPose.angle(guard, "AllHead", Y);
+            assertEquals(turn, -other, 1e-3F);
+            assertEquals(BlowPose.angle(p, "AllHead", X), BlowPose.angle(q, "AllHead", X), 1e-3F);
+        }
+        // The chest goes back along the line of the blow: in the guard, turned 20 degrees off it, that is mostly a
+        // lean back and partly a lean to the body's right; square to the line it would be a lean back alone.
+        float[] thrown = BlowPose.struck(guard, 0.6F, 1);
+        float leanBack = BlowPose.angle(guard, "UpBody", X) - BlowPose.angle(thrown, "UpBody", X);
+        float leanRight = BlowPose.angle(guard, "UpBody", 2) - BlowPose.angle(thrown, "UpBody", 2);
+        assertTrue(leanBack > 15 && leanRight > 7 && leanRight < leanBack, leanBack + " " + leanRight);
+        // At its furthest the head is back by 24 degrees and round by 20.
+        float[] far = BlowPose.struck(guard, 0.85F, 1);
+        assertEquals(-24, BlowPose.angle(far, "AllHead", X) - BlowPose.angle(guard, "AllHead", X), 1.5F);
+        assertEquals(20, BlowPose.angle(far, "AllHead", Y) - BlowPose.angle(guard, "AllHead", Y), 1.5F);
+    }
+
     private static float firstBeyondHalf(String bone, int axis, float[] guard) {
         float from = BlowPose.angle(guard, bone, axis);
         float to = BlowPose.angle(BlowPose.sample(1, BlowPose.IMPACT), bone, axis);

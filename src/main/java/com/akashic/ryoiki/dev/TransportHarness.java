@@ -594,6 +594,11 @@ public final class TransportHarness {
                 turnPose = null;
                 if ("guard".equals(rest)) {
                     turnPose = com.akashic.ryoiki.fx.BlowPose.guard();
+                } else if (rest.startsWith("struck ")) {
+                    // "turn struck 0.8": a blow taken on the guard, that long ago; "turn struck -0.8": from the right.
+                    float at = Float.parseFloat(rest.substring(7));
+                    turnPose = com.akashic.ryoiki.fx.BlowPose
+                        .struck(com.akashic.ryoiki.fx.BlowPose.guard(), Math.abs(at), at < 0 ? -1 : 1);
                 } else if (rest.contains(" ")) {
                     String[] at = rest.split(" ");
                     turnPose = com.akashic.ryoiki.fx.BlowPose.sample(Integer.parseInt(at[0]), Float.parseFloat(at[1]));

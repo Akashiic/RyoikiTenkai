@@ -148,7 +148,9 @@ Regras da seção 5.4 do `ESTUDO.md`, decididas pelo agente (carta branca) em 20
   salão é só desenhado (recuado, com os conjuradores diante da porta), não construído: há gente onde as paredes
   ficariam. Se o Santuário anfitrião perde, o salão é removido.
 * **Código:** `domain/ClashScore` (regras puras, com teste), `domain/ComboChain` (idem), `fx/BlowPose` (o corpo em cada golpe: só a guarda e o golpe 1 estão
-  trabalhados; os golpes 2 a 4 são provisórios e devem ser feitos um por vez, ver `VISUAL.md`), `DomainManager` (`clashHost`, `answer`,
+  trabalhados, mais a reação a levar golpe; o resto é provisório. O dono quer **um kit por domínio, com golpes de
+  perna**, e animações de **levar golpe e cair**: a ordem das peças e a proposta dos kits estão em `VISUAL.md`,
+  "Os golpes do choque"), `DomainManager` (`clashHost`, `answer`,
   `beginClash`, `tickClash`, `blows`, `resolve`), `DomainWire` (`RIVAL`, `CLASH`, `CLASH_SCORE`, `BLOW`, `CLASH_END`),
   `ClientDomain#shown` e `client/ClashHud`.
 
