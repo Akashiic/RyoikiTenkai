@@ -14,6 +14,13 @@ package com.akashic.ryoiki.mode;
  * and the orb goes wherever the eyes go, the sky included.
  *
  * <p>
+ * <b>Repulsão</b> (the star void's second): the opposite of the first. Its caster gathers it for
+ * {@link #RED_CHARGE_TICKS} ticks and lets it fly: an orb that goes straight, {@link #RED_SPEED} blocks a tick, for
+ * {@link #RED_RANGE} blocks or until something solid, through everyone in its way, throwing each one off along its
+ * path. It harms less the farther it has flown. On the ground it flies nearly level; gathered in the air, its
+ * caster hangs there and it flies wherever the eyes point.
+ *
+ * <p>
  * <b>Talho</b> (the crimson shrine's first): a blade nobody sees leaves the caster and flies straight, up to
  * {@link #CUT_RANGE} blocks at {@link #CUT_SPEED} blocks a tick, and cuts the first it meets.
  */
@@ -25,6 +32,10 @@ public final class AbilityMath {
     public static final int CUT_HIT = 3;
     public static final int PULL_MOVE = 4;
     public static final int PULL_END = 5;
+    /** The red orb: gathered by its caster, let fly, and each one it goes through. */
+    public static final int RED_CHARGE = 6;
+    public static final int RED_FIRE = 7;
+    public static final int RED_HIT = 8;
 
     /** The orb's beginning, its move, and its end. */
     public static final int PULL = 1;
@@ -51,6 +62,23 @@ public final class AbilityMath {
     public static final double PULL_GAIN = 0.35;
     /** This near the orb there is nowhere left to go: whoever is there is held, and goes where it goes. */
     public static final double PULL_HELD = 0.5;
+
+    /** A little over a second. */
+    public static final int RED_CHARGE_TICKS = 24;
+    public static final double RED_RANGE = 24;
+    public static final double RED_SPEED = 2.4;
+    /** 10 s. */
+    public static final int RED_RECHARGE = 200;
+    /** How near its line a body is hit: the orb is wide. */
+    public static final double RED_WIDTH = 0.9;
+    /** The part of its harm it still does at the end of its range. */
+    public static final double RED_FAR = 7.0 / 30;
+    /** How hard it throws who it goes through, near and at the end of its range, and the lift they get. */
+    public static final double RED_THROW = 1.5;
+    public static final double RED_THROW_FAR = 0.6;
+    public static final double RED_LIFT = 0.38;
+    /** On the ground it flies no steeper than this: the sine of twelve degrees. */
+    public static final double RED_LEVEL = 0.208;
 
     public static final double CUT_RANGE = 12;
     public static final double CUT_SPEED = 1.5;
@@ -121,6 +149,44 @@ public final class AbilityMath {
     /** The height the orb is put at on the ground: where the eyes look, kept about the height of a body. */
     public static double grounded(double aimedY, double feetY) {
         return Math.max(feetY + ORB_LOW, Math.min(feetY + ORB_HIGH, aimedY));
+    }
+
+    /** How far the red orb has flown, this many ticks after it was let fly, in a flight of {@code range} blocks. */
+    public static double redGone(double age, double range) {
+        return Math.max(0, Math.min(range, age * RED_SPEED));
+    }
+
+    /** What the red orb does to someone it meets this far along its way: all of {@code most} near, less far. */
+    public static float redDamage(float most, double distance) {
+        double far = Math.max(0, Math.min(1, distance / RED_RANGE));
+        return (float) (most * (1 - (1 - RED_FAR) * far));
+    }
+
+    /** How hard it throws them, along its way. */
+    public static double redThrow(double distance) {
+        double far = Math.max(0, Math.min(1, distance / RED_RANGE));
+        return RED_THROW + (RED_THROW_FAR - RED_THROW) * far;
+    }
+
+    /**
+     * The way the red orb flies from the ground: where the eyes point, but nearly level.
+     *
+     * @param out a unit vector no steeper than {@link #RED_LEVEL}
+     */
+    public static void level(double dx, double dy, double dz, double[] out) {
+        double flat = Math.sqrt(dx * dx + dz * dz);
+        if (flat < 1e-6) {
+            // Straight up or down: there is no way ahead to keep. It goes where it is told.
+            out[0] = dx;
+            out[1] = dy;
+            out[2] = dz;
+            return;
+        }
+        double y = Math.max(-RED_LEVEL, Math.min(RED_LEVEL, dy));
+        double scale = Math.sqrt(1 - y * y) / flat;
+        out[0] = dx * scale;
+        out[1] = y;
+        out[2] = dz * scale;
     }
 
     /** How far a flying cut has gone, this many ticks after it left, in a flight of {@code range} blocks. */

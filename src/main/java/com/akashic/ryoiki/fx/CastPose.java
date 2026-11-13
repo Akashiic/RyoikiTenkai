@@ -12,6 +12,9 @@ public final class CastPose {
     /** The kinds of gesture. */
     public static final int PULL = 1;
     public static final int CUT = 2;
+    public static final int RED = 3;
+    /** Ticks after the red orb is let fly that the arm stays out and comes back. */
+    public static final float RED_AFTER = 14;
 
     /** Ticks the cut's gesture lasts, and the least the pull's does. */
     public static final float PULL_TICKS = 16;
@@ -45,7 +48,7 @@ public final class CastPose {
      *              orb is held out, and its last six ticks are the hand coming back
      */
     public static float[] sample(int kind, float age, float ticks) {
-        return kind == CUT ? cut(age) : pull(age, ticks);
+        return kind == CUT ? cut(age) : kind == RED ? red(age, ticks) : pull(age, ticks);
     }
 
     /**
@@ -69,6 +72,31 @@ public final class CastPose {
         // The other arm goes back, as a counterweight, elbow a little bent.
         p[L_ARM + X] = 20 * out - 6 * in;
         p[L_FORE + X] = -24 * out;
+        return p;
+    }
+
+    /**
+     * Repulsão. While it is gathered the hand is raised before the face, the elbow bent, the body drawn back a
+     * little; when it is let fly the arm snaps straight out at what is ahead, the shoulder behind it, and stays
+     * there a moment before it comes down.
+     *
+     * @param ticks the gathering and {@link #RED_AFTER} ticks more
+     */
+    private static float[] red(float age, float ticks) {
+        float[] p = new float[BONES.length * 3];
+        float fire = ticks - RED_AFTER;
+        float raised = smooth(age / 5);
+        // The snap: two ticks, a little past where it settles.
+        float out = smooth((age - fire) / 2) + 0.12F * bump((age - fire - 2) / 4);
+        p[R_ARM + X] = lerp(-128 * raised, -86, out);
+        p[R_ARM + Z] = lerp(-6 * raised, 4, out);
+        p[R_FORE + X] = lerp(-52 * raised, -4, out);
+        p[CHEST + X] = lerp(-5 * raised, 7, out);
+        p[CHEST + Y] = lerp(6 * raised, -16, out);
+        p[HEAD + Y] = -0.9F * p[CHEST + Y];
+        p[HEAD + X] = -0.6F * p[CHEST + X];
+        p[L_ARM + X] = lerp(8 * raised, 22, out);
+        p[L_FORE + X] = lerp(-20 * raised, -26, out);
         return p;
     }
 

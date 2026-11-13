@@ -469,6 +469,30 @@ O dono aprovou as seis habilidades propostas (`PLANO-COMBATE.md`) e mandou fazer
   trás (terceira pessoa), a lâmina fica de perfil e o alvo fica atrás do próprio jogador. O orbe não gruda no alvo:
   é quem conjura que o leva até ele com a câmera.
 
+### A tecla 2 do Vazio: Repulsão (2026-11-13)
+
+O dono indicou a página do personagem na wiki do jogo de referência como **o guia das habilidades 1, 2 e 3 do
+Vazio** e disse que a 2 "é o vermelho". O agente leu o texto da wiki e viu o GIF para entender o comportamento;
+o desenho e o nome no mod são próprios, como no resto.
+
+![Repulsão](img/habilidade2.png)
+
+* **O que faz:** o oposto da Atração. Quem conjura **carrega por 1,2 s** e solta um orbe vermelho que voa reto,
+  rápido (2,4 blocos por tick), por até 24 blocos ou até um bloco sólido, **atravessando** quem estiver no
+  caminho: cada um leva o dano e é **arremessado** ao longo do trajeto. O dano e o arremesso **caem com a
+  distância** (de 3 corações de perto a menos de 1 no fim do alcance; `dano.repulsao`). Recarga 10 s.
+* **Dois modos**, como na Atração: **no chão** o orbe sai quase nivelado (no máximo 12 graus para cima ou para
+  baixo); **carregado no ar**, quem conjura fica **suspenso** durante a carga e o orbe vai para onde a câmera
+  apontar no instante do disparo, em qualquer direção.
+* **O que se vê:** na carga, arcos claros girando em volta do corpo cada vez mais depressa, uma luz vermelha no
+  chão e uma esfera vermelha crescendo na mão; no disparo, a esfera (a mesma malha da azul, em carmim) com um
+  rastro vermelho de fio branco, **anéis de ar empurrado** que ficam pelo caminho e se abrem, e um clarão em cada
+  um que ela atravessa e onde ela termina. Quem conjura **ergue a mão diante do rosto** enquanto carrega e
+  **estica o braço** no disparo. Na visão de quem conjura a esfera da carga fica menor e ao lado da mão, para não
+  tapar o alvo.
+* **Limites:** a carga não é interrompida por levar golpe; quem atravessou não é atingido duas vezes. O Santuário
+  ainda não tem a habilidade 2 (a casa fica apagada).
+
 ### A tecla 4: Expansão de Domínio (peça M3, 2026-11-13)
 
 No modo, a tecla 4 expande o domínio da técnica do jogador. O cliente só pede (`ModeWire.USE`); o servidor decide
@@ -509,6 +533,8 @@ puro, sem plugin):
 | O orbe no chão, no spawn de teste (WorldGuard: sem PvP e `invincible`) | o outro jogador foi preso e carregado com o giro da câmera; vida de 20 para 17 e para 11 |
 | O orbe usado no ar, mirado para o céu | quem conjurou ficou parado a 0,8 bloco do chão até o fim; o outro foi levado para cima e perdeu vida |
 | Entrar no modo sem a permissão (jogador sem op) e com ela | recusado com aviso no chat; aceito |
+| Repulsão do chão num jogador a 8 blocos, no spawn protegido | vida de 20 para 15; jogado de 59,5 para 66,1 |
+| Repulsão carregada no ar (pulo) | quem conjurou ficou a 1 bloco do chão durante a carga; o alvo foi de 59,5 para 66,6, vida 15 |
 | A passada no visor de quatro vistas (parado, trote, disparada, pulo) e filmada de lado e de trás | trote, disparada e pulo reconhecíveis; braços para trás e queda ajustados depois da primeira vista |
 | Gestos no visor de quatro vistas | mão à frente na altura do ombro e recolhida; mão acima do ombro oposto, e baixa do lado dela no fim |
 

@@ -297,23 +297,28 @@ public final class SorcererMode {
      */
     private void use(EntityPlayerMP player, int slot) {
         DomainType technique = technique(player);
-        if (slot == 1) {
-            // The first technique of each domain's kind. Not for the dead, nor for whoever a void holds still.
+        if (slot < ModeWire.SLOTS) {
+            // The first techniques of each domain's kind. Not for the dead, nor for whoever a void holds still.
             long tick = MinecraftServer.getServer()
                 .getTickCounter();
             long[] mine = ready.get(player.getUniqueID());
-            long wait = mine == null ? 0 : mine[0] - tick;
+            long wait = mine == null ? 0 : mine[slot - 1] - tick;
             if (ModeRules.use(isOn(player), technique != null, wait) != ModeRules.OK || !player.isEntityAlive()
                 || DomainManager.INSTANCE.frozen(player)) {
                 return;
             }
-            int recharge = abilities.first(player, technique, this);
+            int recharge = slot == 1 ? abilities.first(player, technique, this)
+                : slot == 2 ? abilities.second(player, technique, this) : 0;
+            if (recharge <= 0) {
+                // Its domain's kind has no such technique yet.
+                return;
+            }
             if (mine == null) {
                 mine = new long[ModeWire.SLOTS - 1];
                 ready.put(player.getUniqueID(), mine);
             }
-            mine[0] = tick + recharge;
-            cooldown(player, 1, recharge, recharge);
+            mine[slot - 1] = tick + recharge;
+            cooldown(player, slot, recharge, recharge);
             return;
         }
         if (slot != ModeWire.SLOTS) {

@@ -121,10 +121,12 @@ public final class SorcererClient {
 
     /**
      * Whether one of the four techniques (from 0) can be used at all. The first and the fourth, the domain
-     * expansion, belong to whoever has a technique; the second and the third do not exist yet.
+     * expansion, belong to whoever has a technique; the second exists for the star void only, and the third for
+     * neither yet.
      */
     boolean has(int slot) {
-        return (slot == 0 || slot == ModeWire.SLOTS - 1) && technique != null;
+        return technique != null
+            && (slot == 0 || slot == ModeWire.SLOTS - 1 || slot == 1 && technique == DomainType.INFINITE_VOID);
     }
 
     /**

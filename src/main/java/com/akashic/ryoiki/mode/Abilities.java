@@ -37,6 +37,23 @@ final class Abilities {
 
     private final List<Orb> orbs = new ArrayList<>();
     private final List<Cut> cuts = new ArrayList<>();
+    private final List<Red> reds = new ArrayList<>();
+
+    private static final class Red {
+
+        EntityPlayerMP caster;
+        /** Gathered in the air: the caster hangs there, and the orb flies wherever it looks. */
+        boolean air;
+        int age;
+        /** Once let fly: from where, which way, how far. */
+        boolean flying;
+        double x;
+        double y;
+        double z;
+        final double[] way = new double[3];
+        double range;
+        final Set<UUID> met = new HashSet<>();
+    }
 
     private static final class Orb {
 
@@ -70,6 +87,7 @@ final class Abilities {
     void reset() {
         orbs.clear();
         cuts.clear();
+        reds.clear();
     }
 
     /**
@@ -144,6 +162,156 @@ final class Abilities {
         return AbilityMath.CUT_RECHARGE;
     }
 
+    /**
+     * A player uses the second technique of its domain's kind. Returns the ticks it now recharges for, or 0 if its
+     * domain's kind has none yet.
+     */
+    int second(EntityPlayerMP caster, DomainType technique, SorcererMode mode) {
+        if (technique != DomainType.INFINITE_VOID) {
+            return 0;
+        }
+        for (Red other : reds) {
+            if (other.caster == caster) {
+                return 0;
+            }
+        }
+        // Repulsão: gathered first, where the caster is; let fly when it is ready.
+        Red red = new Red();
+        red.caster = caster;
+        red.air = !caster.onGround;
+        reds.add(red);
+        tell(
+            caster.worldObj,
+            caster.posX,
+            caster.posY,
+            caster.posZ,
+            ModeWire.effect(
+                AbilityMath.RED_CHARGE,
+                caster.getEntityId(),
+                caster.posX,
+                caster.posY,
+                caster.posZ,
+                red.air ? 1 : 0,
+                0,
+                0,
+                0,
+                AbilityMath.RED_CHARGE_TICKS),
+            mode);
+        return AbilityMath.RED_RECHARGE;
+    }
+
+    /** One tick of a red orb. False when it is over. */
+    private boolean red(Red red, SorcererMode mode) {
+        EntityPlayerMP caster = red.caster;
+        if (!red.flying) {
+            if (!caster.isEntityAlive() || !mode.isOn(caster) || DomainManager.INSTANCE.frozen(caster)) {
+                // Never let fly.
+                return false;
+            }
+            if (red.air) {
+                hang(caster);
+            }
+            if (++red.age < AbilityMath.RED_CHARGE_TICKS) {
+                return true;
+            }
+            // Let fly, the way the caster looks now: from before its chest, until something solid.
+            Vec3 look = caster.getLookVec();
+            red.way[0] = look.xCoord;
+            red.way[1] = look.yCoord;
+            red.way[2] = look.zCoord;
+            if (!red.air) {
+                AbilityMath.level(look.xCoord, look.yCoord, look.zCoord, red.way);
+            }
+            Vec3 way = Vec3.createVectorHelper(red.way[0], red.way[1], red.way[2]);
+            red.x = caster.posX + red.way[0] * AbilityMath.CUT_AHEAD;
+            red.y = caster.posY + caster.getEyeHeight() - AbilityMath.CUT_BELOW + red.way[1] * AbilityMath.CUT_AHEAD;
+            red.z = caster.posZ + red.way[2] * AbilityMath.CUT_AHEAD;
+            red.range = clear(caster.worldObj, red.x, red.y, red.z, way, AbilityMath.RED_RANGE);
+            red.flying = true;
+            red.age = 0;
+            if (red.air) {
+                caster.fallDistance = 0;
+            }
+            tell(
+                caster.worldObj,
+                red.x,
+                red.y,
+                red.z,
+                ModeWire.effect(
+                    AbilityMath.RED_FIRE,
+                    caster.getEntityId(),
+                    red.x,
+                    red.y,
+                    red.z,
+                    red.way[0],
+                    red.way[1],
+                    red.way[2],
+                    red.range,
+                    (int) Math.ceil(red.range / AbilityMath.RED_SPEED)),
+                mode);
+            return true;
+        }
+        double from = AbilityMath.redGone(red.age, red.range);
+        double to = AbilityMath.redGone(++red.age, red.range);
+        for (EntityPlayerMP target : targets(caster, mode)) {
+            if (red.met.contains(target.getUniqueID())) {
+                continue;
+            }
+            AxisAlignedBB box = target.boundingBox;
+            double enters = AbilityMath.enters(
+                red.x,
+                red.y,
+                red.z,
+                red.way[0],
+                red.way[1],
+                red.way[2],
+                box.minX - AbilityMath.RED_WIDTH,
+                box.minY - AbilityMath.RED_WIDTH,
+                box.minZ - AbilityMath.RED_WIDTH,
+                box.maxX + AbilityMath.RED_WIDTH,
+                box.maxY + AbilityMath.RED_WIDTH,
+                box.maxZ + AbilityMath.RED_WIDTH);
+            if (enters < 0 || enters > to || enters < from - AbilityMath.RED_SPEED) {
+                continue;
+            }
+            // It goes through: this one is thrown off along its way, and it flies on.
+            red.met.add(target.getUniqueID());
+            strike(caster, target, AbilityMath.redDamage(Config.redDamage, enters), "ryoiki.repulsao");
+            double hard = AbilityMath.redThrow(enters);
+            move(
+                target,
+                new double[] { red.way[0] * hard, Math.max(red.way[1] * hard, 0) + AbilityMath.RED_LIFT,
+                    red.way[2] * hard });
+            tell(
+                target.worldObj,
+                target.posX,
+                target.posY + target.height / 2,
+                target.posZ,
+                ModeWire.effect(
+                    AbilityMath.RED_HIT,
+                    caster.getEntityId(),
+                    target.posX,
+                    target.posY + target.height / 2,
+                    target.posZ,
+                    red.way[0],
+                    red.way[1],
+                    red.way[2],
+                    enters,
+                    0),
+                mode);
+        }
+        return to < red.range;
+    }
+
+    /** Held where it is in the air, for as long as this is done each tick. */
+    private static void hang(EntityPlayerMP caster) {
+        caster.motionX = 0;
+        caster.motionY = 0;
+        caster.motionZ = 0;
+        caster.fallDistance = 0;
+        caster.velocityChanged = true;
+    }
+
     /** How far from a place, along a direction, nothing solid is in the way: at most {@code reach}. */
     private static double clear(World world, double x, double y, double z, Vec3 look, double reach) {
         // The game's own ray changes the vectors it is given: these are its own.
@@ -169,6 +337,12 @@ final class Abilities {
         for (Iterator<Cut> i = cuts.iterator(); i.hasNext();) {
             Cut cut = i.next();
             if (!cut(cut, mode)) {
+                i.remove();
+            }
+        }
+        for (Iterator<Red> i = reds.iterator(); i.hasNext();) {
+            Red red = i.next();
+            if (!red(red, mode)) {
                 i.remove();
             }
         }
@@ -201,11 +375,7 @@ final class Abilities {
             orb.z += orb.velocity[2];
             if (orb.air) {
                 // Begun in the air, it holds its caster there.
-                caster.motionX = 0;
-                caster.motionY = 0;
-                caster.motionZ = 0;
-                caster.fallDistance = 0;
-                caster.velocityChanged = true;
+                hang(caster);
             }
         } else if (orb.air) {
             caster.fallDistance = 0;

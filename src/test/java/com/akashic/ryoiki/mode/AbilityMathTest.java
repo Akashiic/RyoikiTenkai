@@ -84,6 +84,41 @@ class AbilityMathTest {
     }
 
     @Test
+    void theRedOrbHarmsAndThrowsLessTheFartherItFlies() {
+        assertEquals(6, AbilityMath.redDamage(6, 0), 1e-6);
+        assertEquals(6 * AbilityMath.RED_FAR, AbilityMath.redDamage(6, AbilityMath.RED_RANGE), 1e-6);
+        assertEquals(6 * AbilityMath.RED_FAR, AbilityMath.redDamage(6, 500), 1e-6);
+        assertEquals(AbilityMath.RED_THROW, AbilityMath.redThrow(0), 1e-9);
+        assertEquals(AbilityMath.RED_THROW_FAR, AbilityMath.redThrow(AbilityMath.RED_RANGE), 1e-9);
+        float last = 7;
+        for (double d = 0; d <= AbilityMath.RED_RANGE; d += 0.5) {
+            float now = AbilityMath.redDamage(6, d);
+            assertTrue(now < last && now > 0);
+            last = now;
+        }
+        // It crosses its whole range in under half a second.
+        assertEquals(AbilityMath.RED_RANGE, AbilityMath.redGone(10, AbilityMath.RED_RANGE), 0);
+        assertEquals(AbilityMath.RED_SPEED * 3, AbilityMath.redGone(3, AbilityMath.RED_RANGE), 1e-9);
+    }
+
+    @Test
+    void fromTheGroundTheRedOrbFliesNearlyLevel() {
+        double[] v = new double[3];
+        // Aimed level, or a little up: where it is aimed.
+        AbilityMath.level(1, 0, 0, v);
+        assertEquals(1, v[0], 1e-9);
+        assertEquals(0, v[1], 1e-9);
+        // Aimed steeply up or down: the same way ahead, no steeper than it may be, and still a unit vector.
+        for (double pitch : new double[] { 60, -45, 89 }) {
+            double r = Math.toRadians(pitch);
+            AbilityMath.level(Math.cos(r) * 0.6, Math.sin(r), Math.cos(r) * 0.8, v);
+            assertEquals(Math.signum(pitch) * AbilityMath.RED_LEVEL, v[1], 1e-9);
+            assertEquals(1, Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]), 1e-9);
+            assertEquals(0.75, v[0] / v[2], 1e-9);
+        }
+    }
+
+    @Test
     void aFlyingCutCoversItsRangeAtItsSpeed() {
         assertEquals(0, AbilityMath.cutGone(0, 12), 0);
         assertEquals(AbilityMath.CUT_SPEED * 3, AbilityMath.cutGone(3, 12), 1e-9);

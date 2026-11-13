@@ -26,6 +26,7 @@ public final class Config {
     /** The damage of the techniques, in half hearts, whatever the armour. 0: none (and nothing to veto). */
     public static float pullDamage = 1;
     public static float cutDamage = 5;
+    public static float redDamage = 6;
     public static int arenaX = 200000;
     public static int arenaZ = 200000;
     public static int arenaY = 120;
@@ -81,6 +82,14 @@ public final class Config {
             40,
             "Dano da Atracao (Vazio, habilidade 1) em meios coracoes, a cada meio segundo em quem o orbe segura, "
                 + "igual com qualquer armadura. Com 0 ela so puxa.");
+        redDamage = cfg.getFloat(
+            "repulsao",
+            "dano",
+            redDamage,
+            0,
+            40,
+            "Dano da Repulsao (Vazio, habilidade 2) de perto, em meios coracoes; cai com a distancia ate menos de "
+                + "um quarto no fim do alcance.");
         cutDamage = cfg.getFloat(
             "talho",
             "dano",

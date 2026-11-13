@@ -46,6 +46,27 @@ class CastPoseTest {
     }
 
     @Test
+    void theRedIsRaisedWhileItIsGatheredAndThrownStraightOut() {
+        float ticks = 24 + CastPose.RED_AFTER;
+        float[] gathered = CastPose.sample(CastPose.RED, 20, ticks);
+        float[] thrown = CastPose.sample(CastPose.RED, 24 + 4, ticks);
+        // Gathered: the hand high, the elbow bent. Thrown: the arm level and straight, that shoulder forward.
+        assertTrue(CastPose.angle(gathered, "RightArm", 0) < -115 && CastPose.angle(gathered, "RightForeArm", 0) < -40);
+        assertEquals(-86, CastPose.angle(thrown, "RightArm", 0), 8);
+        assertTrue(Math.abs(CastPose.angle(thrown, "RightForeArm", 0)) < 12);
+        assertTrue(CastPose.angle(thrown, "UpBody", 1) < -10);
+        // No jump anywhere in it.
+        float[] last = CastPose.sample(CastPose.RED, 0, ticks);
+        for (float age = 0.05F; age <= ticks; age += 0.05F) {
+            float[] now = CastPose.sample(CastPose.RED, age, ticks);
+            for (int i = 0; i < now.length; i++) {
+                assertTrue(Math.abs(now[i] - last[i]) < 6, "jumps at " + age);
+            }
+            last = now;
+        }
+    }
+
+    @Test
     void theCutGoesFromTheFarShoulderDownAndAcross() {
         float[] wound = CastPose.sample(CastPose.CUT, 2.5F, CastPose.CUT_TICKS);
         float[] struck = CastPose.sample(CastPose.CUT, 6, CastPose.CUT_TICKS);

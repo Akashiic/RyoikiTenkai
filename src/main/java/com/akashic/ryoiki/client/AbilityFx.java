@@ -39,6 +39,8 @@ public final class AbilityFx {
     private static final int RED = 0xFF2A1A;
     private static final int EMBER = 0xFF6A38;
 
+    /** Ticks the red orb's end, and each place it went through someone, go on being drawn. */
+    private static final int RED_ENDS = 9;
     /** Ticks an orb goes on being drawn after it is over: it closes on itself. */
     private static final int PULL_CLOSES = 7;
     private static final int LOBES = 9;
@@ -56,8 +58,30 @@ public final class AbilityFx {
     /** The orbs of the star void, each by the entity that guides it. */
     private final Map<Integer, Orb> orbs = new HashMap<>();
     private final List<Cut> cuts = new ArrayList<>();
+    /** The red orbs of the star void, each by the entity that gathers it. */
+    private final Map<Integer, Red> reds = new HashMap<>();
     /** Who is making the gesture of a technique: its kind, how long ago it began and how long it lasts, by entity. */
     private final Map<Integer, int[]> gestures = new HashMap<>();
+
+    private static final class Red {
+
+        int caster;
+        boolean air;
+        int charge;
+        int age;
+        /** Let fly: ticks since, from where, which way and how far. Negative while it is gathered. */
+        int flown = -1;
+        double x;
+        double y;
+        double z;
+        float dx;
+        float dy;
+        float dz;
+        float range;
+        /** Where it went through someone: x, y, z and ticks since, four numbers each. */
+        final List<float[]> met = new ArrayList<>();
+        final double[] metAt = new double[3 * 8];
+    }
 
     private static final class Orb {
 
@@ -110,6 +134,7 @@ public final class AbilityFx {
     private AbilityFx() {}
 
     void clear() {
+        reds.clear();
         orbs.clear();
         cuts.clear();
         gestures.clear();
@@ -160,6 +185,34 @@ public final class AbilityFx {
                         g[2] = Math.min(g[2], g[1] + 6);
                     }
                 }
+            }
+        } else if (m.kind == AbilityMath.RED_CHARGE) {
+            Red r = new Red();
+            r.caster = m.entity;
+            r.air = m.dx > 0.5F;
+            r.charge = m.ticks;
+            reds.put(m.entity, r);
+            gesture(mc, m.entity, CastPose.RED, m.ticks + 14);
+        } else if (m.kind == AbilityMath.RED_FIRE) {
+            Red r = reds.get(m.entity);
+            if (r != null) {
+                r.flown = 0;
+                r.x = m.x;
+                r.y = m.y;
+                r.z = m.z;
+                r.dx = m.dx;
+                r.dy = m.dy;
+                r.dz = m.dz;
+                r.range = m.size;
+            }
+        } else if (m.kind == AbilityMath.RED_HIT) {
+            Red r = reds.get(m.entity);
+            if (r != null && r.met.size() < 8) {
+                int n = r.met.size();
+                r.metAt[n * 3] = m.x;
+                r.metAt[n * 3 + 1] = m.y;
+                r.metAt[n * 3 + 2] = m.z;
+                r.met.add(new float[] { 0 });
             }
         } else if (m.kind == AbilityMath.CUT) {
             Cut c = new Cut();
@@ -215,7 +268,8 @@ public final class AbilityFx {
     /** Whether a player hangs in the air by an orb it began there: it does not move until the orb is over. */
     public boolean hangs(int entity) {
         Orb o = orbs.get(entity);
-        return o != null && o.air && o.closing < 0;
+        Red r = reds.get(entity);
+        return o != null && o.air && o.closing < 0 || r != null && r.air && r.flown < 0 && r.age <= r.charge;
     }
 
     @SubscribeEvent
@@ -261,6 +315,24 @@ public final class AbilityFx {
                 i.remove();
             }
         }
+        for (Iterator<Red> i = reds.values()
+            .iterator(); i.hasNext();) {
+            Red r = i.next();
+            r.age++;
+            for (float[] met : r.met) {
+                met[0]++;
+            }
+            if (r.flown >= 0) {
+                r.flown++;
+            }
+            // Over a while after it has flown its range; or, never let fly, a while after it should have been.
+            if (r.flown >= 0
+                ? AbilityMath.redGone(r.flown, r.range) >= r.range
+                    && r.flown > r.range / AbilityMath.RED_SPEED + RED_ENDS
+                : r.age > r.charge + 12) {
+                i.remove();
+            }
+        }
         for (Iterator<Cut> i = cuts.iterator(); i.hasNext();) {
             Cut c = i.next();
             c.age++;
@@ -282,7 +354,7 @@ public final class AbilityFx {
 
     @SubscribeEvent
     public void onRenderWorldLast(RenderWorldLastEvent event) {
-        if (orbs.isEmpty() && cuts.isEmpty()) {
+        if (orbs.isEmpty() && cuts.isEmpty() && reds.isEmpty()) {
             return;
         }
         Minecraft mc = Minecraft.getMinecraft();
@@ -317,6 +389,9 @@ public final class AbilityFx {
                 (float) (o.z - o.beforeZ),
                 partial);
         }
+        for (Red r : reds.values()) {
+            red(t, mc, r, camX, camY, camZ, event.partialTicks);
+        }
         for (Cut c : cuts) {
             if (c.ground == null) {
                 c.ground = ground(mc.theWorld, c);
@@ -332,6 +407,9 @@ public final class AbilityFx {
 
     private static final int[] SPHERE = { 0x1838D8, 0x2F8CFF, 0x58D6FF, 0xBFF6FF, 0xFFFFFF };
     private static final int SPHERE_RIM = 0x8FC8FF;
+    private static final int[] RED_SPHERE = { 0x7A0010, 0xD8142A, 0xFF4A3A, 0xFFC8A8, 0xFFFFFF };
+    private static final int RED_RIM = 0xFF9A8A;
+    private static final int ROSE = 0xFFD8D0;
     private static final int STACKS = 14;
     private static final int SLICES = 22;
 
@@ -339,7 +417,8 @@ public final class AbilityFx {
      * A sphere at a place (blocks from the camera), coloured by how its surface faces the eye, with bands of light
      * that turn about it.
      */
-    private static void sphere(Tessellator t, float x, float y, float z, float radius, float age, float alpha) {
+    private static void sphere(Tessellator t, float x, float y, float z, float radius, float age, float alpha,
+        int[] ramp, int rim) {
         if (alpha <= 0.02F) {
             return;
         }
@@ -369,14 +448,14 @@ public final class AbilityFx {
                 float length = (float) Math.sqrt(px * px + py * py + pz * pz);
                 float f = -(nx * px + sinLat * py + nz * pz) / length;
                 facing[i][j] = f;
-                int c = Draw.mix(SPHERE[0], SPHERE[1], smooth((f - 0.14F) / 0.28F));
-                c = Draw.mix(c, SPHERE[2], smooth((f - 0.40F) / 0.30F));
-                c = Draw.mix(c, SPHERE[3], smooth((f - 0.68F) / 0.20F));
-                c = Draw.mix(c, SPHERE[4], smooth((f - 0.86F) / 0.13F));
-                c = Draw.mix(c, SPHERE_RIM, (1 - smooth(f / 0.09F)) * 0.75F);
+                int c = Draw.mix(ramp[0], ramp[1], smooth((f - 0.14F) / 0.28F));
+                c = Draw.mix(c, ramp[2], smooth((f - 0.40F) / 0.30F));
+                c = Draw.mix(c, ramp[3], smooth((f - 0.68F) / 0.20F));
+                c = Draw.mix(c, ramp[4], smooth((f - 0.86F) / 0.13F));
+                c = Draw.mix(c, rim, (1 - smooth(f / 0.09F)) * 0.75F);
                 // The bands: brighter and darker stripes that wind about it and turn.
                 float band = MathHelper.sin((float) (4 * lon + 3 * Math.sin(2 * lat)) + age * 0.35F);
-                color[i][j] = band > 0 ? Draw.mix(c, 0xFFFFFF, 0.16F * band) : Draw.mix(c, SPHERE[0], -0.14F * band);
+                color[i][j] = band > 0 ? Draw.mix(c, 0xFFFFFF, 0.16F * band) : Draw.mix(c, ramp[0], -0.14F * band);
             }
         }
         Draw.translucent();
@@ -609,7 +688,7 @@ public final class AbilityFx {
         // The orb itself: a sphere, with a body and an edge. From the eye, its middle is white, then the blue of
         // ice, then a deep blue where its surface turns away, and a thin light on the very edge; and its surface
         // moves.
-        sphere(t, x, y, z, size * 1.5F, age, alive);
+        sphere(t, x, y, z, size * 1.5F, age, alive, SPHERE, SPHERE_RIM);
 
         if (closing > 0) {
             // What is left when it closes: a ring of light going out, thin and quick.
@@ -622,6 +701,198 @@ public final class AbilityFx {
             t.startDrawing(GL11.GL_TRIANGLES);
             Draw.glow(t, x, y, z, 1.6F * (1 - closing), WHITE, (1 - closing) * 0.9F);
             t.draw();
+        }
+    }
+
+    // Repulsão.
+
+    private static void red(Tessellator t, Minecraft mc, Red r, double camX, double camY, double camZ,
+        float partialTicks) {
+        float age = r.age + partialTicks;
+        if (r.flown < 0) {
+            // Gathered at the hand of who uses it: wherever that one is now.
+            net.minecraft.entity.Entity caster = mc.theWorld.getEntityByID(r.caster);
+            if (caster == null || age > r.charge + 2) {
+                return;
+            }
+            double ex = caster.lastTickPosX + (caster.posX - caster.lastTickPosX) * partialTicks;
+            double feet = caster.boundingBox.minY + (caster.posY - caster.lastTickPosY) * (partialTicks - 1);
+            double ez = caster.lastTickPosZ + (caster.posZ - caster.lastTickPosZ) * partialTicks;
+            double yaw = Math.toRadians(caster.rotationYaw);
+            float full = Draw.clamp01(age / r.charge);
+            // In its own eyes it is held out farther, lower and to the side of the hand: it must not hide what
+            // it is aimed at.
+            boolean own = caster == mc.thePlayer && mc.gameSettings.thirdPersonView == 0;
+            double out = own ? 1.15 : 0.6;
+            double aside = own ? 0.42 : 0;
+            float fx = (float) (ex - Math.sin(yaw) * out - Math.cos(yaw) * aside - camX);
+            float fy = (float) (feet + (own ? 1.2 : 1.52) - camY);
+            float fz = (float) (ez + Math.cos(yaw) * out - Math.sin(yaw) * aside - camZ);
+            float bx = (float) (ex - camX);
+            float by = (float) (feet + 1.0 - camY);
+            float bz = (float) (ez - camZ);
+            // About the body: pale arcs that wind faster as it fills, and a red light on the ground under it.
+            Draw.additive();
+            t.startDrawingQuads();
+            for (int arc = 0; arc < 4; arc++) {
+                float tilt = 0.4F + arc * 0.8F;
+                float turn = age * (0.5F + 0.5F * full + arc * 0.07F) + arc * 1.7F;
+                float reach = 1.5F - 0.5F * full + 0.15F * arc;
+                float[] last = null;
+                for (int step = 0; step <= 12; step++) {
+                    float a = turn + step * 0.2F;
+                    float ca = MathHelper.cos(a) * reach;
+                    float sa = MathHelper.sin(a) * reach;
+                    float[] at = { bx + ca, by + sa * MathHelper.sin(tilt) * 0.9F, bz + sa * MathHelper.cos(tilt) };
+                    if (last != null) {
+                        float f0 = (step - 1) / 12F;
+                        float f1 = step / 12F;
+                        ribbon(
+                            t,
+                            last[0],
+                            last[1],
+                            last[2],
+                            at[0],
+                            at[1],
+                            at[2],
+                            0.06F * f0,
+                            0.06F * f1,
+                            ROSE,
+                            0.75F * full * f0,
+                            arc % 2 == 0 ? WHITE : 0xFF6A5A,
+                            0.75F * full * f1);
+                    }
+                    last = at;
+                }
+            }
+            t.draw();
+            GL11.glPushMatrix();
+            GL11.glTranslatef(bx, (float) (feet - camY) + 0.04F, bz);
+            Draw.ring(0, 0.8F + 2.2F * full, 28, RED, 0.5F * full, 0x7A0010, 0);
+            GL11.glPopMatrix();
+            // At the hand: the orb, small and growing, and its light.
+            float size = (0.06F + 0.3F * full * full) * (own ? 0.7F : 1);
+            t.startDrawing(GL11.GL_TRIANGLES);
+            Draw.glow(t, fx, fy, fz, size * 6, RED, 0.5F * full);
+            Draw.glow(t, fx, fy, fz, size * 2.6F, 0xFF8A70, 0.7F * full);
+            t.draw();
+            sphere(t, fx, fy, fz, size, age * 2, Draw.clamp01(age / 3), RED_SPHERE, RED_RIM);
+            return;
+        }
+        float flown = r.flown + partialTicks;
+        float gone = (float) AbilityMath.redGone(flown, r.range);
+        boolean over = gone >= r.range;
+        float since = over ? flown - r.range / (float) AbilityMath.RED_SPEED : 0;
+        float x = (float) (r.x - camX);
+        float y = (float) (r.y - camY);
+        float z = (float) (r.z - camZ);
+        float hx = x + r.dx * gone;
+        float hy = y + r.dy * gone;
+        float hz = z + r.dz * gone;
+        // Its wake: red and wide where it has just been, gone a few blocks back; and a white line down the middle.
+        Draw.additive();
+        t.startDrawingQuads();
+        float fade = over ? Draw.clamp01(1 - since / 5) : 1;
+        float tail = Math.max(0, gone - 9);
+        for (int i = 0; i < 9; i++) {
+            float a0 = tail + (gone - tail) * i / 9F;
+            float a1 = tail + (gone - tail) * (i + 1) / 9F;
+            float f0 = i / 9F;
+            float f1 = (i + 1) / 9F;
+            ribbon(
+                t,
+                x + r.dx * a0,
+                y + r.dy * a0,
+                z + r.dz * a0,
+                x + r.dx * a1,
+                y + r.dy * a1,
+                z + r.dz * a1,
+                0.5F * f0,
+                0.5F * f1,
+                RED,
+                0.5F * f0 * fade,
+                RED,
+                0.5F * f1 * fade);
+            ribbon(
+                t,
+                x + r.dx * a0,
+                y + r.dy * a0,
+                z + r.dz * a0,
+                x + r.dx * a1,
+                y + r.dy * a1,
+                z + r.dz * a1,
+                0.09F * f0,
+                0.09F * f1,
+                WHITE,
+                0.9F * f0 * fade,
+                ROSE,
+                0.9F * f1 * fade);
+        }
+        t.draw();
+        // The air it pushes aside: rings left along its way, widening as they fade.
+        float[] d = { r.dx, r.dy, r.dz };
+        float[] side = cross(d, new float[] { 0, 1, 0 });
+        if (length(side) < 1e-3F) {
+            side = new float[] { 1, 0, 0 };
+        }
+        normalize(side);
+        float[] up = cross(side, d);
+        normalize(up);
+        t.startDrawingQuads();
+        for (float at = 2; at < gone; at += 4) {
+            float old = (gone - at) / (float) AbilityMath.RED_SPEED;
+            float left = 1 - old / 9;
+            if (left <= 0) {
+                continue;
+            }
+            float wide = 0.7F + 0.28F * old;
+            float cx = x + r.dx * at;
+            float cy = y + r.dy * at;
+            float cz = z + r.dz * at;
+            for (int k = 0; k < 20; k++) {
+                float a0 = k * 6.2832F / 20;
+                float a1 = (k + 1) * 6.2832F / 20;
+                ribbon(
+                    t,
+                    cx + (side[0] * MathHelper.cos(a0) + up[0] * MathHelper.sin(a0)) * wide,
+                    cy + (side[1] * MathHelper.cos(a0) + up[1] * MathHelper.sin(a0)) * wide,
+                    cz + (side[2] * MathHelper.cos(a0) + up[2] * MathHelper.sin(a0)) * wide,
+                    cx + (side[0] * MathHelper.cos(a1) + up[0] * MathHelper.sin(a1)) * wide,
+                    cy + (side[1] * MathHelper.cos(a1) + up[1] * MathHelper.sin(a1)) * wide,
+                    cz + (side[2] * MathHelper.cos(a1) + up[2] * MathHelper.sin(a1)) * wide,
+                    0.05F,
+                    0.05F,
+                    ROSE,
+                    0.6F * left * left,
+                    ROSE,
+                    0.6F * left * left);
+            }
+        }
+        t.draw();
+        // Where it went through someone, and where it ends: a burst.
+        t.startDrawing(GL11.GL_TRIANGLES);
+        for (int i = 0; i < r.met.size(); i++) {
+            float burst = 1 - (r.met.get(i)[0] + partialTicks) / RED_ENDS;
+            if (burst > 0) {
+                float mx = (float) (r.metAt[i * 3] - camX);
+                float my = (float) (r.metAt[i * 3 + 1] - camY);
+                float mz = (float) (r.metAt[i * 3 + 2] - camZ);
+                Draw.glow(t, mx, my, mz, 2.6F * (1.2F - burst), RED, 0.7F * burst);
+                Draw.glow(t, mx, my, mz, 1.1F, WHITE, burst * burst);
+            }
+        }
+        if (over && since < RED_ENDS) {
+            float burst = 1 - since / RED_ENDS;
+            Draw.glow(t, hx, hy, hz, 3.4F * (1.25F - burst), RED, 0.75F * burst);
+            Draw.glow(t, hx, hy, hz, 1.5F, WHITE, burst * burst);
+        }
+        if (!over) {
+            Draw.glow(t, hx, hy, hz, 3.2F, RED, 0.5F);
+            Draw.glow(t, hx, hy, hz, 1.6F, 0xFF8A70, 0.7F);
+        }
+        t.draw();
+        if (!over) {
+            sphere(t, hx, hy, hz, 0.6F, age * 2, 1, RED_SPHERE, RED_RIM);
         }
     }
 

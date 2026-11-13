@@ -53,14 +53,17 @@ quadril subir e descer (aterrissagem com joelhos dobrados).
 
 ### As habilidades: aprovadas pelo dono em 2026-11-13
 
-O agente propôs e o dono aprovou as seis. São desenho próprio, com a ideia de cada técnica. **Feitas: a 1 de cada
-técnica (Atração e Talho)**, em 2026-11-13 (`VISUAL.md`, "A tecla 1"). Faltam a 2 e a 3 de cada.
+O agente propôs e o dono aprovou as seis. **Depois, em 2026-11-13, o dono mandou seguir a wiki do jogo de
+referência para as habilidades 1, 2 e 3 do Vazio** (o orbe azul controlável, o vermelho, e a terceira da mesma
+lista), o que mudou as três do Vazio; as do Santuário continuam as da proposta. São desenho próprio, com a ideia de cada técnica. **Feitas: a 1 de cada
+técnica (Atração e Talho) e a 2 do Vazio (Repulsão)**, em 2026-11-13 (`VISUAL.md`). Faltam a 3 do Vazio e a 2 e
+a 3 do Santuário.
 
 | | Vazio Estelar: domina o espaço | Santuário Carmesim: corta |
 |---|---|---|
 | 1 | **Atração.** Um orbe que segue a câmera por 3,5 s, prende quem está perto, carrega e arremessa; no chão varre à frente, no ar suspende quem conjura e vai para qualquer lado (refeita em 2026-11-13 pela dinâmica que o dono mostrou). Recarga 12 s | **Talho.** Uma lâmina que não se vê voa em linha reta por até 12 blocos, corta o primeiro que encontrar e deixa a cicatriz no chão. O golpe de longe. Recarga 5 s |
-| 2 | **Repulsão.** Um estouro vermelho a partir da mão arremessa para longe quem estiver num cone curto à frente. Em quem foi puxado pela Atração há menos de 2 s, os dois se somam num **colapso** roxo, que arremessa o dobro. Recarga 10 s | **Retalhar.** De perto (3 blocos), uma rajada de cortes cruzados no alvo à frente: quanto mais perto, mais cortes acertam (de 3 a 6). O golpe de perto. Recarga 9 s |
-| 3 | **Passo do Vazio.** Some e reaparece até 7 blocos adiante (ou atrás do alvo na mira), deixando rastros; por um instante nada o acerta. Para chegar e para sair. Recarga 6 s | **Rede de Cortes.** Marca um quadrado de 5 blocos no chão à frente; 1 s depois a área é retalhada por 2 s. Quem ficar apanha, quem está fora pensa antes de entrar. Para negar terreno. Recarga 14 s |
+| 2 | **Repulsão.** Feita em 2026-11-13: carrega 1,2 s e solta um orbe vermelho que voa reto por 24 blocos, atravessa e arremessa; dano cai com a distância; no ar, suspende quem conjura e mira para qualquer lado. Recarga 10 s | **Retalhar.** De perto (3 blocos), uma rajada de cortes cruzados no alvo à frente: quanto mais perto, mais cortes acertam (de 3 a 6). O golpe de perto. Recarga 9 s |
+| 3 | **A fazer, pela wiki que o dono indicou:** a união do azul e do vermelho, uma massa roxa que se forma por uns 3 s e avança apagando o que estiver no caminho; no ar, suspende e mira para qualquer lado; recarga longa. (Substitui o "Passo do Vazio" da proposta do agente) | **Rede de Cortes.** Marca um quadrado de 5 blocos no chão à frente; 1 s depois a área é retalhada por 2 s. Quem ficar apanha, quem está fora pensa antes de entrar. Para negar terreno. Recarga 14 s |
 | 4 | **Expansão de Domínio: Vazio Estelar** | **Expansão de Domínio: Santuário Carmesim** |
 
 O Vazio é controle (puxar, afastar, reposicionar) e o Santuário é agressão (longe, perto, área), para os dois
