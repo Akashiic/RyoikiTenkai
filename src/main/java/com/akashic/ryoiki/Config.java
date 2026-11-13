@@ -27,6 +27,8 @@ public final class Config {
     public static float pullDamage = 1;
     public static float cutDamage = 5;
     public static float redDamage = 6;
+    public static float blackDamage = 8;
+    public static float redSelfDamage = 4;
     public static int arenaX = 200000;
     public static int arenaZ = 200000;
     public static int arenaY = 120;
@@ -90,6 +92,20 @@ public final class Config {
             40,
             "Dano da Repulsao (Vazio, habilidade 2) de perto, em meios coracoes; cai com a distancia ate menos de "
                 + "um quarto no fim do alcance.");
+        blackDamage = cfg.getFloat(
+            "golpe_negro",
+            "dano",
+            blackDamage,
+            0,
+            40,
+            "Dano do golpe negro: o soco em quem a Repulsao traz de volta (R segurado), em meios coracoes.");
+        redSelfDamage = cfg.getFloat(
+            "repulsao_retorno",
+            "dano",
+            redSelfDamage,
+            0,
+            40,
+            "Dano que o proprio conjurador leva quando a Repulsao volta (R segurado) sem trazer ninguem.");
         cutDamage = cfg.getFloat(
             "talho",
             "dano",

@@ -21,14 +21,20 @@ final class PlayerPoses {
     private static final int ARMS_TO = 6;
     private static final int LEGS_FROM = 7;
 
+    /** The bones of the body and, after them, those only a gesture has (a hand, its fingers). */
+    private static final String[] ALL;
+
     static {
+        java.util.List<String> all = new java.util.ArrayList<>(java.util.Arrays.asList(BlowPose.BONES));
         for (int i = 0; i < CastPose.BONES.length; i++) {
-            for (int j = 0; j < BONES; j++) {
-                if (BlowPose.BONES[j].equals(CastPose.BONES[i])) {
-                    GESTURE[i] = j;
-                }
+            int at = all.indexOf(CastPose.BONES[i]);
+            if (at < 0) {
+                at = all.size();
+                all.add(CastPose.BONES[i]);
             }
+            GESTURE[i] = at;
         }
+        ALL = all.toArray(new String[0]);
     }
 
     private PlayerPoses() {}
@@ -77,13 +83,16 @@ final class PlayerPoses {
                 FuturaBridge.INSTANCE.pose(player, CastPose.BONES, gesture, gestureShows);
                 return true;
             }
+            // With the hand and the fingers, which the body's pose does not have.
+            pose = java.util.Arrays.copyOf(pose, ALL.length * 3);
             for (int i = 0; i < GESTURE.length; i++) {
                 for (int axis = 0; axis < 3; axis++) {
                     int at = GESTURE[i] * 3 + axis;
                     pose[at] += (gesture[i * 3 + axis] - pose[at]) * gestureShows;
                 }
             }
-            shows = Math.max(shows, gestureShows);
+            FuturaBridge.INSTANCE.pose(player, ALL, pose, Math.max(shows, gestureShows));
+            return true;
         }
         if (pose == null || shows <= 0) {
             return false;

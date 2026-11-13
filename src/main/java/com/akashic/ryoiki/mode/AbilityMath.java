@@ -18,7 +18,10 @@ package com.akashic.ryoiki.mode;
  * {@link #RED_CHARGE_TICKS} ticks and lets it fly: an orb that goes straight, {@link #RED_SPEED} blocks a tick, for
  * {@link #RED_RANGE} blocks or until something solid, through everyone in its way, throwing each one off along its
  * path. It harms less the farther it has flown. On the ground it flies nearly level; gathered in the air, its
- * caster hangs there and it flies wherever the eyes point.
+ * caster hangs there and it flies wherever the eyes point. It has a second way: if its caster holds the mode's key
+ * before it has flown its range, it <b>comes back</b> from the end of it. Whoever it meets on the way back it
+ * brings along, to be set before its caster and struck with the <b>black blow</b>; if it comes back with nobody,
+ * the caster takes it.
  *
  * <p>
  * <b>Talho</b> (the crimson shrine's first): a blade nobody sees leaves the caster and flies straight, up to
@@ -36,6 +39,12 @@ public final class AbilityMath {
     public static final int RED_CHARGE = 6;
     public static final int RED_FIRE = 7;
     public static final int RED_HIT = 8;
+    /** The red orb on its way back to who let it fly: where it is this tick. */
+    public static final int RED_BACK = 9;
+    /** The black blow lands on whoever the red orb brought back. */
+    public static final int BLACK = 10;
+    /** The red orb came back with nobody, and its caster takes it. */
+    public static final int RED_SELF = 11;
 
     /** The orb's beginning, its move, and its end. */
     public static final int PULL = 1;
@@ -69,8 +78,26 @@ public final class AbilityMath {
     public static final double RED_SPEED = 2.4;
     /** 10 s. */
     public static final int RED_RECHARGE = 200;
-    /** How near its line a body is hit: the orb is wide. */
-    public static final double RED_WIDTH = 0.9;
+    /** How near its line a body is hit. */
+    public static final double RED_WIDTH = 0.6;
+    /**
+     * Where it leaves from: the hand that points, this far before the caster's eyes, to their right and under
+     * them. It flies at what the eyes look at, not beside it.
+     */
+    public static final double RED_AHEAD = 0.9;
+    public static final double RED_RIGHT = 0.32;
+    public static final double RED_BELOW = 0.22;
+    /** Blocks a tick on its way back, and how near its caster it has arrived. */
+    public static final double RED_BACK_SPEED = 1.5;
+    public static final double RED_ARRIVES = 2.2;
+    /** Ticks it may take to come back before it gives up. */
+    public static final int RED_BACK_TICKS = 60;
+    /** Ticks from the one it brought being set before the caster to the blow: the fist's way. */
+    public static final int BLACK_WIND = 3;
+    /** How far before the caster the one it brought is set, and how the black blow throws. */
+    public static final double BLACK_AT = 1.5;
+    public static final double BLACK_THROW = 1.9;
+    public static final double BLACK_LIFT = 0.42;
     /** The part of its harm it still does at the end of its range. */
     public static final double RED_FAR = 7.0 / 30;
     /** How hard it throws who it goes through, near and at the end of its range, and the lift they get. */
@@ -124,14 +151,54 @@ public final class AbilityMath {
      */
     public static void follow(double fromX, double fromY, double fromZ, double toX, double toY, double toZ,
         double[] out) {
+        step(fromX, fromY, fromZ, toX, toY, toZ, ORB_SPEED, out);
+    }
+
+    /** One step from a place toward another, no longer than {@code speed}: all the way if it is nearer. */
+    public static void step(double fromX, double fromY, double fromZ, double toX, double toY, double toZ, double speed,
+        double[] out) {
         double dx = toX - fromX;
         double dy = toY - fromY;
         double dz = toZ - fromZ;
         double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        double scale = distance > ORB_SPEED ? ORB_SPEED / distance : 1;
+        double scale = distance > speed ? speed / distance : 1;
         out[0] = dx * scale;
         out[1] = dy * scale;
         out[2] = dz * scale;
+    }
+
+    /**
+     * The hand a technique leaves from, for a caster whose eyes are at a place and who looks along a unit vector:
+     * {@link #RED_AHEAD} before the eyes, {@link #RED_RIGHT} to the caster's right, {@link #RED_BELOW} under them.
+     */
+    public static void hand(double eyeX, double eyeY, double eyeZ, double lookX, double lookY, double lookZ,
+        double[] out) {
+        double flat = Math.sqrt(lookX * lookX + lookZ * lookZ);
+        // The caster's right, level: the way it looks, turned a quarter to the right. Looking straight up or
+        // down there is none, and the hand is taken to be before the eyes.
+        double rx = flat < 1e-6 ? 0 : -lookZ / flat;
+        double rz = flat < 1e-6 ? 0 : lookX / flat;
+        out[0] = eyeX + lookX * RED_AHEAD + rx * RED_RIGHT;
+        out[1] = eyeY + lookY * RED_AHEAD - RED_BELOW;
+        out[2] = eyeZ + lookZ * RED_AHEAD + rz * RED_RIGHT;
+    }
+
+    /** The unit vector from a place to another; the fallback if they are the same place. */
+    public static void toward(double fromX, double fromY, double fromZ, double toX, double toY, double toZ,
+        double[] fallback, double[] out) {
+        double dx = toX - fromX;
+        double dy = toY - fromY;
+        double dz = toZ - fromZ;
+        double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (distance < 1e-6) {
+            out[0] = fallback[0];
+            out[1] = fallback[1];
+            out[2] = fallback[2];
+            return;
+        }
+        out[0] = dx / distance;
+        out[1] = dy / distance;
+        out[2] = dz / distance;
     }
 
     /**

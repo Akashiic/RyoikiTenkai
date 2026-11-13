@@ -16,6 +16,7 @@ import net.minecraftforge.client.event.RenderWorldLastEvent;
 
 import org.lwjgl.opengl.GL11;
 
+import com.akashic.ryoiki.fx.BlowPose;
 import com.akashic.ryoiki.fx.CastPose;
 import com.akashic.ryoiki.mode.AbilityMath;
 import com.akashic.ryoiki.mode.ModeWire;
@@ -41,6 +42,12 @@ public final class AbilityFx {
 
     /** Ticks the red orb's end, and each place it went through someone, go on being drawn. */
     private static final int RED_ENDS = 9;
+    /** The places a red orb on its way back leaves a wake through, and the ticks the black blow is drawn for. */
+    private static final int TRAIL = 9;
+    private static final int BLACK_ENDS = 18;
+    private static final int BOLTS = 18;
+    private static final int DEEP_RED = 0xC00010;
+    private static final int HOT_RED = 0xFF5A40;
     /** Ticks an orb goes on being drawn after it is over: it closes on itself. */
     private static final int PULL_CLOSES = 7;
     private static final int LOBES = 9;
@@ -60,6 +67,10 @@ public final class AbilityFx {
     private final List<Cut> cuts = new ArrayList<>();
     /** The red orbs of the star void, each by the entity that gathers it. */
     private final Map<Integer, Red> reds = new HashMap<>();
+    /** Who waits for its red orb to come back: 0 on guard, 1 striking, and for how many ticks, by entity. */
+    private final Map<Integer, int[]> punches = new HashMap<>();
+    /** Ticks since the black blow flashed on this screen; negative when it has not. */
+    private int flash = -1;
     /** Who is making the gesture of a technique: its kind, how long ago it began and how long it lasts, by entity. */
     private final Map<Integer, int[]> gestures = new HashMap<>();
 
@@ -81,6 +92,35 @@ public final class AbilityFx {
         /** Where it went through someone: x, y, z and ticks since, four numbers each. */
         final List<float[]> met = new ArrayList<>();
         final double[] metAt = new double[3 * 8];
+        /** How far the hand that threw it was from where its flight begins: it leaves from the hand. */
+        double offX;
+        double offY;
+        double offZ;
+        /** On its way back: ticks since it turned (negative while it has not), where it is, was, and has been. */
+        int back = -1;
+        double bx;
+        double by;
+        double bz;
+        double beforeX;
+        double beforeY;
+        double beforeZ;
+        double toX;
+        double toY;
+        double toZ;
+        final double[] trail = new double[3 * TRAIL];
+        int trailed;
+        /** 0 alone, 1 bringing someone, 2 arrived: the blow is coming. */
+        int state;
+        /** How it ended: 0 not yet, 1 with the black blow, 2 back with nobody. Ticks since, where, which way. */
+        int ended;
+        int endAge;
+        boolean burst;
+        double ex;
+        double ey;
+        double ez;
+        float edx;
+        float edy;
+        float edz;
     }
 
     private static final class Orb {
@@ -135,6 +175,8 @@ public final class AbilityFx {
 
     void clear() {
         reds.clear();
+        punches.clear();
+        flash = -1;
         orbs.clear();
         cuts.clear();
         gestures.clear();
@@ -192,7 +234,7 @@ public final class AbilityFx {
             r.air = m.dx > 0.5F;
             r.charge = m.ticks;
             reds.put(m.entity, r);
-            gesture(mc, m.entity, CastPose.RED, m.ticks + 14);
+            gesture(mc, m.entity, CastPose.RED, m.ticks + (int) CastPose.RED_AFTER, false);
         } else if (m.kind == AbilityMath.RED_FIRE) {
             Red r = reds.get(m.entity);
             if (r != null) {
@@ -204,6 +246,10 @@ public final class AbilityFx {
                 r.dy = m.dy;
                 r.dz = m.dz;
                 r.range = m.size;
+                if (mc.thePlayer != null && mc.thePlayer.getEntityId() == m.entity) {
+                    // In its own eyes: the arm comes down with the shot.
+                    mc.thePlayer.swingItem();
+                }
             }
         } else if (m.kind == AbilityMath.RED_HIT) {
             Red r = reds.get(m.entity);
@@ -213,6 +259,55 @@ public final class AbilityFx {
                 r.metAt[n * 3 + 1] = m.y;
                 r.metAt[n * 3 + 2] = m.z;
                 r.met.add(new float[] { 0 });
+            }
+        } else if (m.kind == AbilityMath.RED_BACK) {
+            Red r = reds.get(m.entity);
+            if (r != null && r.ended == 0) {
+                if (r.back < 0) {
+                    r.back = 0;
+                    r.bx = r.beforeX = m.x;
+                    r.by = r.beforeY = m.y;
+                    r.bz = r.beforeZ = m.z;
+                    // Who let it fly squares up for what it brings.
+                    punches.put(m.entity, new int[] { 0, 0 });
+                }
+                r.toX = m.x;
+                r.toY = m.y;
+                r.toZ = m.z;
+                int state = Math.round(m.dx);
+                if (state == 2 && r.state != 2) {
+                    punches.put(m.entity, new int[] { 1, 0 });
+                }
+                r.state = state;
+            }
+        } else if (m.kind == AbilityMath.BLACK || m.kind == AbilityMath.RED_SELF) {
+            Red r = reds.get(m.entity);
+            if (r != null && r.ended == 0) {
+                boolean black = m.kind == AbilityMath.BLACK;
+                r.ended = black ? 1 : 2;
+                r.burst = black || m.dx > 0.5F;
+                r.ex = m.x;
+                r.ey = m.y;
+                r.ez = m.z;
+                r.edx = m.dx;
+                r.edy = m.dy;
+                r.edz = m.dz;
+                int own = mc.thePlayer == null ? -1 : mc.thePlayer.getEntityId();
+                int victim = Math.round(m.size);
+                if (black) {
+                    // Who takes it is thrown by it, and whoever of the two this is feels it.
+                    ClientDomain.Struck struck = new ClientDomain.Struck();
+                    ClientDomain.INSTANCE.strucks.put(victim, struck);
+                    if (own == m.entity || own == victim) {
+                        CameraShake.INSTANCE.kick(own == victim ? 9 : 4);
+                        flash = 0;
+                    }
+                } else {
+                    punches.remove(m.entity);
+                    if (r.burst && own == m.entity) {
+                        CameraShake.INSTANCE.kick(5);
+                    }
+                }
             }
         } else if (m.kind == AbilityMath.CUT) {
             Cut c = new Cut();
@@ -239,8 +334,12 @@ public final class AbilityFx {
     }
 
     private void gesture(Minecraft mc, int entity, int kind, int ticks) {
+        gesture(mc, entity, kind, ticks, true);
+    }
+
+    private void gesture(Minecraft mc, int entity, int kind, int ticks, boolean swing) {
         gestures.put(entity, new int[] { kind, 0, ticks });
-        if (mc.thePlayer != null && mc.thePlayer.getEntityId() == entity) {
+        if (swing && mc.thePlayer != null && mc.thePlayer.getEntityId() == entity) {
             // In its own eyes: the arm goes out.
             mc.thePlayer.swingItem();
         }
@@ -256,8 +355,30 @@ public final class AbilityFx {
             return 0;
         }
         float age = g[1] + partialTicks;
-        pose[0] = CastPose.sample(g[0], age, g[2]);
+        Minecraft mc = Minecraft.getMinecraft();
+        net.minecraft.entity.Entity who = mc.theWorld == null ? null : mc.theWorld.getEntityByID(entity);
+        float pitch = who == null ? 0
+            : who.prevRotationPitch + (who.rotationPitch - who.prevRotationPitch) * partialTicks;
+        pose[0] = CastPose.sample(g[0], age, g[2], pitch);
         return CastPose.layer(age, g[2]);
+    }
+
+    /**
+     * The guard, and then the punch, of who waits for its red orb to come back: the degrees of
+     * {@link BlowPose#BONES}, or null; and in {@code shows} how much of it shows.
+     */
+    float[] punch(int entity, float partialTicks, float[] shows) {
+        int[] p = punches.get(entity);
+        if (p == null) {
+            return null;
+        }
+        float age = p[1] + partialTicks;
+        if (p[0] == 0) {
+            shows[0] = Draw.clamp01(age / 4);
+            return BlowPose.guard();
+        }
+        shows[0] = Draw.clamp01((BlowPose.TICKS - age) / 3);
+        return BlowPose.sample(1, Math.min(age, BlowPose.TICKS));
     }
 
     /** For the development harness: an effect, as if the server had announced it. */
@@ -325,13 +446,49 @@ public final class AbilityFx {
             if (r.flown >= 0) {
                 r.flown++;
             }
-            // Over a while after it has flown its range; or, never let fly, a while after it should have been.
-            if (r.flown >= 0
-                ? AbilityMath.redGone(r.flown, r.range) >= r.range
-                    && r.flown > r.range / AbilityMath.RED_SPEED + RED_ENDS
-                : r.age > r.charge + 12) {
+            if (r.back >= 0 && r.ended == 0) {
+                r.back++;
+                System.arraycopy(r.trail, 0, r.trail, 3, 3 * (TRAIL - 1));
+                r.trail[0] = r.bx;
+                r.trail[1] = r.by;
+                r.trail[2] = r.bz;
+                r.trailed = Math.min(TRAIL, r.trailed + 1);
+                r.beforeX = r.bx;
+                r.beforeY = r.by;
+                r.beforeZ = r.bz;
+                r.bx = r.toX;
+                r.by = r.toY;
+                r.bz = r.toZ;
+            }
+            boolean over;
+            if (r.ended > 0) {
+                over = ++r.endAge > BLACK_ENDS;
+            } else if (r.back >= 0) {
+                // The server never said how it ended (its caster left).
+                over = r.back > AbilityMath.RED_BACK_TICKS + 20;
+            } else if (r.flown >= 0) {
+                // A while after it has flown its range: time for the word that it comes back to arrive.
+                over = r.flown > r.range / AbilityMath.RED_SPEED + RED_ENDS + 2;
+            } else {
+                // Never let fly: a while after it should have been.
+                over = r.age > r.charge + 12;
+            }
+            if (over) {
                 i.remove();
             }
+        }
+        for (Iterator<Map.Entry<Integer, int[]>> i = punches.entrySet()
+            .iterator(); i.hasNext();) {
+            Map.Entry<Integer, int[]> e = i.next();
+            int[] p = e.getValue();
+            p[1]++;
+            Red r = reds.get(e.getKey());
+            if (p[0] == 1 ? p[1] > BlowPose.TICKS : r == null || r.back < 0 || r.ended == 2) {
+                i.remove();
+            }
+        }
+        if (flash >= 0 && ++flash > 9) {
+            flash = -1;
         }
         for (Iterator<Cut> i = cuts.iterator(); i.hasNext();) {
             Cut c = i.next();
@@ -407,8 +564,8 @@ public final class AbilityFx {
 
     private static final int[] SPHERE = { 0x1838D8, 0x2F8CFF, 0x58D6FF, 0xBFF6FF, 0xFFFFFF };
     private static final int SPHERE_RIM = 0x8FC8FF;
-    private static final int[] RED_SPHERE = { 0x7A0010, 0xD8142A, 0xFF4A3A, 0xFFC8A8, 0xFFFFFF };
-    private static final int RED_RIM = 0xFF9A8A;
+    private static final int[] RED_SPHERE = { 0x4A0006, 0xA8000E, 0xE60F1A, 0xFF3A2A, 0xFF9A70 };
+    private static final int RED_RIM = 0xFF1A1A;
     private static final int ROSE = 0xFFD8D0;
     private static final int STACKS = 14;
     private static final int SLICES = 22;
@@ -706,75 +863,178 @@ public final class AbilityFx {
 
     // Repulsão.
 
+    /** Where an entity is between the last tick and this one: x, the height of its feet, z. */
+    private static double[] place(net.minecraft.entity.Entity e, float partialTicks) {
+        return new double[] { e.lastTickPosX + (e.posX - e.lastTickPosX) * partialTicks,
+            e.boundingBox.minY + (e.posY - e.lastTickPosY) * (partialTicks - 1),
+            e.lastTickPosZ + (e.posZ - e.lastTickPosZ) * partialTicks };
+    }
+
+    /**
+     * Where the right hand of who uses a technique is, in blocks from the camera: its model's own hand where it has
+     * a model that is drawn; else where a hand held up ({@code raised}) or pointing would be.
+     */
+    private static float[] hand(Minecraft mc, net.minecraft.entity.Entity caster, float partialTicks, double camX,
+        double camY, double camZ, boolean raised) {
+        boolean own = caster == mc.thePlayer && mc.gameSettings.thirdPersonView == 0;
+        if (!own && caster instanceof net.minecraft.entity.player.EntityPlayer) {
+            float[] model = FuturaBridge.INSTANCE.hand((net.minecraft.entity.player.EntityPlayer) caster, true);
+            if (model != null) {
+                return model;
+            }
+        }
+        net.minecraft.util.Vec3 look = caster instanceof net.minecraft.entity.EntityLivingBase
+            ? ((net.minecraft.entity.EntityLivingBase) caster).getLook(partialTicks)
+            : net.minecraft.util.Vec3.createVectorHelper(0, 0, 1);
+        double yaw = Math
+            .toRadians(caster.prevRotationYaw + (caster.rotationYaw - caster.prevRotationYaw) * partialTicks);
+        double rx = -Math.cos(yaw);
+        double rz = -Math.sin(yaw);
+        if (own) {
+            // In its own eyes, which are where the camera is: up and to the right of what it looks at, in sight;
+            // or low and to the right, where an arm that points would be.
+            double out = raised ? 1.5 : 0.9;
+            double aside = raised ? 0.72 : 0.36;
+            double up = raised ? 0.5 : -0.24;
+            return new float[] { (float) (look.xCoord * out + rx * aside), (float) (look.yCoord * out + up),
+                (float) (look.zCoord * out + rz * aside) };
+        }
+        double[] at = place(caster, partialTicks);
+        if (raised) {
+            return new float[] { (float) (at[0] + rx * 0.36 - camX), (float) (at[1] + 2.3 - camY),
+                (float) (at[2] + rz * 0.36 - camZ) };
+        }
+        return new float[] { (float) (at[0] + look.xCoord * 0.8 + rx * 0.34 - camX),
+            (float) (at[1] + 1.42 + look.yCoord * 0.8 - camY), (float) (at[2] + look.zCoord * 0.8 + rz * 0.34 - camZ) };
+    }
+
     private static void red(Tessellator t, Minecraft mc, Red r, double camX, double camY, double camZ,
         float partialTicks) {
         float age = r.age + partialTicks;
+        net.minecraft.entity.Entity caster = mc.theWorld.getEntityByID(r.caster);
+        boolean own = caster == mc.thePlayer && mc.gameSettings.thirdPersonView == 0;
+        if (r.ended > 0) {
+            float since = r.endAge + partialTicks;
+            float ex = (float) (r.ex - camX);
+            float ey = (float) (r.ey - camY);
+            float ez = (float) (r.ez - camZ);
+            if (r.ended == 1) {
+                black(t, r, ex, ey, ez, since);
+            } else if (r.burst && since < RED_ENDS) {
+                // Back with nobody: it breaks on who let it fly.
+                float burst = 1 - since / RED_ENDS;
+                Draw.additive();
+                t.startDrawing(GL11.GL_TRIANGLES);
+                Draw.glow(t, ex, ey, ez, 2.4F * (1.25F - burst), RED, 0.8F * burst * (own ? 0.4F : 1));
+                Draw.glow(t, ex, ey, ez, 0.9F, WHITE, burst * burst * (own ? 0.3F : 1));
+                t.draw();
+            }
+            return;
+        }
         if (r.flown < 0) {
-            // Gathered at the hand of who uses it: wherever that one is now.
-            net.minecraft.entity.Entity caster = mc.theWorld.getEntityByID(r.caster);
+            // Gathered over the hand that is held up, wherever that is now.
             if (caster == null || age > r.charge + 2) {
                 return;
             }
-            double ex = caster.lastTickPosX + (caster.posX - caster.lastTickPosX) * partialTicks;
-            double feet = caster.boundingBox.minY + (caster.posY - caster.lastTickPosY) * (partialTicks - 1);
-            double ez = caster.lastTickPosZ + (caster.posZ - caster.lastTickPosZ) * partialTicks;
-            double yaw = Math.toRadians(caster.rotationYaw);
             float full = Draw.clamp01(age / r.charge);
-            // In its own eyes it is held out farther, lower and to the side of the hand: it must not hide what
-            // it is aimed at.
-            boolean own = caster == mc.thePlayer && mc.gameSettings.thirdPersonView == 0;
-            double out = own ? 1.15 : 0.6;
-            double aside = own ? 0.42 : 0;
-            float fx = (float) (ex - Math.sin(yaw) * out - Math.cos(yaw) * aside - camX);
-            float fy = (float) (feet + (own ? 1.2 : 1.52) - camY);
-            float fz = (float) (ez + Math.cos(yaw) * out - Math.sin(yaw) * aside - camZ);
-            float bx = (float) (ex - camX);
-            float by = (float) (feet + 1.0 - camY);
-            float bz = (float) (ez - camZ);
-            // About the body: pale arcs that wind faster as it fills, and a red light on the ground under it.
+            float[] h = hand(mc, caster, partialTicks, camX, camY, camZ, true);
+            // Over the fingertips, not in the palm.
+            float fx = h[0];
+            float fy = h[1] + (own ? 0 : 0.14F + 0.2F * full);
+            float fz = h[2];
+            double[] at = place(caster, partialTicks);
+            float bx = (float) (at[0] - camX);
+            float by = (float) (at[1] + 1.0 - camY);
+            float bz = (float) (at[2] - camZ);
+            float size = (0.04F + 0.17F * full * full) * (own ? 0.7F : 1);
             Draw.additive();
             t.startDrawingQuads();
-            for (int arc = 0; arc < 4; arc++) {
-                float tilt = 0.4F + arc * 0.8F;
-                float turn = age * (0.5F + 0.5F * full + arc * 0.07F) + arc * 1.7F;
-                float reach = 1.5F - 0.5F * full + 0.15F * arc;
-                float[] last = null;
-                for (int step = 0; step <= 12; step++) {
-                    float a = turn + step * 0.2F;
-                    float ca = MathHelper.cos(a) * reach;
-                    float sa = MathHelper.sin(a) * reach;
-                    float[] at = { bx + ca, by + sa * MathHelper.sin(tilt) * 0.9F, bz + sa * MathHelper.cos(tilt) };
-                    if (last != null) {
-                        float f0 = (step - 1) / 12F;
-                        float f1 = step / 12F;
-                        ribbon(
-                            t,
-                            last[0],
-                            last[1],
-                            last[2],
-                            at[0],
-                            at[1],
-                            at[2],
-                            0.06F * f0,
-                            0.06F * f1,
-                            ROSE,
-                            0.75F * full * f0,
-                            arc % 2 == 0 ? WHITE : 0xFF6A5A,
-                            0.75F * full * f1);
+            // About the body: red arcs with a white wire in them, winding faster and closer as it fills.
+            if (!own) {
+                for (int arc = 0; arc < 3; arc++) {
+                    float tilt = 0.5F + arc * 1.0F;
+                    float turn = age * (0.5F + 0.6F * full + arc * 0.07F) + arc * 2.1F;
+                    float reach = 1.25F - 0.4F * full + 0.12F * arc;
+                    float[] last = null;
+                    for (int step = 0; step <= 12; step++) {
+                        float a = turn + step * 0.2F;
+                        float ca = MathHelper.cos(a) * reach;
+                        float sa = MathHelper.sin(a) * reach;
+                        float[] p = { bx + ca, by + sa * MathHelper.sin(tilt) * 0.9F, bz + sa * MathHelper.cos(tilt) };
+                        if (last != null) {
+                            float f0 = (step - 1) / 12F;
+                            float f1 = step / 12F;
+                            ribbon(
+                                t,
+                                last[0],
+                                last[1],
+                                last[2],
+                                p[0],
+                                p[1],
+                                p[2],
+                                0.1F * f0,
+                                0.1F * f1,
+                                RED,
+                                0.7F * full * f0,
+                                RED,
+                                0.7F * full * f1);
+                            ribbon(
+                                t,
+                                last[0],
+                                last[1],
+                                last[2],
+                                p[0],
+                                p[1],
+                                p[2],
+                                0.025F * f0,
+                                0.025F * f1,
+                                WHITE,
+                                0.8F * full * f0,
+                                ROSE,
+                                0.8F * full * f1);
+                        }
+                        last = p;
                     }
-                    last = at;
                 }
             }
+            // Into the orb: red threads from all around it, quicker as they arrive.
+            Random random = new Random(r.caster * 31L + 7);
+            for (int i = 0; i < 14; i++) {
+                double up = random.nextDouble() * 2 - 1;
+                double around = random.nextDouble() * Math.PI * 2;
+                float run = (age / 7F + random.nextFloat()) % 1;
+                double flat = Math.sqrt(1 - up * up);
+                float dx = (float) (Math.cos(around) * flat);
+                float dy = (float) up;
+                float dz = (float) (Math.sin(around) * flat);
+                float reach = (own ? 0.7F : 1.2F) * (0.6F + 0.4F * full);
+                float head = size + reach * (1 - run) * (1 - run);
+                float tail = Math.min(size + reach, head + 0.12F + 0.45F * (1 - run));
+                float light = full * Draw.clamp01(run * 5) * (0.5F + 0.5F * run);
+                ribbon(
+                    t,
+                    fx + dx * tail,
+                    fy + dy * tail,
+                    fz + dz * tail,
+                    fx + dx * head,
+                    fy + dy * head,
+                    fz + dz * head,
+                    0.008F,
+                    0.03F,
+                    RED,
+                    0,
+                    i % 3 == 0 ? HOT_RED : RED,
+                    light);
+            }
             t.draw();
+            // The ground under who gathers it, red.
             GL11.glPushMatrix();
-            GL11.glTranslatef(bx, (float) (feet - camY) + 0.04F, bz);
-            Draw.ring(0, 0.8F + 2.2F * full, 28, RED, 0.5F * full, 0x7A0010, 0);
+            GL11.glTranslatef(bx, (float) (at[1] - camY) + 0.04F, bz);
+            Draw.ring(0, 0.9F + 2.3F * full, 28, RED, 0.6F * full, DEEP_RED, 0);
             GL11.glPopMatrix();
-            // At the hand: the orb, small and growing, and its light.
-            float size = (0.06F + 0.3F * full * full) * (own ? 0.7F : 1);
             t.startDrawing(GL11.GL_TRIANGLES);
-            Draw.glow(t, fx, fy, fz, size * 6, RED, 0.5F * full);
-            Draw.glow(t, fx, fy, fz, size * 2.6F, 0xFF8A70, 0.7F * full);
+            Draw.glow(t, fx, fy, fz, size * 5.5F, RED, 0.6F * full);
+            Draw.glow(t, fx, fy, fz, size * 2.4F, HOT_RED, 0.75F * full);
             t.draw();
             sphere(t, fx, fy, fz, size, age * 2, Draw.clamp01(age / 3), RED_SPHERE, RED_RIM);
             return;
@@ -783,53 +1043,20 @@ public final class AbilityFx {
         float gone = (float) AbilityMath.redGone(flown, r.range);
         boolean over = gone >= r.range;
         float since = over ? flown - r.range / (float) AbilityMath.RED_SPEED : 0;
+        if (caster != null && flown < 2.5F) {
+            // It leaves from the hand as the arm comes down: for a moment it is carried, then it is on its line.
+            float[] h = hand(mc, caster, partialTicks, camX, camY, camZ, flown < 0.6F);
+            r.offX = h[0] + camX - r.x;
+            r.offY = h[1] + camY - r.y;
+            r.offZ = h[2] + camZ - r.z;
+        }
+        float carried = 1 - smooth(gone / 4.5F);
         float x = (float) (r.x - camX);
         float y = (float) (r.y - camY);
         float z = (float) (r.z - camZ);
-        float hx = x + r.dx * gone;
-        float hy = y + r.dy * gone;
-        float hz = z + r.dz * gone;
-        // Its wake: red and wide where it has just been, gone a few blocks back; and a white line down the middle.
-        Draw.additive();
-        t.startDrawingQuads();
-        float fade = over ? Draw.clamp01(1 - since / 5) : 1;
-        float tail = Math.max(0, gone - 9);
-        for (int i = 0; i < 9; i++) {
-            float a0 = tail + (gone - tail) * i / 9F;
-            float a1 = tail + (gone - tail) * (i + 1) / 9F;
-            float f0 = i / 9F;
-            float f1 = (i + 1) / 9F;
-            ribbon(
-                t,
-                x + r.dx * a0,
-                y + r.dy * a0,
-                z + r.dz * a0,
-                x + r.dx * a1,
-                y + r.dy * a1,
-                z + r.dz * a1,
-                0.5F * f0,
-                0.5F * f1,
-                RED,
-                0.5F * f0 * fade,
-                RED,
-                0.5F * f1 * fade);
-            ribbon(
-                t,
-                x + r.dx * a0,
-                y + r.dy * a0,
-                z + r.dz * a0,
-                x + r.dx * a1,
-                y + r.dy * a1,
-                z + r.dz * a1,
-                0.09F * f0,
-                0.09F * f1,
-                WHITE,
-                0.9F * f0 * fade,
-                ROSE,
-                0.9F * f1 * fade);
-        }
-        t.draw();
-        // The air it pushes aside: rings left along its way, widening as they fade.
+        float hx = x + r.dx * gone + (float) r.offX * carried;
+        float hy = y + r.dy * gone + (float) r.offY * carried;
+        float hz = z + r.dz * gone + (float) r.offZ * carried;
         float[] d = { r.dx, r.dy, r.dz };
         float[] side = cross(d, new float[] { 0, 1, 0 });
         if (length(side) < 1e-3F) {
@@ -838,62 +1065,362 @@ public final class AbilityFx {
         normalize(side);
         float[] up = cross(side, d);
         normalize(up);
-        t.startDrawingQuads();
-        for (float at = 2; at < gone; at += 4) {
-            float old = (gone - at) / (float) AbilityMath.RED_SPEED;
-            float left = 1 - old / 9;
-            if (left <= 0) {
-                continue;
-            }
-            float wide = 0.7F + 0.28F * old;
-            float cx = x + r.dx * at;
-            float cy = y + r.dy * at;
-            float cz = z + r.dz * at;
-            for (int k = 0; k < 20; k++) {
-                float a0 = k * 6.2832F / 20;
-                float a1 = (k + 1) * 6.2832F / 20;
+        Draw.additive();
+        if (r.back < 0) {
+            // Its wake: red where it has just been, gone a few blocks back, with a hot wire down the middle.
+            t.startDrawingQuads();
+            float fade = over ? Draw.clamp01(1 - since / 5) : 1;
+            float tail = Math.max(0, gone - 8);
+            for (int i = 0; i < 9; i++) {
+                float a0 = tail + (gone - tail) * i / 9F;
+                float a1 = tail + (gone - tail) * (i + 1) / 9F;
+                float f0 = i / 9F;
+                float f1 = (i + 1) / 9F;
+                float c0 = 1 - smooth(a0 / 4.5F);
+                float c1 = 1 - smooth(a1 / 4.5F);
+                float x0 = x + r.dx * a0 + (float) r.offX * c0;
+                float y0 = y + r.dy * a0 + (float) r.offY * c0;
+                float z0 = z + r.dz * a0 + (float) r.offZ * c0;
+                float x1 = x + r.dx * a1 + (float) r.offX * c1;
+                float y1 = y + r.dy * a1 + (float) r.offY * c1;
+                float z1 = z + r.dz * a1 + (float) r.offZ * c1;
                 ribbon(
                     t,
-                    cx + (side[0] * MathHelper.cos(a0) + up[0] * MathHelper.sin(a0)) * wide,
-                    cy + (side[1] * MathHelper.cos(a0) + up[1] * MathHelper.sin(a0)) * wide,
-                    cz + (side[2] * MathHelper.cos(a0) + up[2] * MathHelper.sin(a0)) * wide,
-                    cx + (side[0] * MathHelper.cos(a1) + up[0] * MathHelper.sin(a1)) * wide,
-                    cy + (side[1] * MathHelper.cos(a1) + up[1] * MathHelper.sin(a1)) * wide,
-                    cz + (side[2] * MathHelper.cos(a1) + up[2] * MathHelper.sin(a1)) * wide,
-                    0.05F,
-                    0.05F,
-                    ROSE,
-                    0.6F * left * left,
-                    ROSE,
-                    0.6F * left * left);
+                    x0,
+                    y0,
+                    z0,
+                    x1,
+                    y1,
+                    z1,
+                    0.24F * f0,
+                    0.24F * f1,
+                    RED,
+                    0.75F * f0 * fade,
+                    RED,
+                    0.75F * f1 * fade);
+                ribbon(
+                    t,
+                    x0,
+                    y0,
+                    z0,
+                    x1,
+                    y1,
+                    z1,
+                    0.045F * f0,
+                    0.045F * f1,
+                    HOT_RED,
+                    0.9F * f0 * fade,
+                    0xFFD0B0,
+                    0.9F * f1 * fade);
             }
+            // The air it pushes aside: red rings left along its way, widening as they fade.
+            for (float at = 0.7F; at < gone; at += 3) {
+                float old = (gone - at) / (float) AbilityMath.RED_SPEED + since;
+                float left = 1 - old / 8;
+                if (left <= 0) {
+                    continue;
+                }
+                float wide = 0.3F + 0.16F * old;
+                float cx = x + r.dx * at;
+                float cy = y + r.dy * at;
+                float cz = z + r.dz * at;
+                for (int k = 0; k < 18; k++) {
+                    float a0 = k * 6.2832F / 18;
+                    float a1 = (k + 1) * 6.2832F / 18;
+                    ribbon(
+                        t,
+                        cx + (side[0] * MathHelper.cos(a0) + up[0] * MathHelper.sin(a0)) * wide,
+                        cy + (side[1] * MathHelper.cos(a0) + up[1] * MathHelper.sin(a0)) * wide,
+                        cz + (side[2] * MathHelper.cos(a0) + up[2] * MathHelper.sin(a0)) * wide,
+                        cx + (side[0] * MathHelper.cos(a1) + up[0] * MathHelper.sin(a1)) * wide,
+                        cy + (side[1] * MathHelper.cos(a1) + up[1] * MathHelper.sin(a1)) * wide,
+                        cz + (side[2] * MathHelper.cos(a1) + up[2] * MathHelper.sin(a1)) * wide,
+                        0.035F,
+                        0.035F,
+                        HOT_RED,
+                        0.7F * left * left,
+                        RED,
+                        0.7F * left * left);
+                }
+            }
+            t.draw();
+        }
+        // Where it went through someone, and where its range ends: a burst, with red splinters thrown out of it.
+        for (int i = 0; i <= r.met.size(); i++) {
+            boolean end = i == r.met.size();
+            if (end && !over) {
+                continue;
+            }
+            float old = end ? since : r.met.get(i)[0] + partialTicks;
+            float burst = 1 - old / RED_ENDS;
+            if (burst <= 0) {
+                continue;
+            }
+            float mx = end ? x + r.dx * r.range : (float) (r.metAt[i * 3] - camX);
+            float my = end ? y + r.dy * r.range : (float) (r.metAt[i * 3 + 1] - camY);
+            float mz = end ? z + r.dz * r.range : (float) (r.metAt[i * 3 + 2] - camZ);
+            t.startDrawing(GL11.GL_TRIANGLES);
+            Draw.glow(t, mx, my, mz, 1.9F * (1.25F - burst), RED, 0.8F * burst);
+            Draw.glow(t, mx, my, mz, 0.6F, 0xFFD0B0, burst * burst);
+            t.draw();
+            t.startDrawingQuads();
+            Random random = new Random(r.caster * 131L + i);
+            for (int k = 0; k < 9; k++) {
+                float a = random.nextFloat() * 6.2832F;
+                float lift = random.nextFloat() - 0.4F;
+                float reach = (0.5F + 1.6F * random.nextFloat()) * (1 - burst * burst);
+                float sx = (side[0] * MathHelper.cos(a) + up[0] * lift + d[0] * 0.5F) * reach;
+                float sy = (side[1] * MathHelper.cos(a) + up[1] * lift + d[1] * 0.5F + 0.3F) * reach;
+                float sz = (side[2] * MathHelper.cos(a) + up[2] * lift + d[2] * 0.5F) * reach;
+                ribbon(
+                    t,
+                    mx + sx * 0.55F,
+                    my + sy * 0.55F,
+                    mz + sz * 0.55F,
+                    mx + sx,
+                    my + sy,
+                    mz + sz,
+                    0.01F,
+                    0.05F,
+                    RED,
+                    0,
+                    k % 2 == 0 ? RED : HOT_RED,
+                    burst);
+            }
+            t.draw();
+        }
+        if (r.back >= 0) {
+            back(t, mc, r, caster, camX, camY, camZ, partialTicks);
+            return;
+        }
+        if (!over) {
+            // One that passes right by the eye is not a red screen.
+            float near = 0.25F + 0.75F * Draw.clamp01(((float) Math.sqrt(hx * hx + hy * hy + hz * hz) - 0.8F) / 2);
+            t.startDrawing(GL11.GL_TRIANGLES);
+            Draw.glow(t, hx, hy, hz, 1.5F, RED, 0.7F * near);
+            Draw.glow(t, hx, hy, hz, 0.7F, HOT_RED, 0.8F * near);
+            t.draw();
+            sphere(t, hx, hy, hz, 0.26F, age * 2, 1, RED_SPHERE, RED_RIM);
+        }
+    }
+
+    /** The red orb on its way back to who let it fly, and that one's fist getting ready for what it brings. */
+    private static void back(Tessellator t, Minecraft mc, Red r, net.minecraft.entity.Entity caster, double camX,
+        double camY, double camZ, float partialTicks) {
+        float age = r.age + partialTicks;
+        float x = (float) (r.beforeX + (r.bx - r.beforeX) * partialTicks - camX);
+        float y = (float) (r.beforeY + (r.by - r.beforeY) * partialTicks - camY);
+        float z = (float) (r.beforeZ + (r.bz - r.beforeZ) * partialTicks - camZ);
+        Draw.additive();
+        // Its wake, through where it has been.
+        t.startDrawingQuads();
+        float lx = x;
+        float ly = y;
+        float lz = z;
+        for (int i = 0; i < r.trailed; i++) {
+            float px = (float) (r.trail[i * 3] - camX);
+            float py = (float) (r.trail[i * 3 + 1] - camY);
+            float pz = (float) (r.trail[i * 3 + 2] - camZ);
+            float f0 = 1 - (float) i / TRAIL;
+            float f1 = 1 - (float) (i + 1) / TRAIL;
+            ribbon(t, lx, ly, lz, px, py, pz, 0.22F * f0, 0.22F * f1, RED, 0.7F * f0, RED, 0.7F * f1);
+            ribbon(t, lx, ly, lz, px, py, pz, 0.04F * f0, 0.04F * f1, 0xFFD0B0, 0.9F * f0, HOT_RED, 0.9F * f1);
+            lx = px;
+            ly = py;
+            lz = pz;
         }
         t.draw();
-        // Where it went through someone, and where it ends: a burst.
+        if (r.state < 2) {
+            float near = 0.25F + 0.75F * Draw.clamp01(((float) Math.sqrt(x * x + y * y + z * z) - 0.8F) / 2);
+            t.startDrawing(GL11.GL_TRIANGLES);
+            Draw.glow(t, x, y, z, 1.5F, RED, 0.7F * near);
+            Draw.glow(t, x, y, z, 0.7F, HOT_RED, 0.8F * near);
+            t.draw();
+            if (r.state == 1) {
+                // Bringing someone: black sparks about it, a taste of what is coming.
+                Draw.translucent();
+                t.startDrawingQuads();
+                Random random = new Random(r.caster * 17L + (long) (age / 2));
+                for (int k = 0; k < 6; k++) {
+                    float ax = random.nextFloat() - 0.5F;
+                    float ay = random.nextFloat() - 0.5F;
+                    float az = random.nextFloat() - 0.5F;
+                    ribbon(
+                        t,
+                        x + ax * 0.5F,
+                        y + ay * 0.5F + 0.4F,
+                        z + az * 0.5F,
+                        x + ax * 2.2F,
+                        y + ay * 2.2F + 0.4F,
+                        z + az * 2.2F,
+                        0.05F,
+                        0.01F,
+                        0x000000,
+                        0.9F,
+                        0x200000,
+                        0.6F);
+                }
+                t.draw();
+                Draw.additive();
+            }
+            sphere(t, x, y, z, 0.26F, age * 2, 1, RED_SPHERE, RED_RIM);
+        }
+        if (caster == null) {
+            return;
+        }
+        // The fist that waits: small lights jumping about it, white and ice, brighter as the orb nears.
+        float[] h = hand(mc, caster, partialTicks, camX, camY, camZ, false);
+        float ready = Draw.clamp01(r.back / 6F);
+        Draw.additive();
         t.startDrawing(GL11.GL_TRIANGLES);
-        for (int i = 0; i < r.met.size(); i++) {
-            float burst = 1 - (r.met.get(i)[0] + partialTicks) / RED_ENDS;
-            if (burst > 0) {
-                float mx = (float) (r.metAt[i * 3] - camX);
-                float my = (float) (r.metAt[i * 3 + 1] - camY);
-                float mz = (float) (r.metAt[i * 3 + 2] - camZ);
-                Draw.glow(t, mx, my, mz, 2.6F * (1.2F - burst), RED, 0.7F * burst);
-                Draw.glow(t, mx, my, mz, 1.1F, WHITE, burst * burst);
-            }
-        }
-        if (over && since < RED_ENDS) {
-            float burst = 1 - since / RED_ENDS;
-            Draw.glow(t, hx, hy, hz, 3.4F * (1.25F - burst), RED, 0.75F * burst);
-            Draw.glow(t, hx, hy, hz, 1.5F, WHITE, burst * burst);
-        }
-        if (!over) {
-            Draw.glow(t, hx, hy, hz, 3.2F, RED, 0.5F);
-            Draw.glow(t, hx, hy, hz, 1.6F, 0xFF8A70, 0.7F);
+        Draw.glow(t, h[0], h[1], h[2], 0.55F, ICE, 0.55F * ready);
+        Random random = new Random(r.caster * 53L + (long) (age * 1.5F));
+        for (int k = 0; k < 6; k++) {
+            Draw.glow(
+                t,
+                h[0] + (random.nextFloat() - 0.5F) * 0.5F,
+                h[1] + (random.nextFloat() - 0.5F) * 0.5F,
+                h[2] + (random.nextFloat() - 0.5F) * 0.5F,
+                0.07F + 0.07F * random.nextFloat(),
+                k % 2 == 0 ? WHITE : ICE,
+                ready);
         }
         t.draw();
-        if (!over) {
-            sphere(t, hx, hy, hz, 0.6F, age * 2, 1, RED_SPHERE, RED_RIM);
+    }
+
+    /**
+     * The black blow, where it lands: a white instant, then black lightning in red light, thrown out mostly the
+     * way of the blow, jumping from one shape to another as it dies.
+     */
+    private static void black(Tessellator t, Red r, float x, float y, float z, float since) {
+        float left = 1 - since / BLACK_ENDS;
+        if (left <= 0) {
+            return;
         }
+        float grown = Draw.clamp01(since / 3);
+        Draw.additive();
+        t.startDrawing(GL11.GL_TRIANGLES);
+        Draw.glow(t, x, y, z, 5.5F * (0.5F + 0.5F * grown), RED, 0.8F * left);
+        Draw.glow(t, x, y, z, 2.6F, DEEP_RED, 0.7F * left);
+        if (since < 4) {
+            Draw.glow(t, x, y, z, 3.2F * (1 - since / 4), WHITE, 1 - since / 4);
+        }
+        t.draw();
+        // The ring of the blow, across its way.
+        float[] d = { r.edx, r.edy, r.edz };
+        float[] side = cross(d, new float[] { 0, 1, 0 });
+        if (length(side) < 1e-3F) {
+            side = new float[] { 1, 0, 0 };
+        }
+        normalize(side);
+        float[] up = cross(side, d);
+        normalize(up);
+        float wide = 0.4F + 4.2F * (float) Math.pow(since / BLACK_ENDS, 0.6);
+        t.startDrawingQuads();
+        for (int k = 0; k < 28; k++) {
+            float a0 = k * 6.2832F / 28;
+            float a1 = (k + 1) * 6.2832F / 28;
+            ribbon(
+                t,
+                x + (side[0] * MathHelper.cos(a0) + up[0] * MathHelper.sin(a0)) * wide,
+                y + (side[1] * MathHelper.cos(a0) + up[1] * MathHelper.sin(a0)) * wide,
+                z + (side[2] * MathHelper.cos(a0) + up[2] * MathHelper.sin(a0)) * wide,
+                x + (side[0] * MathHelper.cos(a1) + up[0] * MathHelper.sin(a1)) * wide,
+                y + (side[1] * MathHelper.cos(a1) + up[1] * MathHelper.sin(a1)) * wide,
+                z + (side[2] * MathHelper.cos(a1) + up[2] * MathHelper.sin(a1)) * wide,
+                0.12F * left,
+                0.12F * left,
+                RED,
+                left,
+                RED,
+                left);
+        }
+        t.draw();
+        // The lightning: each bolt a broken line, redrawn in a new shape every other tick.
+        float[][][] bolts = new float[BOLTS][7][3];
+        for (int bolt = 0; bolt < BOLTS; bolt++) {
+            Random random = new Random(r.caster * 7919L + bolt * 104729L + (long) (since / 2) * 31L);
+            float bx = (random.nextFloat() - 0.5F) * 2 + d[0] * 0.9F;
+            float by = (random.nextFloat() - 0.5F) * 2 + d[1] * 0.9F + 0.15F;
+            float bz = (random.nextFloat() - 0.5F) * 2 + d[2] * 0.9F;
+            float n = (float) Math.sqrt(bx * bx + by * by + bz * bz) + 1e-4F;
+            float reach = (2.2F + 3.8F * random.nextFloat()) * grown * (0.55F + 0.45F * left) / n;
+            for (int k = 0; k < 7; k++) {
+                float along = k / 6F;
+                float jag = k == 0 ? 0 : 0.42F * reach * n / 6;
+                bolts[bolt][k][0] = x + bx * reach * along + (random.nextFloat() - 0.5F) * 2 * jag;
+                bolts[bolt][k][1] = y + by * reach * along + (random.nextFloat() - 0.5F) * 2 * jag;
+                bolts[bolt][k][2] = z + bz * reach * along + (random.nextFloat() - 0.5F) * 2 * jag;
+            }
+        }
+        // Red light about each bolt first, then the black of it over that.
+        t.startDrawingQuads();
+        for (float[][] bolt : bolts) {
+            for (int k = 0; k < 6; k++) {
+                float f0 = 1 - k / 6F;
+                float f1 = 1 - (k + 1) / 6F;
+                ribbon(
+                    t,
+                    bolt[k][0],
+                    bolt[k][1],
+                    bolt[k][2],
+                    bolt[k + 1][0],
+                    bolt[k + 1][1],
+                    bolt[k + 1][2],
+                    0.3F * f0,
+                    0.3F * f1,
+                    RED,
+                    0.6F * left,
+                    RED,
+                    0.6F * left * f1);
+            }
+        }
+        t.draw();
+        Draw.translucent();
+        t.startDrawingQuads();
+        for (float[][] bolt : bolts) {
+            for (int k = 0; k < 6; k++) {
+                float f0 = 1 - k / 6.5F;
+                float f1 = 1 - (k + 1) / 6.5F;
+                ribbon(
+                    t,
+                    bolt[k][0],
+                    bolt[k][1],
+                    bolt[k][2],
+                    bolt[k + 1][0],
+                    bolt[k + 1][1],
+                    bolt[k + 1][2],
+                    0.12F * f0,
+                    0.12F * f1,
+                    0x000000,
+                    Math.min(1, left * 1.6F),
+                    0x000000,
+                    Math.min(1, left * 1.6F));
+            }
+        }
+        t.draw();
+        Draw.additive();
+    }
+
+    /** On the screen of who gives the black blow or takes it: a white instant and a red one after it. */
+    @SubscribeEvent
+    public void onOverlay(net.minecraftforge.client.event.RenderGameOverlayEvent.Post event) {
+        if (flash < 0 || event.type != net.minecraftforge.client.event.RenderGameOverlayEvent.ElementType.ALL) {
+            return;
+        }
+        float since = flash + event.partialTicks;
+        int w = event.resolution.getScaledWidth();
+        int h = event.resolution.getScaledHeight();
+        int white = (int) (150 * Draw.clamp01(1 - since / 2.5F));
+        int red = (int) (80 * Draw.clamp01(1 - since / 9));
+        if (red > 2) {
+            net.minecraft.client.gui.Gui.drawRect(0, 0, w, h, red << 24 | 0xC00010);
+        }
+        if (white > 2) {
+            net.minecraft.client.gui.Gui.drawRect(0, 0, w, h, white << 24 | 0xFFFFFF);
+        }
+        GL11.glColor4f(1, 1, 1, 1);
+        GL11.glEnable(GL11.GL_BLEND);
     }
 
     // Talho.

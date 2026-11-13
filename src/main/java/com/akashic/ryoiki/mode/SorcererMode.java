@@ -83,6 +83,8 @@ public final class SorcererMode {
     private final Queue<Object[]> asked = new ConcurrentLinkedQueue<>();
     private FMLEventChannel channel;
     private final Abilities abilities = new Abilities();
+    /** Who holds the mode's own key down now. */
+    private final Set<UUID> holding = new HashSet<>();
     /** For each player, the server tick each of its first three techniques is ready again at. */
     private final Map<UUID, long[]> ready = new HashMap<>();
 
@@ -107,12 +109,18 @@ public final class SorcererMode {
         return player instanceof EntityPlayerMP && on.contains(player.getUniqueID());
     }
 
+    /** Whether a player in the mode holds the mode's own key down. */
+    boolean holds(EntityPlayer player) {
+        return holding.contains(player.getUniqueID());
+    }
+
     /** Nobody is in the mode when the server stops: there is nothing to undo. */
     public void reset() {
         on.clear();
         changed.clear();
         asked.clear();
         ready.clear();
+        holding.clear();
         abilities.reset();
     }
 
@@ -131,6 +139,8 @@ public final class SorcererMode {
             asked.add(new Object[] { who, m.on });
         } else if (m.op == ModeWire.USE) {
             asked.add(new Object[] { who, m.slot });
+        } else if (m.op == ModeWire.HOLD) {
+            asked.add(new Object[] { who, m.on ? "hold" : "release" });
         }
     }
 
@@ -144,7 +154,14 @@ public final class SorcererMode {
             if (player == null) {
                 continue;
             }
-            if (ask[1] instanceof Boolean) {
+            if (ask[1] instanceof String) {
+                if ("hold".equals(ask[1]) && isOn(player)) {
+                    holding.add(player.getUniqueID());
+                    abilities.held(player);
+                } else {
+                    holding.remove(player.getUniqueID());
+                }
+            } else if (ask[1] instanceof Boolean) {
                 set(player, (Boolean) ask[1]);
             } else {
                 use(player, (Integer) ask[1]);
@@ -208,6 +225,7 @@ public final class SorcererMode {
             holdHunger(player);
         } else {
             on.remove(id);
+            holding.remove(id);
             releaseHunger(player);
         }
         tell(player, want);
@@ -467,6 +485,7 @@ public final class SorcererMode {
         on.remove(event.player.getUniqueID());
         changed.remove(event.player.getUniqueID());
         ready.remove(event.player.getUniqueID());
+        holding.remove(event.player.getUniqueID());
     }
 
     @SubscribeEvent

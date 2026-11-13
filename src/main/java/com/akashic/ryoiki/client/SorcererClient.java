@@ -176,6 +176,14 @@ public final class SorcererClient {
         return ticks - hurtAt + partialTicks;
     }
 
+    private boolean holding;
+    private boolean forcedHold;
+
+    /** For the development harness: the mode's key, as if held. */
+    public void hold(boolean down) {
+        forcedHold = down;
+    }
+
     /** For the development harness: a recharge as the server would announce it. */
     public void recharge(int slot, int total, int left) {
         rechargeTotal[slot] = total;
@@ -247,6 +255,7 @@ public final class SorcererClient {
             heard.clear();
             changedAt = -1000;
             technique = null;
+            holding = false;
             java.util.Arrays.fill(rechargeTotal, 0);
             AbilityFx.INSTANCE.clear();
             return;
@@ -288,6 +297,16 @@ public final class SorcererClient {
             }
         }
         followLife(mc);
+        // The mode's own key held, without Ctrl: some techniques do something else while it is.
+        boolean held = on && mc.currentScreen == null
+            && (forcedHold || key.getKeyCode() > 0 && Keyboard.isKeyDown(key.getKeyCode())
+                && !Keyboard.isKeyDown(Keyboard.KEY_LCONTROL)
+                && !Keyboard.isKeyDown(Keyboard.KEY_RCONTROL));
+        if (held != holding) {
+            holding = held;
+            SorcererMode.INSTANCE.channel()
+                .sendToServer(new FMLProxyPacket(Unpooled.wrappedBuffer(ModeWire.hold(held)), ModeWire.CHANNEL));
+        }
         if (on) {
             release(mc);
         }

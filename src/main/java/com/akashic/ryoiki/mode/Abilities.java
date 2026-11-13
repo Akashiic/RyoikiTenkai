@@ -53,6 +53,17 @@ final class Abilities {
         final double[] way = new double[3];
         double range;
         final Set<UUID> met = new HashSet<>();
+        /** Its caster held the mode's key: at the end of its range it comes back. */
+        boolean rebound;
+        /** On its way back: where it is, for how long, and who it brings. */
+        boolean back;
+        double bx;
+        double by;
+        double bz;
+        int backAge;
+        EntityPlayerMP brought;
+        /** Ticks until the black blow lands; negative while there is none coming. */
+        int blow = -1;
     }
 
     private static final class Orb {
@@ -200,9 +211,21 @@ final class Abilities {
         return AbilityMath.RED_RECHARGE;
     }
 
+    /** A player holds the mode's key: a red orb of its own that has not flown its range yet will come back. */
+    void held(EntityPlayerMP caster) {
+        for (Red red : reds) {
+            if (red.caster == caster && !red.back) {
+                red.rebound = true;
+            }
+        }
+    }
+
     /** One tick of a red orb. False when it is over. */
     private boolean red(Red red, SorcererMode mode) {
         EntityPlayerMP caster = red.caster;
+        if (red.back) {
+            return redBack(red, mode);
+        }
         if (!red.flying) {
             if (!caster.isEntityAlive() || !mode.isOn(caster) || DomainManager.INSTANCE.frozen(caster)) {
                 // Never let fly.
@@ -211,22 +234,49 @@ final class Abilities {
             if (red.air) {
                 hang(caster);
             }
+            if (mode.holds(caster)) {
+                red.rebound = true;
+            }
             if (++red.age < AbilityMath.RED_CHARGE_TICKS) {
                 return true;
             }
-            // Let fly, the way the caster looks now: from before its chest, until something solid.
+            // Let fly from the hand that points, at what the caster looks at now, until something solid.
             Vec3 look = caster.getLookVec();
-            red.way[0] = look.xCoord;
-            red.way[1] = look.yCoord;
-            red.way[2] = look.zCoord;
+            double ex = caster.posX;
+            double ey = caster.posY + caster.getEyeHeight();
+            double ez = caster.posZ;
+            double[] eyes = { look.xCoord, look.yCoord, look.zCoord };
             if (!red.air) {
-                AbilityMath.level(look.xCoord, look.yCoord, look.zCoord, red.way);
+                AbilityMath.level(look.xCoord, look.yCoord, look.zCoord, eyes);
             }
-            Vec3 way = Vec3.createVectorHelper(red.way[0], red.way[1], red.way[2]);
-            red.x = caster.posX + red.way[0] * AbilityMath.CUT_AHEAD;
-            red.y = caster.posY + caster.getEyeHeight() - AbilityMath.CUT_BELOW + red.way[1] * AbilityMath.CUT_AHEAD;
-            red.z = caster.posZ + red.way[2] * AbilityMath.CUT_AHEAD;
-            red.range = clear(caster.worldObj, red.x, red.y, red.z, way, AbilityMath.RED_RANGE);
+            double[] hand = new double[3];
+            AbilityMath.hand(ex, ey, ez, eyes[0], eyes[1], eyes[2], hand);
+            double seen = clear(
+                caster.worldObj,
+                ex,
+                ey,
+                ez,
+                Vec3.createVectorHelper(eyes[0], eyes[1], eyes[2]),
+                AbilityMath.RED_RANGE);
+            AbilityMath.toward(
+                hand[0],
+                hand[1],
+                hand[2],
+                ex + eyes[0] * seen,
+                ey + eyes[1] * seen,
+                ez + eyes[2] * seen,
+                eyes,
+                red.way);
+            red.x = hand[0];
+            red.y = hand[1];
+            red.z = hand[2];
+            red.range = clear(
+                caster.worldObj,
+                red.x,
+                red.y,
+                red.z,
+                Vec3.createVectorHelper(red.way[0], red.way[1], red.way[2]),
+                AbilityMath.RED_RANGE);
             red.flying = true;
             red.age = 0;
             if (red.air) {
@@ -257,20 +307,7 @@ final class Abilities {
             if (red.met.contains(target.getUniqueID())) {
                 continue;
             }
-            AxisAlignedBB box = target.boundingBox;
-            double enters = AbilityMath.enters(
-                red.x,
-                red.y,
-                red.z,
-                red.way[0],
-                red.way[1],
-                red.way[2],
-                box.minX - AbilityMath.RED_WIDTH,
-                box.minY - AbilityMath.RED_WIDTH,
-                box.minZ - AbilityMath.RED_WIDTH,
-                box.maxX + AbilityMath.RED_WIDTH,
-                box.maxY + AbilityMath.RED_WIDTH,
-                box.maxZ + AbilityMath.RED_WIDTH);
+            double enters = meets(red.x, red.y, red.z, red.way, target, AbilityMath.RED_WIDTH);
             if (enters < 0 || enters > to || enters < from - AbilityMath.RED_SPEED) {
                 continue;
             }
@@ -300,7 +337,173 @@ final class Abilities {
                     0),
                 mode);
         }
-        return to < red.range;
+        if (to < red.range) {
+            return true;
+        }
+        if (!red.rebound || !caster.isEntityAlive() || !mode.isOn(caster)) {
+            return false;
+        }
+        // At the end of its range, held: it turns and comes back.
+        red.back = true;
+        red.bx = red.x + red.way[0] * red.range;
+        red.by = red.y + red.way[1] * red.range;
+        red.bz = red.z + red.way[2] * red.range;
+        return true;
+    }
+
+    /** One tick of a red orb on its way back to its caster. False when it is over. */
+    private boolean redBack(Red red, SorcererMode mode) {
+        EntityPlayerMP caster = red.caster;
+        if (!caster.isEntityAlive() || !mode.isOn(caster)
+            || caster.worldObj.getPlayerEntityByName(caster.getCommandSenderName()) != caster) {
+            tellBack(red, AbilityMath.RED_SELF, 0, mode);
+            return false;
+        }
+        Vec3 look = caster.getLookVec();
+        if (red.blow >= 0) {
+            // The one it brought is held before the caster while the fist comes.
+            EntityPlayerMP target = red.brought;
+            if (!target.isEntityAlive() || target.worldObj != caster.worldObj) {
+                tellBack(red, AbilityMath.RED_SELF, 0, mode);
+                return false;
+            }
+            if (--red.blow > 0) {
+                move(target, new double[] { 0, 0, 0 });
+                return true;
+            }
+            // The black blow.
+            strike(caster, target, Config.blackDamage, "ryoiki.golpe_negro");
+            double[] way = new double[3];
+            AbilityMath.level(look.xCoord, look.yCoord, look.zCoord, way);
+            move(
+                target,
+                new double[] { way[0] * AbilityMath.BLACK_THROW, AbilityMath.BLACK_LIFT,
+                    way[2] * AbilityMath.BLACK_THROW });
+            tell(
+                target.worldObj,
+                target.posX,
+                target.posY + target.height / 2,
+                target.posZ,
+                ModeWire.effect(
+                    AbilityMath.BLACK,
+                    caster.getEntityId(),
+                    target.posX,
+                    target.posY + target.height / 2,
+                    target.posZ,
+                    way[0],
+                    way[1],
+                    way[2],
+                    target.getEntityId(),
+                    0),
+                mode);
+            return false;
+        }
+        // Toward its caster's chest, wherever that is now.
+        double tx = caster.posX;
+        double ty = caster.posY + caster.getEyeHeight() - 0.4;
+        double tz = caster.posZ;
+        double[] v = new double[3];
+        AbilityMath.step(red.bx, red.by, red.bz, tx, ty, tz, AbilityMath.RED_BACK_SPEED, v);
+        double length = Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+        if (red.brought == null && length > 1e-6) {
+            // Whoever is in the way of this step is taken along: the nearest to where it starts.
+            double[] way = { v[0] / length, v[1] / length, v[2] / length };
+            double first = Double.MAX_VALUE;
+            for (EntityPlayerMP target : targets(caster, mode)) {
+                double enters = meets(red.bx, red.by, red.bz, way, target, AbilityMath.RED_WIDTH);
+                if (enters >= 0 && enters <= length && enters < first) {
+                    first = enters;
+                    red.brought = target;
+                }
+            }
+        }
+        red.bx += v[0];
+        red.by += v[1];
+        red.bz += v[2];
+        red.backAge++;
+        EntityPlayerMP target = red.brought;
+        if (target != null && (!target.isEntityAlive() || target.worldObj != caster.worldObj)) {
+            target = null;
+            red.brought = null;
+        }
+        if (target != null) {
+            // It goes where the orb goes: its middle on it.
+            target.motionX = 0;
+            target.motionY = 0;
+            target.motionZ = 0;
+            target.fallDistance = 0;
+            target.playerNetServerHandler.setPlayerLocation(
+                red.bx,
+                Math.max(red.by - target.height / 2, caster.posY),
+                red.bz,
+                target.rotationYaw,
+                target.rotationPitch);
+        }
+        double dx = tx - red.bx;
+        double dy = ty - red.by;
+        double dz = tz - red.bz;
+        boolean arrived = dx * dx + dy * dy + dz * dz <= AbilityMath.RED_ARRIVES * AbilityMath.RED_ARRIVES;
+        if (!arrived && red.backAge < AbilityMath.RED_BACK_TICKS) {
+            tellBack(red, AbilityMath.RED_BACK, target == null ? 0 : 1, mode);
+            return true;
+        }
+        if (target == null) {
+            // Back with nobody: its caster takes it.
+            strike(caster, caster, Config.redSelfDamage, "ryoiki.repulsao");
+            tellBack(red, AbilityMath.RED_SELF, 1, mode);
+            return false;
+        }
+        // Set before the caster, where it looks, and the fist is on its way.
+        double[] way = new double[3];
+        AbilityMath.level(look.xCoord, look.yCoord, look.zCoord, way);
+        target.playerNetServerHandler.setPlayerLocation(
+            caster.posX + way[0] * AbilityMath.BLACK_AT,
+            caster.posY + 0.05,
+            caster.posZ + way[2] * AbilityMath.BLACK_AT,
+            target.rotationYaw,
+            target.rotationPitch);
+        red.blow = AbilityMath.BLACK_WIND;
+        tellBack(red, AbilityMath.RED_BACK, 2, mode);
+        return true;
+    }
+
+    /** Where a red orb on its way back is, to everyone near: {@code state} 0 alone, 1 bringing someone, 2 arrived. */
+    private void tellBack(Red red, int kind, int state, SorcererMode mode) {
+        tell(
+            red.caster.worldObj,
+            red.bx,
+            red.by,
+            red.bz,
+            ModeWire.effect(
+                kind,
+                red.caster.getEntityId(),
+                red.bx,
+                red.by,
+                red.bz,
+                state,
+                0,
+                0,
+                red.brought == null ? 0 : red.brought.getEntityId(),
+                AbilityMath.BLACK_WIND),
+            mode);
+    }
+
+    /** How far along a line (a unit vector) it meets a player's body grown by {@code width}; negative for never. */
+    private static double meets(double x, double y, double z, double[] way, EntityPlayerMP target, double width) {
+        AxisAlignedBB box = target.boundingBox;
+        return AbilityMath.enters(
+            x,
+            y,
+            z,
+            way[0],
+            way[1],
+            way[2],
+            box.minX - width,
+            box.minY - width,
+            box.minZ - width,
+            box.maxX + width,
+            box.maxY + width,
+            box.maxZ + width);
     }
 
     /** Held where it is in the air, for as long as this is done each tick. */

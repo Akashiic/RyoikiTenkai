@@ -46,15 +46,28 @@ class CastPoseTest {
     }
 
     @Test
-    void theRedIsRaisedWhileItIsGatheredAndThrownStraightOut() {
+    void theRedIsHeldOverheadWhileItGathersAndThrownDownToTheLine() {
         float ticks = 24 + CastPose.RED_AFTER;
         float[] gathered = CastPose.sample(CastPose.RED, 20, ticks);
-        float[] thrown = CastPose.sample(CastPose.RED, 24 + 4, ticks);
-        // Gathered: the hand high, the elbow bent. Thrown: the arm level and straight, that shoulder forward.
-        assertTrue(CastPose.angle(gathered, "RightArm", 0) < -115 && CastPose.angle(gathered, "RightForeArm", 0) < -40);
-        assertEquals(-86, CastPose.angle(thrown, "RightArm", 0), 8);
-        assertTrue(Math.abs(CastPose.angle(thrown, "RightForeArm", 0)) < 12);
-        assertTrue(CastPose.angle(thrown, "UpBody", 1) < -10);
+        float[] thrown = CastPose.sample(CastPose.RED, 24 + 9, ticks);
+        // Gathered: the arm nearly straight up, the elbow hardly bent, that shoulder back.
+        assertTrue(CastPose.angle(gathered, "RightArm", 0) < -150);
+        assertTrue(CastPose.angle(gathered, "RightForeArm", 0) > -30);
+        assertTrue(CastPose.angle(gathered, "UpBody", 1) > 6);
+        // Thrown: the arm level and straight, that shoulder forward.
+        assertEquals(-88, CastPose.angle(thrown, "RightArm", 0), 6);
+        assertTrue(Math.abs(CastPose.angle(thrown, "RightForeArm", 0)) < 8);
+        assertTrue(CastPose.angle(thrown, "UpBody", 1) < -12);
+        // It points where the eyes look: higher looking up, lower looking down, and only so far.
+        float level = CastPose.angle(thrown, "RightArm", 0);
+        float high = CastPose.angle(CastPose.sample(CastPose.RED, 24 + 9, ticks, -40), "RightArm", 0);
+        float low = CastPose.angle(CastPose.sample(CastPose.RED, 24 + 9, ticks, 30), "RightArm", 0);
+        assertEquals(level - 34, high, 1);
+        assertEquals(level + 25.5, low, 1);
+        assertEquals(
+            CastPose.angle(CastPose.sample(CastPose.RED, 24 + 9, ticks, -90), "RightArm", 0),
+            CastPose.angle(CastPose.sample(CastPose.RED, 24 + 9, ticks, -70), "RightArm", 0),
+            1e-4);
         // No jump anywhere in it.
         float[] last = CastPose.sample(CastPose.RED, 0, ticks);
         for (float age = 0.05F; age <= ticks; age += 0.05F) {

@@ -32,6 +32,12 @@ public final class ModeWire {
      */
     public static final byte EFFECT = 7;
 
+    /**
+     * Client to server: this player holds the mode's own key (the one that, with Ctrl, changes mode), or has let it
+     * go. Some techniques do something else while it is held.
+     */
+    public static final byte HOLD = 8;
+
     /** The techniques of the mode: three and the domain expansion, numbered from 1. */
     public static final int SLOTS = 4;
     /** No recharge is longer than an hour. */
@@ -78,6 +84,10 @@ public final class ModeWire {
 
     public static byte[] refused(int reason) {
         return new byte[] { REFUSED, (byte) reason };
+    }
+
+    public static byte[] hold(boolean on) {
+        return new byte[] { HOLD, (byte) (on ? 1 : 0) };
     }
 
     public static byte[] use(int slot) {
@@ -140,6 +150,10 @@ public final class ModeWire {
             m.reason = data[1];
             return m;
         }
+        if (m.op == HOLD && data.length == 2 && (data[1] == 0 || data[1] == 1)) {
+            m.on = data[1] == 1;
+            return m;
+        }
         if (m.op == USE && data.length == 2 && data[1] >= 1 && data[1] <= SLOTS) {
             m.slot = data[1];
             return m;
@@ -158,7 +172,7 @@ public final class ModeWire {
             m.ticks = in.getShort();
             boolean numbers = finite(m.x) && finite(
                 m.y) && finite(m.z) && finite(m.dx) && finite(m.dy) && finite(m.dz) && finite(m.size);
-            return numbers && m.kind >= AbilityMath.PULL && m.kind <= AbilityMath.RED_HIT && m.ticks >= 0 ? m : null;
+            return numbers && m.kind >= AbilityMath.PULL && m.kind <= AbilityMath.RED_SELF && m.ticks >= 0 ? m : null;
         }
         if (m.op == TECHNIQUE && data.length == 2 && data[1] >= 0) {
             m.technique = data[1];

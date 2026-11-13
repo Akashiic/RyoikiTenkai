@@ -40,6 +40,7 @@ public final class FuturaBridge {
     private MethodHandle setBonePose;
     private MethodHandle setScreenDraw;
     private MethodHandle locatorInLastDraw;
+    private MethodHandle locator;
     /** By the domain's id: its hand sign. */
     private final Map<String, Sign> signs = new HashMap<>();
     private File override;
@@ -63,6 +64,8 @@ public final class FuturaBridge {
                     api,
                     "locatorInLastDraw",
                     MethodType.methodType(float[].class, EntityPlayer.class, String.class));
+                locator = lookup
+                    .findStatic(api, "locator", MethodType.methodType(float[].class, EntityPlayer.class, String.class));
                 RyoikiTenkai.LOG.info("3D Futura Engine found: casters make the hand signs with their models");
             } else {
                 RyoikiTenkai.LOG.info("3D Futura Engine is older than API 6: the hand signs use the plain skin");
@@ -159,6 +162,24 @@ public final class FuturaBridge {
         } catch (Throwable e) {
             setBonePose = null;
             RyoikiTenkai.LOG.warn("3D Futura Engine refused the pose: using the plain skin from now on", e);
+        }
+    }
+
+    /**
+     * Where a hand of a player's model is, in blocks from the camera (the space things are drawn in after the
+     * world): the model's own hand locator, as it was last drawn. Null for a player without a model, or one not
+     * drawn (this client's own, in first person).
+     */
+    public float[] hand(EntityPlayer player, boolean right) {
+        if (locator == null || player == null) {
+            return null;
+        }
+        try {
+            float[] m = (float[]) locator.invoke(player, right ? "RightHandLocator" : "LeftHandLocator");
+            return m == null || m.length < 16 ? null : new float[] { m[12], m[13], m[14] };
+        } catch (Throwable e) {
+            locator = null;
+            return null;
         }
     }
 

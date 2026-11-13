@@ -484,14 +484,34 @@ o desenho e o nome no mod são próprios, como no resto.
 * **Dois modos**, como na Atração: **no chão** o orbe sai quase nivelado (no máximo 12 graus para cima ou para
   baixo); **carregado no ar**, quem conjura fica **suspenso** durante a carga e o orbe vai para onde a câmera
   apontar no instante do disparo, em qualquer direção.
-* **O que se vê:** na carga, arcos claros girando em volta do corpo cada vez mais depressa, uma luz vermelha no
-  chão e uma esfera vermelha crescendo na mão; no disparo, a esfera (a mesma malha da azul, em carmim) com um
-  rastro vermelho de fio branco, **anéis de ar empurrado** que ficam pelo caminho e se abrem, e um clarão em cada
-  um que ela atravessa e onde ela termina. Quem conjura **ergue a mão diante do rosto** enquanto carrega e
-  **estica o braço** no disparo. Na visão de quem conjura a esfera da carga fica menor e ao lado da mão, para não
-  tapar o alvo.
-* **Limites:** a carga não é interrompida por levar golpe; quem atravessou não é atingido duas vezes. O Santuário
-  ainda não tem a habilidade 2 (a casa fica apagada).
+* **Fase 2, a volta (segurar R):** se quem conjura segurar a tecla do modo (R, sem Ctrl) em qualquer momento
+  antes de o orbe terminar o alcance, ele **volta** do fim do caminho até o conjurador (1,5 bloco por tick). Quem
+  estiver no caminho da volta é **trazido junto**, posto diante do conjurador, e leva o **golpe negro**: um soco
+  3 ticks depois, com dano próprio (`dano.golpe_negro`, 4 corações) e um arremesso forte. Se o orbe voltar **sem
+  ninguém**, o próprio conjurador leva o dano (`dano.repulsao_retorno`, 2 corações), como na wiki.
+* **Gesto e origem** (refeitos em 2026-11-13: o dono achou "feio e pobre a habilidade saindo da barriga" e mandou
+  ler o modelo). O agente leu o modelo que o dono anexou: ele tem o **localizador da mão**
+  (`RightHandLocator`), os dedos como um osso só em duas juntas (`right_fg`, `right_ffg`) e o polegar
+  (`left_dmz`), e as animações de mira dele acompanham a inclinação da cabeça. Daí:
+  * **Carga:** o braço direito sobe **acima da cabeça**, mão aberta e dedos retos, o corpo um pouco para trás e
+    esse ombro recuado, o outro braço solto junto ao quadril; a mão treme mais conforme o orbe enche. O orbe
+    nasce **sobre a ponta dos dedos**, lido do localizador da mão do modelo (`FuturaBridge#hand`).
+  * **Disparo:** o braço desce de uma vez e **aponta para onde a câmera olha** (segue a inclinação, até 70 graus
+    para cima), o ombro vai junto, o braço dá o coice do tiro e assenta. O orbe **sai da mão**: nos primeiros
+    blocos ele ainda acompanha a mão que desce e só então entra na linha do voo. No servidor a linha parte da mão
+    que aponta e mira o ponto que os olhos veem (`AbilityMath#hand`, `#toward`).
+  * **Esperando a volta:** quem conjura fica em guarda, com faíscas brancas e azul-gelo no punho; quando o orbe
+    chega com alguém, dá o direto do sistema de golpes (`BlowPose`), e o punho chega no tick do golpe negro.
+  * Sem modelo (skin comum) ou na própria visão em primeira pessoa, a mão é estimada.
+* **O que se vê:** uma esfera **pequena e vermelha de verdade** (0,26 bloco de raio, do vinho ao vermelho vivo,
+  sem branco no meio), fios vermelhos entrando nela e arcos vermelhos de fio branco em volta do corpo na carga,
+  chão avermelhado; no voo, rastro vermelho, anéis vermelhos pelo caminho e estilhaços em cada um que ela
+  atravessa. **O golpe negro:** um instante branco, depois **raios pretos em luz vermelha**, jogados sobretudo
+  na direção do soco e mudando de forma a cada dois ticks, um anel vermelho que se abre, e um clarão branco e
+  vermelho na tela de quem bate e de quem apanha, com tremor.
+* **Limites:** a carga não é interrompida por levar golpe; o modelo não tem dedo indicador separado, então a mão
+  aponta inteira; o trazido é levado por teleporte a cada tick (num cliente com atraso pode parecer aos saltos).
+  O Santuário ainda não tem a habilidade 2 (a casa fica apagada).
 
 ### A tecla 4: Expansão de Domínio (peça M3, 2026-11-13)
 
@@ -535,6 +555,9 @@ puro, sem plugin):
 | Entrar no modo sem a permissão (jogador sem op) e com ela | recusado com aviso no chat; aceito |
 | Repulsão do chão num jogador a 8 blocos, no spawn protegido | vida de 20 para 15; jogado de 59,5 para 66,1 |
 | Repulsão carregada no ar (pulo) | quem conjurou ficou a 1 bloco do chão durante a carga; o alvo foi de 59,5 para 66,6, vida 15 |
+| Repulsão com R segurado, alvo a 8 blocos | atravessado na ida (20 para 16), trazido de volta para diante do conjurador, golpe negro (para 7), arremessado |
+| Repulsão com R segurado, ninguém no caminho | o orbe volta e o conjurador vai de 20 para 16 |
+| O gesto no visor de quatro vistas e no jogo (terceira pessoa, e visto pelo outro) | braço acima da cabeça com o orbe sobre a mão; braço apontando no disparo |
 | A passada no visor de quatro vistas (parado, trote, disparada, pulo) e filmada de lado e de trás | trote, disparada e pulo reconhecíveis; braços para trás e queda ajustados depois da primeira vista |
 | Gestos no visor de quatro vistas | mão à frente na altura do ombro e recolhida; mão acima do ombro oposto, e baixa do lado dela no fim |
 

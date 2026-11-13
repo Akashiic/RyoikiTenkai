@@ -54,6 +54,12 @@ class ModeWireTest {
         assertEquals(9.5F, m.size, 0);
         assertEquals(7, m.ticks);
 
+        m = ModeWire.decode(ModeWire.hold(true));
+        assertEquals(ModeWire.HOLD, m.op);
+        assertTrue(m.on);
+        assertFalse(ModeWire.decode(ModeWire.hold(false)).on);
+        assertNull(ModeWire.decode(new byte[] { ModeWire.HOLD, 3 }));
+
         m = ModeWire.decode(ModeWire.cooldown(4, 1200, 1187));
         assertEquals(ModeWire.COOLDOWN, m.op);
         assertEquals(4, m.slot);
@@ -79,7 +85,7 @@ class ModeWireTest {
         assertNull(ModeWire.decode(ModeWire.use(0)));
         // An effect of no kind, at no place, or cut short.
         assertNull(ModeWire.decode(ModeWire.effect(0, 1, 0, 0, 0, 0, 0, 1, 1, 1)));
-        assertNull(ModeWire.decode(ModeWire.effect(9, 1, 0, 0, 0, 0, 0, 1, 1, 1)));
+        assertNull(ModeWire.decode(ModeWire.effect(99, 1, 0, 0, 0, 0, 0, 1, 1, 1)));
         assertNull(ModeWire.decode(ModeWire.effect(AbilityMath.PULL, 1, Double.NaN, 0, 0, 0, 0, 1, 1, 1)));
         assertNull(
             ModeWire.decode(java.util.Arrays.copyOf(ModeWire.effect(AbilityMath.PULL, 1, 0, 0, 0, 0, 0, 1, 1, 1), 40)));

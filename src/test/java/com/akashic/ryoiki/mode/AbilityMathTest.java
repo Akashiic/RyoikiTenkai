@@ -102,6 +102,49 @@ class AbilityMathTest {
     }
 
     @Test
+    void theRedOrbLeavesFromTheHandAndFliesAtWhatTheEyesSee() {
+        double[] hand = new double[3];
+        // Looking toward +Z (yaw 0), the caster's right is -X.
+        AbilityMath.hand(10, 65, 20, 0, 0, 1, hand);
+        assertEquals(10 - AbilityMath.RED_RIGHT, hand[0], 1e-9);
+        assertEquals(65 - AbilityMath.RED_BELOW, hand[1], 1e-9);
+        assertEquals(20 + AbilityMath.RED_AHEAD, hand[2], 1e-9);
+        // Looking toward -X (yaw 90), its right is -Z.
+        AbilityMath.hand(0, 0, 0, -1, 0, 0, hand);
+        assertEquals(-AbilityMath.RED_RIGHT, hand[2], 1e-9);
+        // From the hand, toward the place the eyes look at 24 blocks out: the two lines meet there.
+        AbilityMath.hand(10, 65, 20, 0, 0, 1, hand);
+        double[] way = new double[3];
+        AbilityMath.toward(hand[0], hand[1], hand[2], 10, 65, 44, new double[] { 0, 0, 1 }, way);
+        double far = (44 - hand[2]) / way[2];
+        assertEquals(10, hand[0] + way[0] * far, 1e-9);
+        assertEquals(65, hand[1] + way[1] * far, 1e-9);
+        assertEquals(1, Math.sqrt(way[0] * way[0] + way[1] * way[1] + way[2] * way[2]), 1e-9);
+        // Straight up there is no right: the hand is before the eyes, and nothing is NaN.
+        AbilityMath.hand(0, 0, 0, 0, 1, 0, hand);
+        assertEquals(0, hand[0], 0);
+        assertEquals(0, hand[2], 0);
+    }
+
+    @Test
+    void onItsWayBackTheRedOrbArrives() {
+        // From the end of its range it is back within reach of its caster well before it gives up, a step at a time.
+        double x = AbilityMath.RED_RANGE;
+        double[] v = new double[3];
+        int ticks = 0;
+        while (x > AbilityMath.RED_ARRIVES && ticks < AbilityMath.RED_BACK_TICKS) {
+            AbilityMath.step(x, 0, 0, 0, 0, 0, AbilityMath.RED_BACK_SPEED, v);
+            assertEquals(-AbilityMath.RED_BACK_SPEED, v[0], 1e-9);
+            x += v[0];
+            ticks++;
+        }
+        assertTrue(ticks < 20, "back in " + ticks + " ticks");
+        // The last step never goes past.
+        AbilityMath.step(0.4, 0, 0, 0, 0, 0, AbilityMath.RED_BACK_SPEED, v);
+        assertEquals(-0.4, v[0], 1e-9);
+    }
+
+    @Test
     void fromTheGroundTheRedOrbFliesNearlyLevel() {
         double[] v = new double[3];
         // Aimed level, or a little up: where it is aimed.

@@ -7,7 +7,8 @@ package com.akashic.ryoiki.fx;
  */
 public final class CastPose {
 
-    public static final String[] BONES = { "UpBody", "AllHead", "RightArm", "RightForeArm", "LeftArm", "LeftForeArm" };
+    public static final String[] BONES = { "UpBody", "AllHead", "RightArm", "RightForeArm", "LeftArm", "LeftForeArm",
+        "RightHand", "right_fg", "right_ffg", "left_dmz" };
 
     /** The kinds of gesture. */
     public static final int PULL = 1;
@@ -26,6 +27,9 @@ public final class CastPose {
     private static final int R_FORE = 9;
     private static final int L_ARM = 12;
     private static final int L_FORE = 15;
+    /** The right hand, its four fingers (as one, in two joints) and its thumb: the names of the network's models. */
+    private static final int R_HAND = 18;
+    private static final int R_THUMB = 27;
     private static final int X = 0;
     private static final int Y = 1;
     private static final int Z = 2;
@@ -48,20 +52,30 @@ public final class CastPose {
      *              orb is held out, and its last six ticks are the hand coming back
      */
     public static float[] sample(int kind, float age, float ticks) {
-        return kind == CUT ? cut(age) : kind == RED ? red(age, ticks) : pull(age, ticks);
+        return sample(kind, age, ticks, 0);
+    }
+
+    /**
+     * @param pitch where the caster looks, in degrees, down positive: the arm that points, points there
+     */
+    public static float[] sample(int kind, float age, float ticks, float pitch) {
+        return kind == CUT ? cut(age) : kind == RED ? red(age, ticks, pitch) : pull(age, ticks, pitch);
     }
 
     /**
      * Atração. The open hand is thrown out at the orb, the shoulder behind it, and held there for as long as the orb
      * is guided; then the hand closes and is drawn back toward the chest.
      */
-    private static float[] pull(float age, float ticks) {
+    private static float[] pull(float age, float ticks, float pitch) {
         float[] p = new float[BONES.length * 3];
         // The reach: out by tick 3, a little past where it settles.
         float out = smooth(age / 3) + 0.14F * bump((age - 3) / 3);
         // The draw: over the last six ticks.
         float in = smooth((age - (ticks - 6)) / 5);
-        p[R_ARM + X] = -84 * out + 26 * in;
+        // The arm is held out along the eyes: up when they look up.
+        p[R_ARM + X] = (-84 + 0.85F * clampPitch(pitch)) * out + 26 * in;
+        // The hand open, the thumb out, while it guides.
+        p[R_THUMB + Z] = 30 * out * (1 - in);
         p[R_ARM + Z] = 6 * out;
         p[R_FORE + X] = -8 * out - 62 * in;
         p[CHEST + Y] = -15 * out + 9 * in;
@@ -76,27 +90,39 @@ public final class CastPose {
     }
 
     /**
-     * Repulsão. While it is gathered the hand is raised before the face, the elbow bent, the body drawn back a
-     * little; when it is let fly the arm snaps straight out at what is ahead, the shoulder behind it, and stays
-     * there a moment before it comes down.
+     * Repulsão. The arm goes up overhead, the hand open and the fingers straight, and is held there while the orb
+     * gathers over the fingertips: the body drawn up and a little back, that shoulder behind, the other arm loose
+     * at the side. When it is let fly the arm comes down hard to point where the eyes look, the shoulder thrown
+     * forward after it; it kicks up from the shot, settles on the line, and is held there a moment.
      *
      * @param ticks the gathering and {@link #RED_AFTER} ticks more
      */
-    private static float[] red(float age, float ticks) {
+    private static float[] red(float age, float ticks, float pitch) {
         float[] p = new float[BONES.length * 3];
         float fire = ticks - RED_AFTER;
-        float raised = smooth(age / 5);
-        // The snap: two ticks, a little past where it settles.
-        float out = smooth((age - fire) / 2) + 0.12F * bump((age - fire - 2) / 4);
-        p[R_ARM + X] = lerp(-128 * raised, -86, out);
-        p[R_ARM + Z] = lerp(-6 * raised, 4, out);
-        p[R_FORE + X] = lerp(-52 * raised, -4, out);
-        p[CHEST + X] = lerp(-5 * raised, 7, out);
-        p[CHEST + Y] = lerp(6 * raised, -16, out);
+        // Up in four ticks, a little past the top.
+        float up = smooth(age / 4) + 0.06F * bump((age - 4) / 4);
+        // The hand trembles more as the orb fills.
+        float full = clamp(age / fire);
+        float tremble = (float) Math.sin(age * 1.9F) * 1.3F * full * (age < fire ? 1 : 0);
+        // The throw: two ticks down to the line, then the kick of the shot.
+        float out = smooth((age - fire) / 2);
+        float kick = bump((age - fire - 1.5F) / 5);
+        float aim = -88 + 0.85F * clampPitch(pitch);
+        p[R_ARM + X] = lerp((-162 + tremble) * up, aim - 11 * kick, out);
+        p[R_ARM + Z] = lerp(9 * up, 2, out);
+        p[R_FORE + X] = lerp(-20 * up, -3, out);
+        p[CHEST + X] = lerp(-7 * up, 9 - 4 * kick, out);
+        p[CHEST + Y] = lerp(11 * up, -19, out);
         p[HEAD + Y] = -0.9F * p[CHEST + Y];
         p[HEAD + X] = -0.6F * p[CHEST + X];
-        p[L_ARM + X] = lerp(8 * raised, 22, out);
-        p[L_FORE + X] = lerp(-20 * raised, -26, out);
+        // The other arm: loose, the hand by the hip; it goes back as the shot goes forward.
+        p[L_ARM + X] = lerp(6 * up, 26, out);
+        p[L_ARM + Z] = lerp(-3 * up, -8, out);
+        p[L_FORE + X] = lerp(-34 * up, -18, out);
+        // The wrist bent back so the palm is under the orb; straight along the arm when it points.
+        p[R_HAND + X] = lerp(-18 * up, 0, out);
+        p[R_THUMB + Z] = lerp(-35 * up, 20, out);
         return p;
     }
 
@@ -130,6 +156,15 @@ public final class CastPose {
             }
         }
         throw new IllegalArgumentException(bone);
+    }
+
+    private static float clamp(float v) {
+        return v < 0 ? 0 : v > 1 ? 1 : v;
+    }
+
+    /** As far up or down as an arm follows the eyes. */
+    private static float clampPitch(float pitch) {
+        return pitch < -70 ? -70 : pitch > 55 ? 55 : pitch;
     }
 
     private static float lerp(float a, float b, float t) {
