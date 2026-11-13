@@ -36,6 +36,8 @@ SONS = {
     "vazio_trilha": (2, False, "a trilha da expansão inteira do Vazio: do sinal de mão ao fim da quebra (16,45 s)"),
     "santuario_trilha": (2, False, "a trilha da expansão inteira do Santuário (20,45 s)"),
     "clash_trilha": (2, False, "a trilha do choque de domínios, no lugar da trilha do domínio (até 15 s)"),
+    "golpe": (1, False, "um golpe do combo no choque, no conjurador (bem curto: até 4 por segundo)"),
+    "impacto": (1, False, "um golpe que acerta, em quem leva (bem curto)"),
     "sinal": (1, False, "o sinal de mão carregando, no conjurador (1,25 s)"),
     "faixa_corte": (2, False, "a batida em cada corte de câmera da faixa (curto)"),
     "saida": (2, False, "o domínio se quebrando, para quem está dentro"),

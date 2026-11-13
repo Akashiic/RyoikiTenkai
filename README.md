@@ -13,7 +13,8 @@ O estado do projeto, as decisões e o que falta estão em [`docs/HANDOFF.md`](do
   todos voltam para onde estavam.
 * `/ryoiki encerrar` e `/ryoiki preparar` (constrói as arenas do mundo antes do primeiro uso).
 * **Choque de domínios:** quem conjura dentro do sinal de mão de outro domínio, ou até 3 s depois de ser pego por
-  ele, choca com ele. São 15 s: cada golpe no conjurador rival enche 6,25 % da barra; vence quem encher ou quem tiver
+  ele, choca com ele. São 15 s: os cliques viram um combo de quatro golpes (três socos e um chute que arremessa), e cada
+  golpe que acerta o conjurador rival enche 6,25 % da barra; vence quem encher ou quem tiver
   mais no fim, e o vencedor fica com a arena. Empate quebra os dois.
 * Quem fica de fora vê o domo (branco ou preto) no lugar da conjuração.
 * O visual dos dois domínios (Vazio Estelar e Santuário Carmesim), todo desenhado por código: faixa de entrada com o

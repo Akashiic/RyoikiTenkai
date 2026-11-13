@@ -8,7 +8,7 @@ import java.lang.invoke.MethodType;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -40,7 +40,8 @@ final class FuturaBridge {
     private MethodHandle setBonePose;
     private MethodHandle setScreenDraw;
     private MethodHandle locatorInLastDraw;
-    private final Map<DomainType, Sign> signs = new EnumMap<>(DomainType.class);
+    /** By name: a domain's id for its hand sign, {@code golpe1} to {@code golpe4} for the blows of a clash. */
+    private final Map<String, Sign> signs = new HashMap<>();
     private File override;
     private long overrideStamp;
 
@@ -73,7 +74,7 @@ final class FuturaBridge {
         // The names are those of the models' standard bones; the finger bones (the four fingers as one, in two
         // joints, and the thumb) are the ones the network's models use, and are skipped where a model lacks them.
         signs.put(
-            DomainType.MALEVOLENT_SHRINE,
+            DomainType.MALEVOLENT_SHRINE.id,
             sign(
                 // Both hands raised and joined before the mouth, mirrored, fingers straight; the head bowed. The
                 // forearms turn inward by opposite angles: the same sign on both would leave one hand out of place.
@@ -87,7 +88,7 @@ final class FuturaBridge {
                 "left_ffg 0 0 0",
                 "Head 8 0 0"));
         signs.put(
-            DomainType.INFINITE_VOID,
+            DomainType.INFINITE_VOID.id,
             sign(
                 // One hand raised before the face, fingers up and the thumb folded in; the other arm as it was.
                 "RightArm -40 0 0",
@@ -96,6 +97,52 @@ final class FuturaBridge {
                 "right_ffg 0 0 0",
                 "left_dmz 0 0 -45",
                 "Head -5 0 0"));
+        // The four blows pose the same bones, so one flows into the next: a straight right, a left cross, a rising
+        // right hook with the body turned into it, and a front kick leaning back.
+        signs.put(
+            "golpe1",
+            sign(
+                "UpBody 0 -22 0",
+                "RightArm -88 0 0",
+                "RightForeArm -8 0 0",
+                "LeftArm -48 0 0",
+                "LeftForeArm -112 0 0",
+                "RightLeg 0 0 0",
+                "RightLowerLeg 0 0 0",
+                "LeftLeg 0 0 0"));
+        signs.put(
+            "golpe2",
+            sign(
+                "UpBody 0 22 0",
+                "RightArm -48 0 0",
+                "RightForeArm -112 0 0",
+                "LeftArm -88 0 0",
+                "LeftForeArm -8 0 0",
+                "RightLeg 0 0 0",
+                "RightLowerLeg 0 0 0",
+                "LeftLeg 0 0 0"));
+        signs.put(
+            "golpe3",
+            sign(
+                "UpBody -6 -34 0",
+                "RightArm -128 0 0",
+                "RightForeArm -78 0 0",
+                "LeftArm -40 0 0",
+                "LeftForeArm -100 0 0",
+                "RightLeg 0 0 0",
+                "RightLowerLeg 0 0 0",
+                "LeftLeg 0 0 0"));
+        signs.put(
+            "golpe4",
+            sign(
+                "UpBody 14 0 0",
+                "RightArm 28 0 0",
+                "RightForeArm -30 0 0",
+                "LeftArm -42 0 0",
+                "LeftForeArm -70 0 0",
+                "RightLeg -92 0 0",
+                "RightLowerLeg 6 0 0",
+                "LeftLeg 8 0 0"));
         if (Boolean.getBoolean("ryoiki.devHarness")) {
             // Development: the signs can be retuned while the game runs.
             override = new File(Minecraft.getMinecraft().mcDataDir, "ryoiki-pose.txt");
@@ -135,13 +182,36 @@ final class FuturaBridge {
      * @param sign 0 (as the model's animation has it) to 1 (the sign held)
      */
     void pose(EntityPlayer player, DomainType type, float sign) {
-        if (setBonePose == null || player == null || sign <= 0) {
+        blend(player, type.id, sign, null, 0);
+    }
+
+    /**
+     * Poses the player's model between two poses of the same bones, each with its weight: the one a blow leaves and
+     * the one the next takes. With one pose, that pose.
+     */
+    void blend(EntityPlayer player, String first, float firstWeight, String second, float secondWeight) {
+        if (setBonePose == null || player == null) {
             return;
         }
         reload();
-        Sign s = signs.get(type);
+        Sign a = firstWeight > 0 ? signs.get(first) : null;
+        Sign c = secondWeight > 0 ? signs.get(second) : null;
+        if (a == null && c == null) {
+            return;
+        }
+        Sign s = a != null ? a : c;
+        float[] degrees = s.degrees;
+        float weight = a != null ? firstWeight : secondWeight;
+        if (a != null && c != null && a.degrees.length == c.degrees.length) {
+            float sum = firstWeight + secondWeight;
+            degrees = new float[a.degrees.length];
+            for (int i = 0; i < degrees.length; i++) {
+                degrees[i] = (a.degrees[i] * firstWeight + c.degrees[i] * secondWeight) / sum;
+            }
+            weight = Math.max(firstWeight, secondWeight);
+        }
         try {
-            boolean ignored = (boolean) setBonePose.invoke(player, s.bones, s.degrees, Math.min(1, sign));
+            boolean ignored = (boolean) setBonePose.invoke(player, s.bones, degrees, Math.min(1, weight));
         } catch (Throwable e) {
             setBonePose = null;
             RyoikiTenkai.LOG.warn("3D Futura Engine refused the hand sign: using the plain skin from now on", e);
@@ -176,24 +246,23 @@ final class FuturaBridge {
         }
     }
 
-    /** Development only: {@code ryoiki-pose.txt}, lines of {@code <domain id> <bone> <x> <y> <z>}. */
+    /** Development only: {@code ryoiki-pose.txt}, lines of {@code <pose name> <bone> <x> <y> <z>}. */
     private void reload() {
         if (override == null || !override.isFile() || override.lastModified() == overrideStamp) {
             return;
         }
         overrideStamp = override.lastModified();
         try {
-            Map<DomainType, List<String>> lines = new EnumMap<>(DomainType.class);
+            Map<String, List<String>> lines = new HashMap<>();
             for (String line : Files.readAllLines(override.toPath(), StandardCharsets.UTF_8)) {
                 String[] w = line.trim()
                     .split("\\s+", 2);
-                DomainType type = w.length < 2 ? null : DomainType.byId(w[0]);
-                if (type != null) {
-                    lines.computeIfAbsent(type, k -> new ArrayList<>())
+                if (w.length == 2 && signs.containsKey(w[0])) {
+                    lines.computeIfAbsent(w[0], k -> new ArrayList<>())
                         .add(w[1]);
                 }
             }
-            for (Map.Entry<DomainType, List<String>> e : lines.entrySet()) {
+            for (Map.Entry<String, List<String>> e : lines.entrySet()) {
                 signs.put(
                     e.getKey(),
                     sign(

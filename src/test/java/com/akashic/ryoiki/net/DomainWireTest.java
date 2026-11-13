@@ -83,6 +83,12 @@ class DomainWireTest {
         assertEquals(3, m.hostHits);
         assertEquals(16, m.rivalHits);
 
+        m = DomainWire.read(DomainWire.blow(41, 77, 4, true));
+        assertEquals(DomainWire.BLOW, m.op);
+        assertEquals(77, m.casterEntity);
+        assertEquals(4, m.blow);
+        assertEquals(true, m.landed);
+
         m = DomainWire.read(DomainWire.clashEnd(41, 1, DomainType.MALEVOLENT_SHRINE, 77));
         assertEquals(DomainWire.CLASH_END, m.op);
         assertEquals(1, m.result);

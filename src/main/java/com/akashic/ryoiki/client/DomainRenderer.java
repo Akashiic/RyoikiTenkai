@@ -5,6 +5,7 @@ import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.entity.RenderManager;
+import net.minecraft.entity.Entity;
 import net.minecraft.util.MovingObjectPosition;
 import net.minecraftforge.client.event.DrawBlockHighlightEvent;
 import net.minecraftforge.client.event.EntityViewRenderEvent;
@@ -31,6 +32,8 @@ public final class DomainRenderer {
 
     /** The dome of a clash is black whichever domains fight in it. */
     private static final int CLASH_BORDER = 0x050505;
+    /** Ticks the burst of a blow that landed is drawn for. */
+    private static final int IMPACT_TICKS = 5;
 
     /** Ticks into the domain the caster still holds the sign, the last twelve letting it go. */
     private static final int HOLD_SIGN_TICKS = 34;
@@ -44,7 +47,7 @@ public final class DomainRenderer {
     @SubscribeEvent
     public void onRenderWorldLast(RenderWorldLastEvent event) {
         ClientDomain domain = ClientDomain.INSTANCE;
-        if (domain.inside == null && domain.domes.isEmpty()) {
+        if (domain.inside == null && domain.domes.isEmpty() && domain.blows.isEmpty()) {
             return;
         }
         Minecraft mc = Minecraft.getMinecraft();
@@ -95,6 +98,35 @@ public final class DomainRenderer {
                 RenderManager.renderPosY - domain.arenaY,
                 -camX * Math.sin(a) + camZ * Math.cos(a) + back);
             GL11.glPopMatrix();
+        }
+        for (ClientDomain.Blow blow : domain.blows.values()) {
+            Entity victim = blow.victim < 0 || blow.age >= IMPACT_TICKS ? null : mc.theWorld.getEntityByID(blow.victim);
+            if (victim == null) {
+                continue;
+            }
+            // Where a blow lands: a burst of light at the chest, larger for the finisher.
+            float t = (blow.age + event.partialTicks) / IMPACT_TICKS;
+            float size = (blow.blow == 4 ? 1.9F : 1.1F) * (0.35F + 0.65F * Draw.easeOut(t));
+            int color = domain.clashTypes[0] == null ? 0xFFFFFF
+                : look(domain.clashTypes[domain.clashEntities[0] == blow.victim ? 1 : 0]).bandTrim();
+            Draw.additive();
+            GL11.glDepthMask(false);
+            Tessellator tess = Tessellator.instance;
+            double x = victim.lastTickPosX + (victim.posX - victim.lastTickPosX) * event.partialTicks;
+            double y = victim.lastTickPosY + (victim.posY - victim.lastTickPosY) * event.partialTicks;
+            double z = victim.lastTickPosZ + (victim.posZ - victim.lastTickPosZ) * event.partialTicks;
+            Draw.camera(0);
+            tess.startDrawing(GL11.GL_TRIANGLES);
+            Draw.glow(
+                tess,
+                x - RenderManager.renderPosX,
+                y + victim.height * 0.62 - RenderManager.renderPosY,
+                z - RenderManager.renderPosZ,
+                size,
+                Draw.mix(color, 0xFFFFFF, 0.5F),
+                1 - t);
+            tess.draw();
+            GL11.glDepthMask(true);
         }
         for (ClientDomain.Dome dome : domain.domes.values()) {
             GL11.glPushMatrix();
@@ -249,6 +281,16 @@ public final class DomainRenderer {
                 FuturaBridge.INSTANCE.pose(event.entityPlayer, dome.type, CutIn.sign(age));
                 return;
             }
+        }
+        ClientDomain.Blow blow = domain.blows.get(id);
+        if (blow != null) {
+            FuturaBridge.INSTANCE.blend(
+                event.entityPlayer,
+                "golpe" + blow.blow,
+                blow.weight(event.partialRenderTick),
+                "golpe" + blow.from,
+                blow.fromWeight(event.partialRenderTick));
+            return;
         }
         if (domain.rivalSign != null && domain.rivalSign.casterEntity == id) {
             ClientDomain.Dome r = domain.rivalSign;

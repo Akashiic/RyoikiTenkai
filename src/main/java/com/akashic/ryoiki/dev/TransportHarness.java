@@ -495,11 +495,16 @@ public final class TransportHarness {
      * On a server the test is driven from outside: lines appended to a {@code ryoiki-harness-cmd} file in the run
      * directory, one command at a time. {@code chat <text>} sends a chat line or a command; {@code cast <domain>}
      * casts and records the trip; {@code view <0|1|2>} sets the camera; {@code look <yaw> <pitch>};
-     * {@code shot <name>}; {@code hit <n>} gives n blows to the nearest other player; {@code watch <seconds>} takes a
+     * {@code shot <name>}; {@code blow <n>} holds a blow's pose on this player ({@code blow 0} lets go);
+     * {@code film <ticks>} takes a screenshot every other tick; {@code hit <n>} gives n blows to
+     * the nearest other player; {@code watch <seconds>} takes a
      * screenshot every second and a half; {@code where} writes
      * the position; {@code quit}.
      */
     private int hitsLeft;
+    private int filmLeft;
+    private int heldBlow;
+    private int filmed;
 
     private void command(Minecraft mc) {
         File file = new File(mc.mcDataDir, "ryoiki-harness-cmd");
@@ -515,6 +520,20 @@ public final class TransportHarness {
             } catch (IOException e) {
                 return;
             }
+        }
+        if (heldBlow > 0) {
+            // A blow held at its full pose on this player's model, to look at it.
+            ClientDomain.Blow held = new ClientDomain.Blow();
+            held.blow = heldBlow;
+            held.age = 2;
+            ClientDomain.INSTANCE.blows.put(mc.thePlayer.getEntityId(), held);
+        }
+        if (filmLeft > 0) {
+            // A screenshot every other tick: what a blow looks like from one tick to the next.
+            if (filmLeft % 2 == 0) {
+                shot(mc, String.format("ryoiki-film-%03d", filmed++));
+            }
+            filmLeft--;
         }
         if (hitsLeft > 0 && ticks % 7 == 0) {
             // One blow at the nearest other player, as a click would give.
@@ -551,6 +570,12 @@ public final class TransportHarness {
             case "cast":
                 castType = DomainType.byId(rest);
                 next(Step.CAST);
+                break;
+            case "blow":
+                heldBlow = Integer.parseInt(rest);
+                break;
+            case "film":
+                filmLeft = Integer.parseInt(rest);
                 break;
             case "hit":
                 hitsLeft = Integer.parseInt(rest);

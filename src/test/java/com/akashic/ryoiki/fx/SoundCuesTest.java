@@ -25,7 +25,7 @@ class SoundCuesTest {
     @Test
     void everyDomainHasItsSounds() {
         List<String> all = all();
-        assertEquals(14, all.size());
+        assertEquals(16, all.size());
         assertTrue(all.contains("clash_trilha"));
         assertTrue(all.contains("vazio_trilha"));
         assertTrue(all.contains("santuario_trilha"));

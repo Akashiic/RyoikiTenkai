@@ -211,6 +211,10 @@ public final class DomainManager {
         boolean hostHere = host != null && host.isEntityAlive() && s.holds(s.caster);
         boolean rivalHere = rival != null && rival.isEntityAlive() && s.holds(s.rival);
         s.clash--;
+        if (hostHere && rivalHere) {
+            blows(s, ClashScore.HOST, host, rival);
+            blows(s, ClashScore.RIVAL, rival, host);
+        }
         if (!hostHere && !rivalHere) {
             resolve(s, world, ClashScore.TIE);
         } else if (!hostHere) {
@@ -222,6 +226,62 @@ public final class DomainManager {
         } else if (s.clash <= 0) {
             resolve(s, world, s.score.atTimeUp());
         }
+    }
+
+    /** How close and how much in front the other must be for a blow to land. */
+    private static final double REACH = 3.6;
+    private static final double REACH_ANYWAY = 1.3;
+    private static final double FRONT = Math.cos(Math.toRadians(60));
+    /** The step into each blow and into the finisher, and how far the finisher throws the other. */
+    private static final double LUNGE = 0.38;
+    private static final double LUNGE_FINISHER = 0.6;
+    private static final double THROW = 0.85;
+    private static final double THROW_UP = 0.3;
+
+    /**
+     * The blows of one caster this tick. A blow is a swing of the arm: at the other, at the air, it is the same
+     * click. The server sees the swing begin (the arm's progress going back to its start) and asks the chain.
+     */
+    private void blows(DomainSession s, int side, EntityPlayerMP attacker, EntityPlayerMP victim) {
+        long tick = MinecraftServer.getServer()
+            .getTickCounter();
+        int progress = attacker.isSwingInProgress ? attacker.swingProgressInt : -1;
+        boolean began = attacker.isSwingInProgress && (s.swing[side] < 0 || progress < s.swing[side]);
+        s.swing[side] = progress;
+        ComboChain chain = s.chains[side];
+        int blow = chain.tick(tick);
+        if (blow == 0 && began) {
+            blow = chain.click(tick);
+        }
+        if (blow == 0) {
+            return;
+        }
+        double yaw = Math.toRadians(attacker.rotationYaw);
+        double lookX = -Math.sin(yaw);
+        double lookZ = Math.cos(yaw);
+        double dx = victim.posX - attacker.posX;
+        double dz = victim.posZ - attacker.posZ;
+        double distance = Math.sqrt(dx * dx + dz * dz);
+        boolean finisher = blow == ComboChain.BLOWS;
+        boolean landed = Math.abs(victim.posY - attacker.posY) <= 2.5
+            && (distance <= REACH_ANYWAY || distance <= REACH && (dx * lookX + dz * lookZ) / distance >= FRONT)
+            && s.score.hit(side);
+        // The step into the blow, unless the other is already in reach of the arm.
+        if (distance > 1.6 || !landed) {
+            double lunge = finisher ? LUNGE_FINISHER : LUNGE;
+            attacker.addVelocity(lookX * lunge, 0, lookZ * lunge);
+            attacker.velocityChanged = true;
+        }
+        if (landed) {
+            // The other flinches and sounds hurt, as in a hit; the finisher throws it back.
+            victim.worldObj.setEntityState(victim, (byte) 2);
+            if (finisher) {
+                victim.addVelocity(lookX * THROW, THROW_UP, lookZ * THROW);
+                victim.velocityChanged = true;
+            }
+            sendAll(s, DomainWire.clashScore(s.id, s.score.hits(ClashScore.HOST), s.score.hits(ClashScore.RIVAL)));
+        }
+        sendAll(s, DomainWire.blow(s.id, attacker.getEntityId(), blow, landed));
     }
 
     /** The winner keeps the arena, with its own domain from the start; a tie breaks both. */
@@ -262,27 +322,11 @@ public final class DomainManager {
         }
     }
 
-    /** A hit of one caster on the other fills its bar: the blow itself is dropped, so it does no harm. */
+    /** The game's own blow between the two is dropped: what counts is the chain ({@link #blows}). */
     @SubscribeEvent
     public void onAttack(AttackEntityEvent event) {
-        if (!(event.entityPlayer instanceof EntityPlayerMP) || !(event.target instanceof EntityPlayerMP)) {
-            return;
-        }
-        UUID attacker = event.entityPlayer.getUniqueID();
-        UUID victim = event.target.getUniqueID();
-        DomainSession s = clashOf(victim);
-        if (s == null) {
-            return;
-        }
-        event.setCanceled(true);
-        int side = attacker.equals(s.caster) && victim.equals(s.rival) ? ClashScore.HOST
-            : attacker.equals(s.rival) && victim.equals(s.caster) ? ClashScore.RIVAL : ClashScore.NONE;
-        long tick = MinecraftServer.getServer()
-            .getTickCounter();
-        if (side != ClashScore.NONE && s.score.hit(side, tick)) {
-            // The victim flinches and sounds hurt, as in a hit, for everyone who sees it.
-            event.target.worldObj.setEntityState(event.target, (byte) 2);
-            sendAll(s, DomainWire.clashScore(s.id, s.score.hits(ClashScore.HOST), s.score.hits(ClashScore.RIVAL)));
+        if (event.target instanceof EntityPlayerMP && clashOf(event.target.getUniqueID()) != null) {
+            event.setCanceled(true);
         }
     }
 

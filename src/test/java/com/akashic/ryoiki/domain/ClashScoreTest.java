@@ -12,39 +12,27 @@ class ClashScoreTest {
     void sixteenHitsFillTheBar() {
         ClashScore score = new ClashScore();
         for (int i = 0; i < 15; i++) {
-            assertTrue(score.hit(ClashScore.RIVAL, i * ClashScore.HIT_INTERVAL));
+            assertTrue(score.hit(ClashScore.RIVAL));
             assertEquals(ClashScore.NONE, score.full());
         }
-        assertTrue(score.hit(ClashScore.RIVAL, 15 * ClashScore.HIT_INTERVAL));
+        assertTrue(score.hit(ClashScore.RIVAL));
         assertEquals(ClashScore.RIVAL, score.full());
         assertEquals(1F, ClashScore.bar(score.hits(ClashScore.RIVAL)));
         assertEquals(0.0625F, ClashScore.bar(1));
         // A full bar takes no more.
-        assertFalse(score.hit(ClashScore.RIVAL, 10000));
-    }
-
-    @Test
-    void clickingFasterAddsNothing() {
-        ClashScore score = new ClashScore();
-        assertTrue(score.hit(ClashScore.HOST, 100));
-        assertFalse(score.hit(ClashScore.HOST, 101));
-        assertFalse(score.hit(ClashScore.HOST, 100 + ClashScore.HIT_INTERVAL - 1));
-        assertTrue(score.hit(ClashScore.HOST, 100 + ClashScore.HIT_INTERVAL));
-        // The other side has its own pace.
-        assertTrue(score.hit(ClashScore.RIVAL, 101));
-        assertEquals(2, score.hits(ClashScore.HOST));
-        assertEquals(1, score.hits(ClashScore.RIVAL));
+        assertFalse(score.hit(ClashScore.RIVAL));
+        assertEquals(0, score.hits(ClashScore.HOST));
     }
 
     @Test
     void whenTheTimeIsUpTheFullerBarWinsAndEqualBarsTie() {
         ClashScore score = new ClashScore();
         assertEquals(ClashScore.TIE, score.atTimeUp());
-        score.hit(ClashScore.HOST, 0);
+        score.hit(ClashScore.HOST);
         assertEquals(ClashScore.HOST, score.atTimeUp());
-        score.hit(ClashScore.RIVAL, 0);
+        score.hit(ClashScore.RIVAL);
         assertEquals(ClashScore.TIE, score.atTimeUp());
-        score.hit(ClashScore.RIVAL, 50);
+        score.hit(ClashScore.RIVAL);
         assertEquals(ClashScore.RIVAL, score.atTimeUp());
         assertEquals(ClashScore.NONE, score.full());
     }

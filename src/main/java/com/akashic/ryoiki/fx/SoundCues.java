@@ -20,6 +20,9 @@ public final class SoundCues {
     public static final String EXIT = "saida";
     /** The hum of a dome, for those outside. */
     public static final String DOME = "domo";
+    /** A blow of a caster in a clash, at the caster; and one that lands, at whom it lands on. */
+    public static final String BLOW = "golpe";
+    public static final String IMPACT = "impacto";
     /** The track of a clash of domains, over whichever domain track was playing. */
     public static final String CLASH_TRACK = "clash_trilha";
 
@@ -37,7 +40,7 @@ public final class SoundCues {
     /** Per domain: one cut. Only the domains that cut have it. */
     public static final String SLASH = "corte";
 
-    private static final String[] SHARED = { SIGN, BAND_CUT, EXIT, DOME, CLASH_TRACK };
+    private static final String[] SHARED = { SIGN, BAND_CUT, EXIT, DOME, CLASH_TRACK, BLOW, IMPACT };
     private static final String[] PER_DOMAIN = { TRACK, VOICE, ENTER, AMBIENT };
     private static final String PREFIX = "sounds/";
     private static final String SUFFIX = ".ogg";
@@ -67,7 +70,10 @@ public final class SoundCues {
 
     /** Whether a sound is heard from a place in the world, and so must be mono. */
     public static boolean mono(String name) {
-        return name.equals(SIGN) || name.equals(DOME) || name.endsWith("_" + ENTER);
+        return name.equals(SIGN) || name.equals(DOME)
+            || name.equals(BLOW)
+            || name.equals(IMPACT)
+            || name.endsWith("_" + ENTER);
     }
 
     /** Whether a sound is long, and so read from the file as it plays. */

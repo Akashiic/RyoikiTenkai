@@ -59,7 +59,8 @@ modelo, textura nem som no mod (os sons são arquivos do dono, ver "Som"). A are
 
 * **Sinal do rival:** quem responde a um domínio ganha a própria faixa e a própria voz, por cima do que estiver na
   tela (o sinal dele pode terminar já dentro da arena).
-* **Durante:** os dois cenários **se alternam a cada 3 ticks** (céu, chão, estruturas e névoa), com um tremor a cada
+* **Durante:** os dois cenários **se alternam a cada 10 ticks** (meio segundo; mais rápido que isso vira um
+  pisca-pisca de tela inteira) (céu, chão, estruturas e névoa), com um tremor a cada
   troca. Numa arena que não abriu como Santuário, o Santuário é desenhado recuado, com o meio da arena diante da
   porta. Para quem está fora, **o domo fica preto**.
 * **Na tela, no topo:** "CHOQUE DE DOMÍNIOS", o **contador** grande de 15 a 0 (vermelho e pulsando nos últimos 5 s) e,
@@ -67,8 +68,28 @@ modelo, textura nem som no mod (os sons são arquivos do dono, ver "Som"). A are
   meio. Fica no topo porque embaixo estão a vida, a armadura e a barra de itens.
 * **Resolução:** clarão na cor do vencedor e tremor; o domínio do vencedor recomeça. No empate, a quebra de sempre.
 
+### Os quatro golpes (`ComboChain`, `ClientDomain.Blow`)
+
+![Os quatro golpes](img/golpes.png)
+
+No choque, cada clique dos dois conjuradores é um golpe de uma **cadeia de quatro**: direto de direita, cruzado de
+esquerda, gancho subindo e, para fechar, um chute frontal. Em cima, de lado; embaixo, por trás.
+
+* **Ritmo:** um golpe a cada 6 ticks; um clique até 4 ticks adiantado fica guardado e sai na hora certa; 18 ticks
+  sem golpear e a cadeia volta ao primeiro; depois do quarto, 14 ticks de recuperação.
+* **Acerto:** não precisa mirar no boneco. Vale o rival a até 3,6 blocos e dentro de 60° da direção do olhar (ou
+  colado). Cada acerto enche 6,25 % da barra.
+* **Movimento:** cada golpe dá um passo à frente (maior no quarto), e o quarto **arremessa** o rival para trás.
+* **Animação:** o modelo do Futura3D faz a pose de cada golpe (2 ticks para bater, segura, solta), e a pose de um
+  golpe se mistura na do seguinte, sem voltar ao repouso entre eles. Os quatro golpes posam os mesmos ossos
+  (`UpBody`, braços, antebraços, pernas). Com a skin comum só há o balanço de braço do jogo.
+* **Impacto:** um clarão no peito de quem leva, na cor do domínio de quem bate (maior no quarto), o tranco de dano e
+  um tremor de câmera para os dois.
+* **Som (opcional):** `golpe.ogg` e `impacto.ogg` em `config/ryoikitenkai/sons/`.
+
 Verificado com dois clientes no servidor de teste: rival vencendo por tempo e por barra cheia, anfitrião vencendo por
-barra cheia, empate, resposta durante o sinal de mão e depois de o domínio abrir. **A verificar:** a alternância de
+barra cheia, empate, resposta durante o sinal de mão e depois de o domínio abrir. Os quatro golpes foram vistos com o modelo de teste. **A verificar:** a sensação do combo com jogadores de verdade (ritmo,
+alcance, força do arremesso), as poses em outros modelos, a alternância de
 cenários vista ao vivo (as capturas pegam um quadro só), quem assiste de fora perto do domo, mais de um jogador pego
 além dos dois conjuradores, e o choque em sobrevivência com armas e habilidades de outros mods.
 

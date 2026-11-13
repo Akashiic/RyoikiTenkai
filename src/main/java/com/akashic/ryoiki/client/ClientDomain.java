@@ -6,6 +6,7 @@ import java.util.Map;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
+import net.minecraft.entity.Entity;
 
 import com.akashic.ryoiki.DomainType;
 import com.akashic.ryoiki.fx.SlashField;
@@ -29,8 +30,41 @@ public final class ClientDomain {
     /** A sound in the world is heard up to 16 blocks times its volume. */
     private static final float SIGN_VOLUME = 3F;
     private static final float DOME_VOLUME = 4F;
-    /** Ticks each domain is shown for while two clash. */
-    private static final int CLASH_FLICKER = 3;
+    /**
+     * Ticks each domain is shown for while two clash: half a second. Faster (the study has 2 to 4 ticks) is a
+     * full-screen flicker of two bright colours several times a second, which is hard on the eyes.
+     */
+    private static final int CLASH_FLICKER = 10;
+
+    /** A blow of a caster in a clash, as it is drawn. */
+    public static final class Blow {
+
+        /** Ticks a blow is drawn for: it strikes in {@link #STRIKE}, holds, and lets go. */
+        public static final int TICKS = 10;
+        private static final float STRIKE = 2;
+        private static final float HOLD = 4;
+
+        /** Which of the chain, 1 to 4. */
+        public int blow;
+        public boolean landed;
+        /** The entity it landed on, or -1. */
+        public int victim = -1;
+        public int age;
+        /** The blow before, and how much of its pose was left when this one began. */
+        public int from;
+        public float fromWeight;
+
+        /** How much of the blow's pose the model is in. */
+        public float weight(float partialTicks) {
+            float t = age + partialTicks;
+            return t < STRIKE ? t / STRIKE : t < HOLD ? 1 : Math.max(0, 1 - (t - HOLD) / (TICKS - HOLD));
+        }
+
+        /** How much of the blow before is still in the pose. */
+        public float fromWeight(float partialTicks) {
+            return fromWeight * Math.max(0, 1 - (age + partialTicks) / STRIKE);
+        }
+    }
 
     /** A domain seen from outside: the hand sign, then the dome. */
     public static final class Dome {
@@ -94,6 +128,8 @@ public final class ClientDomain {
     public final int[] clashHits = new int[2];
     /** The hand sign of a rival, which is not a domain of its own. */
     public Dome rivalSign;
+    /** The blow each caster is in, by entity id. */
+    public final Map<Integer, Blow> blows = new LinkedHashMap<>();
     private int clashLeft;
     private int clashRun;
 
@@ -227,6 +263,36 @@ public final class ClientDomain {
                 }
                 break;
             }
+            case DomainWire.BLOW:
+                if (clash == m.session) {
+                    Blow blow = blows.get(m.casterEntity);
+                    Blow next = new Blow();
+                    next.blow = m.blow;
+                    next.landed = m.landed;
+                    if (blow != null) {
+                        // The pose the last blow is in fades as this one comes.
+                        next.from = blow.blow;
+                        next.fromWeight = blow.weight(0);
+                    }
+                    blows.put(m.casterEntity, next);
+                    Minecraft mc = Minecraft.getMinecraft();
+                    Entity attacker = mc.theWorld == null ? null : mc.theWorld.getEntityByID(m.casterEntity);
+                    int other = clashEntities[clashEntities[0] == m.casterEntity ? 1 : 0];
+                    Entity victim = mc.theWorld == null ? null : mc.theWorld.getEntityByID(other);
+                    if (attacker != null) {
+                        DomainSounds.playAt(SoundCues.BLOW, attacker.posX, attacker.posY + 1, attacker.posZ, 1F);
+                    }
+                    if (m.landed && victim != null) {
+                        DomainSounds.playAt(SoundCues.IMPACT, victim.posX, victim.posY + 1, victim.posZ, 1F);
+                        next.victim = other;
+                        // Whoever gives or takes the blow feels it; the finisher more.
+                        if (mc.thePlayer != null
+                            && (mc.thePlayer.getEntityId() == other || mc.thePlayer.getEntityId() == m.casterEntity)) {
+                            CameraShake.INSTANCE.kick(m.blow == 4 ? 1.6F : 0.6F);
+                        }
+                    }
+                }
+                break;
             case DomainWire.CLASH_SCORE:
                 if (clash == m.session) {
                     clashHits[0] = m.hostHits;
@@ -328,6 +394,7 @@ public final class ClientDomain {
             inside = null;
             cutIn = null;
             rivalSign = null;
+            blows.clear();
             clash = -1;
             flash = 0;
             shatter = 0;
@@ -353,6 +420,12 @@ public final class ClientDomain {
             // The arena jolts each time the other domain shows through.
             if (inside != null && clashAge % (CLASH_FLICKER * 2) == 0) {
                 CameraShake.INSTANCE.kick(0.5F);
+            }
+        }
+        for (Iterator<Blow> it = blows.values()
+            .iterator(); it.hasNext();) {
+            if (++it.next().age >= Blow.TICKS) {
+                it.remove();
             }
         }
         if (rivalSign != null && --rivalSign.windup <= 0) {

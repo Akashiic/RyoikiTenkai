@@ -37,6 +37,8 @@ public final class DomainWire {
     public static final byte RIVAL = 8;
     /** The hits of the host and of the rival so far. */
     public static final byte CLASH_SCORE = 9;
+    /** A caster in a clash begins a blow of its chain ({@code blow}, 1 to 4), and whether it lands. */
+    public static final byte BLOW = 10;
 
     /** One decoded message; which fields are set depends on {@link #op}. */
     public static final class Message {
@@ -65,6 +67,9 @@ public final class DomainWire {
         public int rivalHits;
         /** CLASH_END: 0 the host won, 1 the rival, 2 a tie. */
         public int result;
+        /** BLOW: which of the chain, and whether it lands. */
+        public int blow;
+        public boolean landed;
     }
 
     private DomainWire() {}
@@ -133,6 +138,21 @@ public final class DomainWire {
             out.writeInt(session);
             out.writeByte(host);
             out.writeByte(rival);
+            return bytes.toByteArray();
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    public static byte[] blow(int session, int casterEntity, int blow, boolean landed) {
+        try {
+            ByteArrayOutputStream bytes = new ByteArrayOutputStream(12);
+            DataOutputStream out = new DataOutputStream(bytes);
+            out.writeByte(BLOW);
+            out.writeInt(session);
+            out.writeInt(casterEntity);
+            out.writeByte(blow);
+            out.writeBoolean(landed);
             return bytes.toByteArray();
         } catch (IOException e) {
             throw new IllegalStateException(e);
@@ -218,6 +238,12 @@ public final class DomainWire {
             if (m.op == CLASH_SCORE) {
                 m.hostHits = in.readUnsignedByte();
                 m.rivalHits = in.readUnsignedByte();
+                return m;
+            }
+            if (m.op == BLOW) {
+                m.casterEntity = in.readInt();
+                m.blow = in.readUnsignedByte();
+                m.landed = in.readBoolean();
                 return m;
             }
             if (m.op == CLASH_END) {

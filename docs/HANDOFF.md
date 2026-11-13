@@ -135,9 +135,11 @@ Regras da seção 5.4 do `ESTUDO.md`, decididas pelo agente (carta branca) em 20
   depois de ser pego** (60 por padrão, no config). Quem responde é o **rival**; o sinal de mão dele dura os mesmos 25
   ticks, com faixa e voz, e continua dentro da arena se o domínio abrir no meio. Um domínio choca uma vez, com um
   rival só (dois participantes).
-* **Durante (15 s):** o tempo do domínio fica parado. Nada fere nem empurra os dois conjuradores. Cada golpe de um
-  conjurador **no outro** vale **+6,25 %** (16 golpes), no máximo um a cada 6 ticks; o golpe em si é descartado (sem
-  dano), e o atingido dá o tranco de quem levou dano.
+* **Durante (15 s):** o tempo do domínio fica parado. Nada fere nem empurra os dois conjuradores por fora do
+  combo. Cada clique é um golpe de uma **cadeia de quatro** (`ComboChain`: 6 ticks entre golpes, clique adiantado
+  guardado, 14 ticks de recuperação depois do quarto). Um golpe acerta se o rival está a até 3,6 blocos e à frente,
+  e vale **+6,25 %** (16 acertos = 4 cadeias). Cada golpe dá um passo à frente e o quarto arremessa o rival. O
+  servidor vê o golpe pelo balanço do braço (sem mixin e sem pacote do cliente).
 * **Fim:** barra cheia vence na hora; no fim do tempo vence a barra maior; **barras iguais quebram tudo** (todos
   voltam). Se um dos dois morre, sai ou desconecta, o outro vence.
 * **Depois:** o vencedor fica com a arena e o domínio **dele recomeça do zero** (14 s ou 18 s); o perdedor fica
@@ -145,8 +147,8 @@ Regras da seção 5.4 do `ESTUDO.md`, decididas pelo agente (carta branca) em 20
 * **Limite conhecido:** o salão do Santuário é sólido e é erguido na conjuração. Se o Santuário entra como rival, o
   salão é só desenhado (recuado, com os conjuradores diante da porta), não construído: há gente onde as paredes
   ficariam. Se o Santuário anfitrião perde, o salão é removido.
-* **Código:** `domain/ClashScore` (regras puras, com teste), `DomainManager` (`clashHost`, `answer`, `beginClash`,
-  `tickClash`, `resolve`, e os eventos de ataque), `DomainWire` (`RIVAL`, `CLASH`, `CLASH_SCORE`, `CLASH_END`),
+* **Código:** `domain/ClashScore` (regras puras, com teste), `domain/ComboChain` (idem), `DomainManager` (`clashHost`, `answer`,
+  `beginClash`, `tickClash`, `blows`, `resolve`), `DomainWire` (`RIVAL`, `CLASH`, `CLASH_SCORE`, `BLOW`, `CLASH_END`),
   `ClientDomain#shown` e `client/ClashHud`.
 
 **Dois defeitos antigos achados no teste com dois jogadores** (valem para qualquer domínio, não só o choque):

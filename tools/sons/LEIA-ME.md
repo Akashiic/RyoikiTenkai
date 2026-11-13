@@ -43,6 +43,8 @@ para, e nenhuma começa. Depois, o jogo volta a tocar música no tempo dele (uma
 | `santuario_corte` | um corte (a cada 0,4 s: use algo bem curto) | estéreo |
 | `saida` | o domínio se quebrando | estéreo |
 | `domo` | o zumbido do domo para quem está fora (laço) | mono |
+| `golpe` | um golpe do combo no choque, no conjurador (bem curto) | mono |
+| `impacto` | um golpe que acerta, em quem leva (bem curto) | mono |
 
 Mono é obrigatório no que toca de um lugar do mundo: o jogo não diminui um som estéreo com a distância.
 
