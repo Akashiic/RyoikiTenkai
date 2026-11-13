@@ -162,6 +162,19 @@ class AbilityMathTest {
     }
 
     @Test
+    void aLinePassesAPlaceOnlyOnTheStretchAsked() {
+        // Straight through it, 7 along.
+        assertEquals(7, AbilityMath.passes(0, 0, 0, 1, 0, 0, 7, 0, 0, 4.8, 7.2, 1.7), 1e-9);
+        // Beside it, near enough and not.
+        assertEquals(7, AbilityMath.passes(0, 0, 0, 1, 0, 0, 7, 1.5, 0, 4.8, 7.2, 1.7), 1e-9);
+        assertEquals(-1, AbilityMath.passes(0, 0, 0, 1, 0, 0, 7, 2, 0, 4.8, 7.2, 1.7), 0);
+        // Not yet there this tick; then reaching its edge; and long past it.
+        assertEquals(-1, AbilityMath.passes(0, 0, 0, 1, 0, 0, 7, 0, 0, 0, 2.4, 1.7), 0);
+        assertEquals(5.5, AbilityMath.passes(0, 0, 0, 1, 0, 0, 7, 0, 0, 3, 5.5, 1.7), 1e-9);
+        assertEquals(-1, AbilityMath.passes(0, 0, 0, 1, 0, 0, 7, 0, 0, 12, 14.4, 1.7), 0);
+    }
+
+    @Test
     void aFlyingCutCoversItsRangeAtItsSpeed() {
         assertEquals(0, AbilityMath.cutGone(0, 12), 0);
         assertEquals(AbilityMath.CUT_SPEED * 3, AbilityMath.cutGone(3, 12), 1e-9);

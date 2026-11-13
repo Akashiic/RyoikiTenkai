@@ -91,6 +91,8 @@ public final class BlackFlashFx {
         int victim;
         long began;
         long seed;
+        /** Only the frames of the impact: no burst, no sparks, nothing in the world. */
+        boolean framesOnly;
         /** How much of it is on this screen, 0 to 1. */
         float strength;
         /** Where the blow is on the screen, 0 to 1 from its top left; the middle when it is not in sight. */
@@ -144,6 +146,24 @@ public final class BlackFlashFx {
         debris(mc.theWorld, f);
     }
 
+    /** Only the frames of an impact, for something else that lands at a place: on the screens within {@code far}. */
+    void impact(double x, double y, double z, float far) {
+        Minecraft mc = Minecraft.getMinecraft();
+        if (mc.thePlayer == null) {
+            return;
+        }
+        Flash f = new Flash();
+        f.x = x;
+        f.y = y;
+        f.z = z;
+        f.framesOnly = true;
+        f.began = System.nanoTime();
+        f.strength = Math.sqrt(mc.thePlayer.getDistanceSq(x, y, z)) <= far ? 1 : 0;
+        if (f.strength > 0) {
+            flashes.add(f);
+        }
+    }
+
     /** The ground under the blow, thrown up in bits: the game's own, of whatever block is there. */
     private static void debris(World world, Flash f) {
         Random random = new Random(f.seed);
@@ -175,8 +195,8 @@ public final class BlackFlashFx {
     /** Once a tick: the ones that are over go. */
     void tick() {
         for (Iterator<Flash> i = flashes.iterator(); i.hasNext();) {
-            if (i.next()
-                .ms() > ENDS && frozen < 0) {
+            Flash f = i.next();
+            if (frozen < 0 && f.ms() > (f.framesOnly ? FRAMES : ENDS)) {
                 i.remove();
             }
         }
@@ -211,7 +231,7 @@ public final class BlackFlashFx {
     private static void world(Tessellator t, Minecraft mc, Flash f, float x, float y, float z, double camX, double camY,
         double camZ, float partialTicks) {
         float ms = f.ms();
-        if (ms > ENDS) {
+        if (ms > ENDS || f.framesOnly) {
             return;
         }
         // Right at the eye its light is the screen's own; here it is dimmed, not to burn it out twice.
@@ -488,7 +508,7 @@ public final class BlackFlashFx {
         float ms = f.ms();
         if (ms < FRAMES && f.strength > 0.45F) {
             frames(mc, w, h, ms);
-        } else {
+        } else if (!f.framesOnly) {
             screen(f, w, h, ms);
         }
         GL11.glDepthMask(true);

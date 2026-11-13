@@ -45,6 +45,19 @@ public final class AbilityMath {
     public static final int BLACK = 10;
     /** The red orb came back with nobody, and its caster takes it. */
     public static final int RED_SELF = 11;
+    /** The blue orb killed someone: it stays where it is, idle, for a while. */
+    public static final int PULL_LINGER = 12;
+    /** A red orb met an idle blue one: the two are one, purple, and it will burst. Then it does. */
+    public static final int PURPLE = 13;
+    public static final int PURPLE_BLAST = 14;
+
+    /** Ticks a blue orb that killed stays: 5 s. */
+    public static final int ORB_LINGER = 100;
+    /** How near its middle a red orb's line must pass to meet it. */
+    public static final double LINGER_HIT = 1.7;
+    /** Ticks from the purple forming to its burst (3 s), and how far from it the burst kills. */
+    public static final int PURPLE_FUSE = 60;
+    public static final double PURPLE_RADIUS = 9;
 
     /** The orb's beginning, its move, and its end. */
     public static final int PULL = 1;
@@ -256,6 +269,21 @@ public final class AbilityMath {
         out[0] = dx * scale;
         out[1] = y;
         out[2] = dz * scale;
+    }
+
+    /**
+     * Whether a line passes a place: how far along the line (a unit vector, from its start) it is nearest the
+     * place, if that is between {@code from} and {@code to} and no farther from the place than {@code near}; else
+     * negative.
+     */
+    public static double passes(double ox, double oy, double oz, double dx, double dy, double dz, double px, double py,
+        double pz, double from, double to, double near) {
+        double along = (px - ox) * dx + (py - oy) * dy + (pz - oz) * dz;
+        along = Math.max(from, Math.min(to, along));
+        double x = ox + dx * along - px;
+        double y = oy + dy * along - py;
+        double z = oz + dz * along - pz;
+        return x * x + y * y + z * z <= near * near ? along : -1;
     }
 
     /** How far a flying cut has gone, this many ticks after it left, in a flight of {@code range} blocks. */

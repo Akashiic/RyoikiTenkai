@@ -105,6 +105,7 @@ Shenanigans** (JJS), para o servidor Minecraft **1.7.10** da Rede Akashic.
 | Nível dos efeitos | Em 2026-11-13 o dono recusou o primeiro golpe negro ("PARE DE FAZER TRABALHO PREGUIÇOSO! faça o VFX igual ou superior ao do gif que você viu"). Regra: quando há um GIF de referência, **rever quadro a quadro antes de desenhar** e reproduzir a sequência inteira (quadros de impacto, tela, mundo), com desenho próprio; conferir cada momento com o relógio do efeito parado (`kokusen`, `kscrub` no harness) |
 | Pose do modelo | Em 2026-11-13 o dono mandou **sobrescrever a pose passiva do modelo** nas nossas animações (viu a mão na cintura num feitiço) e fazer a animação de corpo do golpe negro. Regra: toda pose nossa é de corpo inteiro, mãos e dedos incluídos, com peso total; conferir no visor de quatro vistas que nada do modelo aparece por baixo |
 | Parado no modo | Em 2026-11-13: a animação passiva de ficar parado continua sendo a do próprio modelo; as nossas só entram ao correr, pular, lutar ou conjurar |
+| O roxo | Pedido em 2026-11-13: quem morre no azul deixa a esfera parada 5 s; o vermelho nela vira o roxo, fatal para todos no raio, **sem grife** (nada de quebrar bloco). Feito |
 | Recarga do domínio | **60 s**, dito pelo dono em 2026-11-13 ao aprovar a peça M3 (a tecla 4 do modo conjura). Config `dominio.recarga` |
 | Domínios ao mesmo tempo | **No máximo 2.** Um choque (2 domínios numa arena só) ocupa **uma vaga**: o domínio do rival não ganha arena própria |
 

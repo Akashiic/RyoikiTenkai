@@ -172,7 +172,8 @@ public final class ModeWire {
             m.ticks = in.getShort();
             boolean numbers = finite(m.x) && finite(
                 m.y) && finite(m.z) && finite(m.dx) && finite(m.dy) && finite(m.dz) && finite(m.size);
-            return numbers && m.kind >= AbilityMath.PULL && m.kind <= AbilityMath.RED_SELF && m.ticks >= 0 ? m : null;
+            return numbers && m.kind >= AbilityMath.PULL && m.kind <= AbilityMath.PURPLE_BLAST && m.ticks >= 0 ? m
+                : null;
         }
         if (m.op == TECHNIQUE && data.length == 2 && data[1] >= 0) {
             m.technique = data[1];

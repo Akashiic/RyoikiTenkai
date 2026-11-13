@@ -138,6 +138,8 @@ public final class AbilityFx {
         int age;
         /** Begun in the air: its caster hangs there. */
         boolean air;
+        /** It killed, and stays where it is. */
+        boolean idle;
         /** The height of the ground under it; NaN when there is none near. */
         float ground = Float.NaN;
         /** Ticks since it ended; negative while it lasts. */
@@ -171,6 +173,7 @@ public final class AbilityFx {
     void clear() {
         reds.clear();
         BlackFlashFx.INSTANCE.clear();
+        PurpleFx.INSTANCE.clear();
         orbs.clear();
         cuts.clear();
         gestures.clear();
@@ -206,6 +209,31 @@ public final class AbilityFx {
             }
             orbs.put(m.entity, o);
             gesture(mc, m.entity, CastPose.PULL, m.ticks + 6);
+        } else if (m.kind == AbilityMath.PULL_LINGER) {
+            Orb o = orbs.get(m.entity);
+            if (o != null && o.closing < 0) {
+                // It killed: it stays where it is, idle, and the hand that held it out comes back.
+                o.idle = true;
+                o.toX = m.x;
+                o.toY = m.y;
+                o.toZ = m.z;
+                o.ticks = o.age + m.ticks;
+                int[] g = gestures.get(m.entity);
+                if (g != null && g[0] == CastPose.PULL) {
+                    g[2] = Math.min(g[2], g[1] + 6);
+                }
+            }
+        } else if (m.kind == AbilityMath.PURPLE) {
+            // The red met the idle blue: neither is any more, and the purple is where the blue was.
+            orbs.remove(m.entity);
+            Red r = reds.get(m.entity);
+            if (r != null) {
+                r.ended = 2;
+                r.burst = false;
+            }
+            PurpleFx.INSTANCE.start(m.x, m.y, m.z, m.size, m.ticks, false);
+        } else if (m.kind == AbilityMath.PURPLE_BLAST) {
+            PurpleFx.INSTANCE.burst(m.x, m.y, m.z);
         } else if (m.kind == AbilityMath.PULL_MOVE || m.kind == AbilityMath.PULL_END) {
             Orb o = orbs.get(m.entity);
             if (o != null && o.closing < 0) {
@@ -368,7 +396,7 @@ public final class AbilityFx {
     public boolean hangs(int entity) {
         Orb o = orbs.get(entity);
         Red r = reds.get(entity);
-        return o != null && o.air && o.closing < 0 || r != null && r.air && r.flown < 0 && r.age <= r.charge;
+        return o != null && o.air && !o.idle && o.closing < 0 || r != null && r.air && r.flown < 0 && r.age <= r.charge;
     }
 
     @SubscribeEvent
@@ -396,7 +424,7 @@ public final class AbilityFx {
             } else if (o.age > o.ticks + 30) {
                 // The server never said it was over (its caster left): it is.
                 o.closing = 0;
-            } else {
+            } else if (!o.idle) {
                 rubble(mc.theWorld, o);
             }
             o.ground = Float.NaN;
@@ -456,6 +484,7 @@ public final class AbilityFx {
             }
         }
         BlackFlashFx.INSTANCE.tick();
+        PurpleFx.INSTANCE.tick();
         for (Iterator<Cut> i = cuts.iterator(); i.hasNext();) {
             Cut c = i.next();
             c.age++;
@@ -477,7 +506,10 @@ public final class AbilityFx {
 
     @SubscribeEvent
     public void onRenderWorldLast(RenderWorldLastEvent event) {
-        if (orbs.isEmpty() && cuts.isEmpty() && reds.isEmpty() && !BlackFlashFx.INSTANCE.active()) {
+        if (orbs.isEmpty() && cuts.isEmpty()
+            && reds.isEmpty()
+            && !BlackFlashFx.INSTANCE.active()
+            && !PurpleFx.INSTANCE.active()) {
             return;
         }
         Minecraft mc = Minecraft.getMinecraft();
@@ -516,6 +548,7 @@ public final class AbilityFx {
             red(t, mc, r, camX, camY, camZ, event.partialTicks);
         }
         BlackFlashFx.INSTANCE.world(t, mc, camX, camY, camZ, event.partialTicks);
+        PurpleFx.INSTANCE.world(t, camX, camY, camZ, event.partialTicks);
         for (Cut c : cuts) {
             if (c.ground == null) {
                 c.ground = ground(mc.theWorld, c);

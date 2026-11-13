@@ -559,6 +559,25 @@ o desenho e o nome no mod são próprios, como no resto.
   aponta inteira; o trazido é levado por teleporte a cada tick (num cliente com atraso pode parecer aos saltos).
   O Santuário ainda não tem a habilidade 2 (a casa fica apagada).
 
+### O roxo: o azul parado mais o vermelho (2026-11-13)
+
+Pedido do dono, pela variante da wiki: se alguém **morre no orbe azul**, a esfera azul **fica parada por 5 s**
+onde matou; se o mesmo conjurador acerta o **vermelho** nela (na ida ou na volta com R), as duas viram **o roxo**,
+que 3 s depois estoura e dá **dano fatal a todos no raio** (9 blocos).
+
+![O roxo](img/roxo.png)
+
+* **Regras:** só o azul do próprio conjurador serve; o orbe parado não puxa ninguém; o vermelho some ao encontrá-lo
+  (passando a até 1,7 bloco do centro). O estouro mata os outros jogadores no modo dentro do raio (quem conjurou
+  não morre; criativo não é tocado), ignorando proteção como o resto do modo. **Nenhum bloco é quebrado e nenhuma
+  outra criatura é atingida** (o dono pediu sem grife). Os 3 s e o chão marcado dão tempo de sair do raio.
+* **O que se vê** (`client/PurpleFx`, conferido contra o GIF da wiki quadro a quadro): no encontro, os quadros de
+  impacto em duas cores; uma esfera magenta de miolo claro crescendo, com respingos roxos escuros girando, o azul
+  e o vermelho ainda enrolando nela por um instante, **raios** brancos e rosa cada vez mais longos, o **chão
+  aceso até o raio com a borda marcada**, a tela dos próximos tingida de rosa e tremendo; no fim uma **casca
+  escura** incha até o raio; e o estouro: **tela branca** para quem está perto, anel no chão e ciscos de luz.
+* **Código:** `Abilities#meetsBlue`, `#purple`; `AbilityMath#passes` (com teste); harness `purple <distância>`.
+
 ### A tecla 4: Expansão de Domínio (peça M3, 2026-11-13)
 
 No modo, a tecla 4 expande o domínio da técnica do jogador. O cliente só pede (`ModeWire.USE`); o servidor decide
@@ -602,6 +621,7 @@ puro, sem plugin):
 | Repulsão do chão num jogador a 8 blocos, no spawn protegido | vida de 20 para 15; jogado de 59,5 para 66,1 |
 | Repulsão carregada no ar (pulo) | quem conjurou ficou a 1 bloco do chão durante a carga; o alvo foi de 59,5 para 66,6, vida 15 |
 | Repulsão com R segurado, alvo a 8 blocos | atravessado na ida (20 para 16), trazido de volta para diante do conjurador, golpe negro (para 7), arremessado |
+| O roxo de ponta a ponta (dano da Atração posto em 30 só para o teste) | o azul matou e ficou parado; o vermelho o encontrou; o roxo cresceu 3 s e estourou; o outro jogador, trazido para dentro do raio, morreu de novo |
 | Repulsão com R segurado, ninguém no caminho | o orbe volta e o conjurador vai de 20 para 16 |
 | O golpe negro, momento a momento (relógio parado, a cada 20 ms), no cliente de desenvolvimento com e sem a Angelica | os quatro quadros do impacto, a explosão e as faíscas, como descrito; nenhum erro de desenho no registro |
 | O golpe negro de verdade, entre dois jogadores, filmado nas duas telas | faíscas no punho, quadro de impacto, tela tomada pelo emaranhado, traços pretos e contas; alvo de 20 para 8 |

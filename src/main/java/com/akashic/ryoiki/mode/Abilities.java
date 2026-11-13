@@ -39,6 +39,17 @@ final class Abilities {
     private final List<Cut> cuts = new ArrayList<>();
     private final List<Red> reds = new ArrayList<>();
 
+    private final List<Purple> purples = new ArrayList<>();
+
+    private static final class Purple {
+
+        EntityPlayerMP caster;
+        double x;
+        double y;
+        double z;
+        int age;
+    }
+
     private static final class Red {
 
         EntityPlayerMP caster;
@@ -78,6 +89,9 @@ final class Abilities {
         /** Begun in the air: the caster hangs there and the orb goes anywhere. */
         boolean air;
         int age;
+        /** It killed: ticks it still stays where it is, idle. And whether a red orb has met it since. */
+        int linger;
+        boolean taken;
         /** Who it has drawn in, and has not let go yet. */
         final Set<UUID> caught = new HashSet<>();
     }
@@ -99,6 +113,7 @@ final class Abilities {
         orbs.clear();
         cuts.clear();
         reds.clear();
+        purples.clear();
     }
 
     /**
@@ -303,6 +318,9 @@ final class Abilities {
         }
         double from = AbilityMath.redGone(red.age, red.range);
         double to = AbilityMath.redGone(++red.age, red.range);
+        if (meetsBlue(red, red.x, red.y, red.z, red.way, from, to, mode)) {
+            return false;
+        }
         for (EntityPlayerMP target : targets(caster, mode)) {
             if (red.met.contains(target.getUniqueID())) {
                 continue;
@@ -416,6 +434,18 @@ final class Abilities {
                     red.brought = target;
                 }
             }
+        }
+        if (length > 1e-6 && red.brought == null
+            && meetsBlue(
+                red,
+                red.bx,
+                red.by,
+                red.bz,
+                new double[] { v[0] / length, v[1] / length, v[2] / length },
+                0,
+                length,
+                mode)) {
+            return false;
         }
         red.bx += v[0];
         red.by += v[1];
@@ -547,6 +577,11 @@ final class Abilities {
                 i.remove();
             }
         }
+        for (Iterator<Purple> i = purples.iterator(); i.hasNext();) {
+            if (!purple(i.next(), mode)) {
+                i.remove();
+            }
+        }
         for (Iterator<Red> i = reds.iterator(); i.hasNext();) {
             Red red = i.next();
             if (!red(red, mode)) {
@@ -558,6 +593,17 @@ final class Abilities {
     /** One tick of an orb. False when it is over. */
     private boolean orb(Orb orb, SorcererMode mode) {
         EntityPlayerMP caster = orb.caster;
+        if (orb.taken) {
+            return false;
+        }
+        if (orb.linger > 0) {
+            // Idle where it killed: it pulls nobody and follows nothing, until its time is up.
+            if (--orb.linger > 0) {
+                return true;
+            }
+            tellOrb(orb, AbilityMath.PULL_END, 0, mode);
+            return false;
+        }
         boolean over = ++orb.age > AbilityMath.ORB_TICKS || !caster.isEntityAlive()
             || !mode.isOn(caster)
             || caster.worldObj.getPlayerEntityByName(caster.getCommandSenderName()) != caster
@@ -602,8 +648,11 @@ final class Abilities {
                 }
                 continue;
             }
-            if (orb.caught.add(id) || orb.age % AbilityMath.ORB_PULSE == 0) {
-                strike(caster, target, Config.pullDamage, "ryoiki.atracao");
+            if ((orb.caught.add(id) || orb.age % AbilityMath.ORB_PULSE == 0)
+                && strike(caster, target, Config.pullDamage, "ryoiki.atracao")) {
+                // It killed: it stays here.
+                orb.linger = AbilityMath.ORB_LINGER;
+                continue;
             }
             AbilityMath.pull(dx, dy, dz, v);
             if (v[0] == 0 && v[1] == 0 && v[2] == 0) {
@@ -614,14 +663,34 @@ final class Abilities {
             }
             move(target, v);
         }
+        if (orb.linger > 0) {
+            orb.caught.clear();
+            orb.velocity[0] = 0;
+            orb.velocity[1] = 0;
+            orb.velocity[2] = 0;
+            if (orb.air) {
+                caster.fallDistance = 0;
+            }
+            tellOrb(orb, AbilityMath.PULL_LINGER, AbilityMath.ORB_LINGER, mode);
+            return true;
+        }
+        tellOrb(
+            orb,
+            over ? AbilityMath.PULL_END : AbilityMath.PULL_MOVE,
+            Math.max(0, AbilityMath.ORB_TICKS - orb.age),
+            mode);
+        return !over;
+    }
+
+    private void tellOrb(Orb orb, int kind, int ticks, SorcererMode mode) {
         tell(
-            caster.worldObj,
+            orb.caster.worldObj,
             orb.x,
             orb.y,
             orb.z,
             ModeWire.effect(
-                over ? AbilityMath.PULL_END : AbilityMath.PULL_MOVE,
-                caster.getEntityId(),
+                kind,
+                orb.caster.getEntityId(),
                 orb.x,
                 orb.y,
                 orb.z,
@@ -629,9 +698,86 @@ final class Abilities {
                 orb.velocity[1],
                 orb.velocity[2],
                 AbilityMath.ORB_RADIUS,
-                Math.max(0, AbilityMath.ORB_TICKS - orb.age)),
+                ticks),
             mode);
-        return !over;
+    }
+
+    /**
+     * Whether a red orb, on a stretch of its way, meets an idle blue orb of the same caster. If it does, the two
+     * become the purple, there, and the red is no more.
+     */
+    private boolean meetsBlue(Red red, double x, double y, double z, double[] way, double from, double to,
+        SorcererMode mode) {
+        for (Orb orb : orbs) {
+            if (orb.caster != red.caster || orb.linger <= 0 || orb.taken) {
+                continue;
+            }
+            if (AbilityMath
+                .passes(x, y, z, way[0], way[1], way[2], orb.x, orb.y, orb.z, from, to, AbilityMath.LINGER_HIT) < 0) {
+                continue;
+            }
+            orb.taken = true;
+            Purple purple = new Purple();
+            purple.caster = red.caster;
+            purple.x = orb.x;
+            purple.y = orb.y;
+            purple.z = orb.z;
+            purples.add(purple);
+            tell(
+                red.caster.worldObj,
+                orb.x,
+                orb.y,
+                orb.z,
+                ModeWire.effect(
+                    AbilityMath.PURPLE,
+                    red.caster.getEntityId(),
+                    orb.x,
+                    orb.y,
+                    orb.z,
+                    way[0],
+                    way[1],
+                    way[2],
+                    AbilityMath.PURPLE_RADIUS,
+                    AbilityMath.PURPLE_FUSE),
+                mode);
+            return true;
+        }
+        return false;
+    }
+
+    /** One tick of the purple. When its time comes it bursts: death to everyone it can touch within its radius. */
+    private boolean purple(Purple purple, SorcererMode mode) {
+        if (++purple.age < AbilityMath.PURPLE_FUSE) {
+            return true;
+        }
+        EntityPlayerMP caster = purple.caster;
+        for (EntityPlayerMP target : targets(caster, mode)) {
+            double dx = purple.x - target.posX;
+            double dy = purple.y - (target.posY + target.height / 2);
+            double dz = purple.z - target.posZ;
+            if (dx * dx + dy * dy + dz * dz <= AbilityMath.PURPLE_RADIUS * AbilityMath.PURPLE_RADIUS) {
+                strike(caster, target, Float.MAX_VALUE, "ryoiki.roxo");
+            }
+        }
+        // Nothing of the world is broken by it: no block, no other creature.
+        tell(
+            caster.worldObj,
+            purple.x,
+            purple.y,
+            purple.z,
+            ModeWire.effect(
+                AbilityMath.PURPLE_BLAST,
+                caster.getEntityId(),
+                purple.x,
+                purple.y,
+                purple.z,
+                0,
+                0,
+                0,
+                AbilityMath.PURPLE_RADIUS,
+                0),
+            mode);
+        return false;
     }
 
     /** One tick of a flying cut. False when it is over. */
@@ -705,10 +851,12 @@ final class Abilities {
     /**
      * The technique's blow: life taken directly, absorption first, with the wince of a blow for all to see; and
      * death, by the one who used it, if it takes the last of it.
+     *
+     * @return whether it killed
      */
-    private static void strike(EntityPlayerMP caster, EntityPlayer target, float damage, String name) {
+    private static boolean strike(EntityPlayerMP caster, EntityPlayer target, float damage, String name) {
         if (damage <= 0) {
-            return;
+            return false;
         }
         float absorbed = Math.min(target.getAbsorptionAmount(), damage);
         target.setAbsorptionAmount(target.getAbsorptionAmount() - absorbed);
@@ -716,12 +864,13 @@ final class Abilities {
         target.worldObj.setEntityState(target, (byte) 2);
         if (left > 0) {
             target.setHealth(left);
-            return;
+            return false;
         }
         DamageSource source = new EntityDamageSource(name, caster).setDamageBypassesArmor()
             .setDamageIsAbsolute();
         target.setHealth(0);
         target.onDeath(source);
+        return true;
     }
 
     private static void tell(World world, double x, double y, double z, byte[] data, SorcererMode mode) {

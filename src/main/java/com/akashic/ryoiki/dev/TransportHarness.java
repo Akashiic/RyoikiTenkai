@@ -765,6 +765,19 @@ public final class TransportHarness {
                 scrubAt = 0;
                 break;
             }
+            case "purple": {
+                // "purple 12": the purple that far before the eyes, drawn here only: it grows and bursts.
+                net.minecraft.util.Vec3 look = mc.thePlayer.getLookVec();
+                double far = Double.parseDouble(rest);
+                com.akashic.ryoiki.client.PurpleFx.INSTANCE.start(
+                    mc.thePlayer.posX + look.xCoord * far,
+                    mc.thePlayer.boundingBox.minY + 1.4,
+                    mc.thePlayer.posZ + look.zCoord * far,
+                    (float) com.akashic.ryoiki.mode.AbilityMath.PURPLE_RADIUS,
+                    com.akashic.ryoiki.mode.AbilityMath.PURPLE_FUSE,
+                    true);
+                break;
+            }
             case "kokusen": {
                 // "kokusen 4": the black blow that far before the eyes, as its two would see it. "kokusen 4 100":
                 // held at that many milliseconds into it, to look at one moment. "kokusen off".
