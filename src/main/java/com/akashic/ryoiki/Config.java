@@ -21,6 +21,9 @@ public final class Config {
     public static int modeCooldown = 20;
     /** Seconds from a player expanding its domain with the mode until it may again. */
     public static int domainCooldown = 60;
+    /** The damage of the techniques, in half hearts, whatever the armour. 0: none (and nothing to veto). */
+    public static float pullDamage = 1;
+    public static float cutDamage = 5;
     public static int arenaX = 200000;
     public static int arenaZ = 200000;
     public static int arenaY = 120;
@@ -60,6 +63,21 @@ public final class Config {
             3600,
             "Segundos entre duas Expansoes de Dominio do mesmo jogador pelo modo Feiticeiro, contados a partir do "
                 + "sinal de mao. O comando /ryoiki expandir nao tem recarga.");
+        pullDamage = cfg.getFloat(
+            "atracao",
+            "dano",
+            pullDamage,
+            0,
+            40,
+            "Dano da Atracao (Vazio, habilidade 1) em meios coracoes, igual com qualquer armadura. Com 0 ela so "
+                + "puxa, e nenhum plugin de protecao e consultado.");
+        cutDamage = cfg.getFloat(
+            "talho",
+            "dano",
+            cutDamage,
+            0,
+            40,
+            "Dano do Talho (Santuario, habilidade 1) em meios coracoes, igual com qualquer armadura.");
         arenaX = cfg.getInt(
             "x",
             "arena",

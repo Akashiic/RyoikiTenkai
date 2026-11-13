@@ -32,14 +32,14 @@ class ModeRulesTest {
     }
 
     @Test
-    void theDomainIsTheModesAndWaitsItsRecharge() {
-        assertEquals(ModeRules.OK, ModeRules.expand(true, true, 0));
-        assertEquals(ModeRules.OK, ModeRules.expand(true, true, -500));
-        assertEquals(ModeRules.RECHARGING, ModeRules.expand(true, true, 1));
-        assertEquals(ModeRules.NO_TECHNIQUE, ModeRules.expand(true, false, 0));
+    void aTechniqueIsTheModesAndWaitsItsRecharge() {
+        assertEquals(ModeRules.OK, ModeRules.use(true, true, 0));
+        assertEquals(ModeRules.OK, ModeRules.use(true, true, -500));
+        assertEquals(ModeRules.RECHARGING, ModeRules.use(true, true, 1));
+        assertEquals(ModeRules.NO_TECHNIQUE, ModeRules.use(true, false, 0));
         // Out of the mode nothing of it works, whatever else is true.
-        assertEquals(ModeRules.NOT_IN_MODE, ModeRules.expand(false, true, 0));
-        assertEquals(ModeRules.NOT_IN_MODE, ModeRules.expand(false, false, 99));
+        assertEquals(ModeRules.NOT_IN_MODE, ModeRules.use(false, true, 0));
+        assertEquals(ModeRules.NOT_IN_MODE, ModeRules.use(false, false, 99));
     }
 
     @Test

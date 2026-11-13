@@ -82,6 +82,9 @@ public final class SorcererMode {
     /** What clients asked, from the network threads: who, and the mode wanted. */
     private final Queue<Object[]> asked = new ConcurrentLinkedQueue<>();
     private FMLEventChannel channel;
+    private final Abilities abilities = new Abilities();
+    /** For each player, the server tick each of its first three techniques is ready again at. */
+    private final Map<UUID, long[]> ready = new HashMap<>();
 
     private SorcererMode() {}
 
@@ -109,6 +112,8 @@ public final class SorcererMode {
         on.clear();
         changed.clear();
         asked.clear();
+        ready.clear();
+        abilities.reset();
     }
 
     @SubscribeEvent
@@ -145,6 +150,7 @@ public final class SorcererMode {
                 use(player, (Integer) ask[1]);
             }
         }
+        abilities.tick(this);
         MinecraftServer server = MinecraftServer.getServer();
         if (!on.isEmpty() && server.getTickCounter() % 10 == 0) {
             for (UUID id : on) {
@@ -256,13 +262,32 @@ public final class SorcererMode {
      * {@link Config#domainCooldown} seconds from the hand sign.
      */
     private void use(EntityPlayerMP player, int slot) {
+        DomainType technique = technique(player);
+        if (slot == 1) {
+            // The first technique of each domain's kind. Not for the dead, nor for whoever a void holds still.
+            long tick = MinecraftServer.getServer()
+                .getTickCounter();
+            long[] mine = ready.get(player.getUniqueID());
+            long wait = mine == null ? 0 : mine[0] - tick;
+            if (ModeRules.use(isOn(player), technique != null, wait) != ModeRules.OK || !player.isEntityAlive()
+                || DomainManager.INSTANCE.frozen(player)) {
+                return;
+            }
+            int recharge = abilities.first(player, technique, this);
+            if (mine == null) {
+                mine = new long[ModeWire.SLOTS - 1];
+                ready.put(player.getUniqueID(), mine);
+            }
+            mine[0] = tick + recharge;
+            cooldown(player, 1, recharge, recharge);
+            return;
+        }
         if (slot != ModeWire.SLOTS) {
             return;
         }
-        DomainType technique = technique(player);
         long now = System.currentTimeMillis();
         long left = domainReady(player) - now;
-        int reason = ModeRules.expand(isOn(player), technique != null, left);
+        int reason = ModeRules.use(isOn(player), technique != null, left);
         if (reason == ModeRules.RECHARGING) {
             // Its screen may have lost count: here is how long, again.
             tellDomainRecharge(player);
@@ -350,7 +375,7 @@ public final class SorcererMode {
         }
     }
 
-    private void send(EntityPlayerMP player, byte[] data) {
+    void send(EntityPlayerMP player, byte[] data) {
         if (player.playerNetServerHandler != null) {
             channel.sendTo(new FMLProxyPacket(Unpooled.wrappedBuffer(data), ModeWire.CHANNEL), player);
         }
@@ -402,6 +427,7 @@ public final class SorcererMode {
         }
         on.remove(event.player.getUniqueID());
         changed.remove(event.player.getUniqueID());
+        ready.remove(event.player.getUniqueID());
     }
 
     @SubscribeEvent

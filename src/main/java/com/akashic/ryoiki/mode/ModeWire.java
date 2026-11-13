@@ -25,6 +25,13 @@ public final class ModeWire {
     /** Client to server: this player uses one of its four techniques (1 to {@link #SLOTS}). */
     public static final byte USE = 6;
 
+    /**
+     * Server to client: something a technique does, to be drawn. Its {@code kind} is one of {@link AbilityMath}'s;
+     * the entity is who used the technique; then a place, a direction, a size and a time, each meaning what the kind
+     * makes of it.
+     */
+    public static final byte EFFECT = 7;
+
     /** The techniques of the mode: three and the domain expansion, numbered from 1. */
     public static final int SLOTS = 4;
     /** No recharge is longer than an hour. */
@@ -46,6 +53,16 @@ public final class ModeWire {
         public int slot;
         public int total;
         public int left;
+        /** EFFECT. */
+        public int kind;
+        public double x;
+        public double y;
+        public double z;
+        public float dx;
+        public float dy;
+        public float dz;
+        public float size;
+        public int ticks;
     }
 
     private ModeWire() {}
@@ -67,6 +84,25 @@ public final class ModeWire {
         return new byte[] { USE, (byte) slot };
     }
 
+    public static byte[] effect(int kind, int entity, double x, double y, double z, double dx, double dy, double dz,
+        double size, int ticks) {
+        return java.nio.ByteBuffer.allocate(EFFECT_LENGTH)
+            .put(EFFECT)
+            .put((byte) kind)
+            .putInt(entity)
+            .putDouble(x)
+            .putDouble(y)
+            .putDouble(z)
+            .putFloat((float) dx)
+            .putFloat((float) dy)
+            .putFloat((float) dz)
+            .putFloat((float) size)
+            .putShort((short) ticks)
+            .array();
+    }
+
+    private static final int EFFECT_LENGTH = 48;
+
     public static byte[] technique(int technique) {
         return new byte[] { TECHNIQUE, (byte) technique };
     }
@@ -74,6 +110,10 @@ public final class ModeWire {
     public static byte[] cooldown(int slot, int total, int left) {
         return new byte[] { COOLDOWN, (byte) slot, (byte) (total >>> 24), (byte) (total >>> 16), (byte) (total >>> 8),
             (byte) total, (byte) (left >>> 24), (byte) (left >>> 16), (byte) (left >>> 8), (byte) left };
+    }
+
+    private static boolean finite(double v) {
+        return !Double.isNaN(v) && !Double.isInfinite(v);
     }
 
     private static int number(byte[] data, int at) {
@@ -103,6 +143,22 @@ public final class ModeWire {
         if (m.op == USE && data.length == 2 && data[1] >= 1 && data[1] <= SLOTS) {
             m.slot = data[1];
             return m;
+        }
+        if (m.op == EFFECT && data.length == EFFECT_LENGTH) {
+            java.nio.ByteBuffer in = java.nio.ByteBuffer.wrap(data, 1, EFFECT_LENGTH - 1);
+            m.kind = in.get();
+            m.entity = in.getInt();
+            m.x = in.getDouble();
+            m.y = in.getDouble();
+            m.z = in.getDouble();
+            m.dx = in.getFloat();
+            m.dy = in.getFloat();
+            m.dz = in.getFloat();
+            m.size = in.getFloat();
+            m.ticks = in.getShort();
+            boolean numbers = finite(m.x) && finite(
+                m.y) && finite(m.z) && finite(m.dx) && finite(m.dy) && finite(m.dz) && finite(m.size);
+            return numbers && m.kind >= AbilityMath.PULL && m.kind <= AbilityMath.CUT_HIT && m.ticks >= 0 ? m : null;
         }
         if (m.op == TECHNIQUE && data.length == 2 && data[1] >= 0) {
             m.technique = data[1];

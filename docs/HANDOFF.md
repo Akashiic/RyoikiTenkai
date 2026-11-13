@@ -96,6 +96,7 @@ Shenanigans** (JJS), para o servidor Minecraft **1.7.10** da Rede Akashic.
 | Plugin ou mod | **Mod**, confirmado pelo dono em 2026-11-12 ("pode ficar à vontade" para a divisão proposta) |
 | Modo Feiticeiro | Ideia do dono em 2026-11-13: **Ctrl+R** troca entre o Minecraft normal e um modo em que o inventário some, a luta fica ligada e o rodapé mostra **4 habilidades, a última a Expansão de Domínio**; voltar devolve o inventário "salvo mesmo se tiver sido morto". Ele mandou começar pela peça M1 (o modo em si). Plano em `PLANO-COMBATE.md`, fase M |
 | Rodapé do modo | Em 2026-11-13 o dono pediu "uma barra de vida com textura bonita" para o modo e **remover a fome e a barra de experiência**. Feito na peça M2: no modo o jogador conta como alimentado (a fome dele volta ao sair) |
+| Habilidades do modo | As seis propostas pelo agente (3 por técnica, em `PLANO-COMBATE.md`) foram **aprovadas** pelo dono em 2026-11-13, que mandou fazer a 1 e, junto, **melhorar a animação de andar, correr e pular no modo** |
 | Recarga do domínio | **60 s**, dito pelo dono em 2026-11-13 ao aprovar a peça M3 (a tecla 4 do modo conjura). Config `dominio.recarga` |
 | Domínios ao mesmo tempo | **No máximo 2.** Um choque (2 domínios numa arena só) ocupa **uma vaga**: o domínio do rival não ganha arena própria |
 

@@ -120,11 +120,11 @@ public final class SorcererClient {
     }
 
     /**
-     * Whether one of the four techniques (from 0) can be used at all. For now none of the first three exists, and
-     * the fourth, the domain expansion, belongs to whoever has a technique.
+     * Whether one of the four techniques (from 0) can be used at all. The first and the fourth, the domain
+     * expansion, belong to whoever has a technique; the second and the third do not exist yet.
      */
     boolean has(int slot) {
-        return slot == ModeWire.SLOTS - 1 && technique != null;
+        return (slot == 0 || slot == ModeWire.SLOTS - 1) && technique != null;
     }
 
     /**
@@ -220,7 +220,7 @@ public final class SorcererClient {
     public void onHeard(FMLNetworkEvent.ClientCustomPacketEvent event) {
         // A network thread: only note it down.
         ByteBuf payload = event.packet.payload();
-        byte[] data = new byte[Math.min(payload.readableBytes(), 16)];
+        byte[] data = new byte[Math.min(payload.readableBytes(), 64)];
         payload.getBytes(payload.readerIndex(), data);
         heard.add(data);
     }
@@ -246,6 +246,7 @@ public final class SorcererClient {
             changedAt = -1000;
             technique = null;
             java.util.Arrays.fill(rechargeTotal, 0);
+            AbilityFx.INSTANCE.clear();
             return;
         }
         for (byte[] data = heard.poll(); data != null; data = heard.poll()) {
@@ -267,6 +268,8 @@ public final class SorcererClient {
                 } else {
                     others.remove(m.entity);
                 }
+            } else if (m.op == ModeWire.EFFECT) {
+                AbilityFx.INSTANCE.heard(m);
             } else if (m.op == ModeWire.TECHNIQUE) {
                 DomainType[] all = DomainType.values();
                 technique = m.technique >= 1 && m.technique <= all.length ? all[m.technique - 1] : null;

@@ -52,14 +52,14 @@ public final class ModeRules {
     }
 
     /**
-     * Whether a player may expand its domain with the mode's fourth technique: {@link #OK}, or why not. Whether the
-     * domain can open where the player stands is another matter, the domain's own.
+     * Whether a player may use one of the mode's four techniques: {@link #OK}, or why not. (For the fourth, whether
+     * the domain can open where the player stands is another matter, the domain's own.)
      *
      * @param inMode       whether the player is in the sorcerer mode
      * @param hasTechnique whether it has a technique, and so a domain
-     * @param left         how long until its domain is ready again, in any unit: ready at 0 or less
+     * @param left         how long until that technique is ready again, in any unit: ready at 0 or less
      */
-    public static int expand(boolean inMode, boolean hasTechnique, long left) {
+    public static int use(boolean inMode, boolean hasTechnique, long left) {
         if (!inMode) {
             return NOT_IN_MODE;
         }

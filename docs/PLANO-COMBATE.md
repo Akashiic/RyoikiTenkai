@@ -47,10 +47,10 @@ quando um clique é golpe.
 | M2 | **O rodapé:** a barra de vida própria (sem fome nem experiência, pedido do dono) e as quatro casas de habilidade com ícone, tecla (1 a 4) e recarga | feito em 2026-11-13 (`VISUAL.md`, "O rodapé") |
 | M3 | **A quarta casa conjura o domínio:** a tecla 4, no modo, expande o domínio da técnica do jogador, com **60 s de recarga** (decisão do dono) contados do sinal de mão. Responder ao domínio de outro pela tecla 4 abre o choque. O comando `/ryoiki expandir` continua, para a staff, sem recarga | feito em 2026-11-13 (`VISUAL.md`, "A tecla 4") |
 
-### As habilidades: proposta do agente, a aprovar pelo dono
+### As habilidades: aprovadas pelo dono em 2026-11-13
 
-O dono pediu a proposta em 2026-11-13. São desenho próprio, com a ideia de cada técnica, e reaproveitam os efeitos
-que já existem (os cortes, os riscos, os feixes). Os ícones do rodapé já são os destas. Nada disto está feito.
+O agente propôs e o dono aprovou as seis. São desenho próprio, com a ideia de cada técnica. **Feitas: a 1 de cada
+técnica (Atração e Talho)**, em 2026-11-13 (`VISUAL.md`, "A tecla 1"). Faltam a 2 e a 3 de cada.
 
 | | Vazio Estelar: domina o espaço | Santuário Carmesim: corta |
 |---|---|---|
@@ -60,7 +60,8 @@ que já existem (os cortes, os riscos, os feixes). Os ícones do rodapé já sã
 | 4 | **Expansão de Domínio: Vazio Estelar** | **Expansão de Domínio: Santuário Carmesim** |
 
 O Vazio é controle (puxar, afastar, reposicionar) e o Santuário é agressão (longe, perto, área), para os dois
-jogarem diferente. Para fazê-las faltam as mesmas decisões de baixo (quem pode ser atingido e quanto dano).
+jogarem diferente. Quem pode ser atingido e quanto dano o dono ainda não disse: as habilidades feitas seguem a
+recomendação do agente (só quem está no modo, respeitando proteção; dano pequeno e fixo, no config).
 
 Decisões que o dono ainda não tomou (perguntadas em 2026-11-13): quem pode ser golpeado fora do choque (o agente
 recomenda só quem também está no modo, respeitando PvP e proteção de terreno); se os golpes dão dano fora do choque

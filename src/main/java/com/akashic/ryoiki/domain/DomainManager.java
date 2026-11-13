@@ -387,7 +387,7 @@ public final class DomainManager {
      * Whether the star void holds this player: caught in one that is not its own, complete, with no clash going on
      * or being answered. The void's sure effect: whoever it holds does nothing until it ends.
      */
-    private boolean frozen(EntityPlayer player) {
+    public boolean frozen(EntityPlayer player) {
         DomainSession s = sessionOf(player.getUniqueID());
         return s != null && s.type == DomainType.INFINITE_VOID
             && s.phase == Phase.ACTIVE

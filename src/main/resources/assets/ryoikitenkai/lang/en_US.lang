@@ -17,3 +17,5 @@ ryoikitenkai.modo.nome=SORCERER MODE
 ryoikitenkai.modo.sair=%s to leave
 ryoikitenkai.tecla.modo=Sorcerer mode (holding Ctrl)
 ryoikitenkai.tecla.categoria=RyoikiTenkai
+death.attack.ryoiki.atracao=%1$s was drawn into the void by %2$s
+death.attack.ryoiki.talho=%1$s was cut down by %2$s

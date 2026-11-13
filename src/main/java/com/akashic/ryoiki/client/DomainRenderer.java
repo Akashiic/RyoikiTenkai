@@ -20,6 +20,7 @@ import org.lwjgl.opengl.GL11;
 import com.akashic.ryoiki.DomainType;
 import com.akashic.ryoiki.RyoikiTenkai;
 import com.akashic.ryoiki.fx.BlowPose;
+import com.akashic.ryoiki.fx.CastPose;
 import com.akashic.ryoiki.fx.Frontier;
 import com.akashic.ryoiki.fx.StreakField;
 
@@ -376,6 +377,13 @@ public final class DomainRenderer {
                 layer = Math.max(layer, struck.layer(partial));
             }
             FuturaBridge.INSTANCE.pose(event.entityPlayer, BlowPose.BONES, pose, layer);
+            return;
+        }
+        // The gesture of a technique of the sorcerer mode: the chest, the head and the arms; the legs go on.
+        float[][] gesture = new float[1][];
+        float shows = AbilityFx.INSTANCE.gesture(id, event.partialRenderTick, gesture);
+        if (shows > 0) {
+            FuturaBridge.INSTANCE.pose(event.entityPlayer, CastPose.BONES, gesture[0], shows);
             return;
         }
         if (domain.rivalSign != null && domain.rivalSign.casterEntity == id) {

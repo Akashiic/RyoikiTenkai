@@ -32,6 +32,10 @@ public final class ClientProxy extends CommonProxy {
         MinecraftForge.EVENT_BUS.register(MusicHush.INSTANCE);
         MinecraftForge.EVENT_BUS.register(ClashInput.INSTANCE);
         SorcererClient.INSTANCE.install();
+        FMLCommonHandler.instance()
+            .bus()
+            .register(AbilityFx.INSTANCE);
+        MinecraftForge.EVENT_BUS.register(AbilityFx.INSTANCE);
         // Development only, never in the release jar: -Dryoiki.devHarness=true and a "ryoiki-harness" file.
         if (Boolean.getBoolean("ryoiki.devHarness")
             && new File(Minecraft.getMinecraft().mcDataDir, "ryoiki-harness").isFile()) {

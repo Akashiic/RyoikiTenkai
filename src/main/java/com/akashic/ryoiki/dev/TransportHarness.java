@@ -524,6 +524,7 @@ public final class TransportHarness {
     private int heldBlow;
     private boolean turnaround;
     private float[] turnPose;
+    private String[] turnBones = com.akashic.ryoiki.fx.BlowPose.BONES;
 
     /** The model in four views, over everything, while it is asked for. */
     @SubscribeEvent
@@ -533,7 +534,7 @@ public final class TransportHarness {
                 Minecraft.getMinecraft(),
                 event.resolution.getScaledWidth(),
                 event.resolution.getScaledHeight(),
-                turnPose == null ? null : com.akashic.ryoiki.fx.BlowPose.BONES,
+                turnPose == null ? null : turnBones,
                 turnPose);
         }
     }
@@ -627,7 +628,13 @@ public final class TransportHarness {
                 turnaround = !"off".equals(rest);
                 // "turn 1 2.5": the first blow, two and a half ticks in. "turn guard". "turn on": the bones file.
                 turnPose = null;
-                if ("guard".equals(rest)) {
+                turnBones = com.akashic.ryoiki.fx.BlowPose.BONES;
+                if (rest.startsWith("cast ")) {
+                    // "turn cast 1 6": the gesture of a technique (1 the pull, 2 the cut), six ticks in.
+                    String[] at = rest.split(" ");
+                    turnBones = com.akashic.ryoiki.fx.CastPose.BONES;
+                    turnPose = com.akashic.ryoiki.fx.CastPose.sample(Integer.parseInt(at[1]), Float.parseFloat(at[2]));
+                } else if ("guard".equals(rest)) {
                     turnPose = com.akashic.ryoiki.fx.BlowPose.guard();
                 } else if (rest.startsWith("struck ")) {
                     // "turn struck 0.8": a blow taken on the guard, that long ago; "turn struck -0.8": from the right.

@@ -41,6 +41,19 @@ class ModeWireTest {
             assertEquals(slot, m.slot);
         }
 
+        m = ModeWire.decode(ModeWire.effect(AbilityMath.CUT, 297, 200003.25, 121.5, -49.75, 0.6, -0.2, 0.77, 9.5, 7));
+        assertEquals(ModeWire.EFFECT, m.op);
+        assertEquals(AbilityMath.CUT, m.kind);
+        assertEquals(297, m.entity);
+        assertEquals(200003.25, m.x, 0);
+        assertEquals(121.5, m.y, 0);
+        assertEquals(-49.75, m.z, 0);
+        assertEquals(0.6F, m.dx, 0);
+        assertEquals(-0.2F, m.dy, 0);
+        assertEquals(0.77F, m.dz, 0);
+        assertEquals(9.5F, m.size, 0);
+        assertEquals(7, m.ticks);
+
         m = ModeWire.decode(ModeWire.cooldown(4, 1200, 1187));
         assertEquals(ModeWire.COOLDOWN, m.op);
         assertEquals(4, m.slot);
@@ -64,6 +77,12 @@ class ModeWireTest {
         assertNull(ModeWire.decode(new byte[] { 99, 1 }));
         assertNull(ModeWire.decode(new byte[] { ModeWire.TECHNIQUE, -1 }));
         assertNull(ModeWire.decode(ModeWire.use(0)));
+        // An effect of no kind, at no place, or cut short.
+        assertNull(ModeWire.decode(ModeWire.effect(0, 1, 0, 0, 0, 0, 0, 1, 1, 1)));
+        assertNull(ModeWire.decode(ModeWire.effect(9, 1, 0, 0, 0, 0, 0, 1, 1, 1)));
+        assertNull(ModeWire.decode(ModeWire.effect(AbilityMath.PULL, 1, Double.NaN, 0, 0, 0, 0, 1, 1, 1)));
+        assertNull(
+            ModeWire.decode(java.util.Arrays.copyOf(ModeWire.effect(AbilityMath.PULL, 1, 0, 0, 0, 0, 0, 1, 1, 1), 40)));
         assertNull(ModeWire.decode(ModeWire.use(5)));
         assertNull(ModeWire.decode(new byte[] { ModeWire.USE, 4, 0 }));
         // A recharge of a technique there is not, with more left than it lasts, or longer than any is.
