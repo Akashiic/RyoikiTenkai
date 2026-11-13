@@ -65,6 +65,14 @@ public final class CommandRyoiki extends CommandBase {
             if (message != null) {
                 sender.addChatMessage(message);
             }
+        } else if ("tecnica".equalsIgnoreCase(args[0]) && args.length >= 2) {
+            // Which domain a player's techniques belong to: "nenhuma" takes it away.
+            DomainType type = DomainType.byId(args[1]);
+            if (type == null && !"nenhuma".equalsIgnoreCase(args[1])) {
+                throw new WrongUsageException(getCommandUsage(sender));
+            }
+            EntityPlayerMP player = args.length >= 3 ? getPlayer(sender, args[2]) : getCommandSenderAsPlayer(sender);
+            SorcererMode.INSTANCE.setTechnique(player, type);
         } else if ("encerrar".equalsIgnoreCase(args[0])) {
             EntityPlayerMP player = getCommandSenderAsPlayer(sender);
             DomainSession s = DomainManager.INSTANCE.sessionOf(player.getUniqueID());
@@ -92,10 +100,13 @@ public final class CommandRyoiki extends CommandBase {
     @SuppressWarnings("rawtypes")
     public List addTabCompletionOptions(ICommandSender sender, String[] args) {
         if (args.length == 1) {
-            return getListOfStringsMatchingLastWord(args, "expandir", "encerrar", "preparar", "modo");
+            return getListOfStringsMatchingLastWord(args, "expandir", "encerrar", "preparar", "modo", "tecnica");
         }
         if (args.length == 2 && "expandir".equalsIgnoreCase(args[0])) {
             return getListOfStringsMatchingLastWord(args, "vazio", "santuario");
+        }
+        if (args.length == 2 && "tecnica".equalsIgnoreCase(args[0])) {
+            return getListOfStringsMatchingLastWord(args, "vazio", "santuario", "nenhuma");
         }
         return null;
     }

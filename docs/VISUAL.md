@@ -334,8 +334,8 @@ Controles; o Ctrl é fixo). O servidor decide e avisa quem pediu e quem está ve
 
 ![Modo Feiticeiro](img/modo.png)
 
-* **O que se vê:** a barra de itens some e no lugar dela fica o nome do modo numa linha que abre do meio (as quatro
-  habilidades entram ali na peça M2); por alguns segundos, "Ctrl+R para sair". Vida, fome e experiência continuam.
+* **O que se vê:** a barra de itens, os corações, a armadura, a fome e a experiência somem, e o pé da tela passa
+  a ser o do modo (o rodapé, abaixo); por alguns segundos, o nome do modo e "Ctrl+R para sair" sobre ele.
   A **mão fica vazia**: em primeira pessoa a mão abaixa o que segurava e volta nua (a animação é a do próprio jogo
   ao esvaziar uma casa), e os outros jogadores veem quem está no modo sem item na mão, com skin comum ou com modelo
   do Futura3D.
@@ -349,11 +349,44 @@ Controles; o Ctrl é fixo). O servidor decide e avisa quem pediu e quem está ve
   próprio jogador e tirados das mãos; o jogador que renasce os recebe de volta, cada um na sua casa, armadura
   vestida. Quem morre continua no modo. A experiência segue a regra normal do servidor, e os inventários de outros
   mods (Baubles, Tinkers, mochilas) seguem as regras deles.
+* **Sem fome.** O modo não tem barra de fome, então não tem fome: no modo o jogador conta como alimentado e não
+  fica com mais fome (regenera como quem está de barriga cheia, a regra normal do jogo). A fome que ele tinha ao
+  entrar fica guardada e volta quando ele sai. A experiência só não é mostrada: continua sendo ganha.
 * **Quando não dá para trocar:** no meio de um domínio (nem entrar, nem sair), morto, ou menos de 1 s depois da
   última troca. Sair do servidor tira do modo.
-* **Config:** `modo.ativo` e `modo.recarga`. Comando para a staff: `/ryoiki modo [jogador]`.
+* **Config:** `modo.ativo` e `modo.recarga`. Comandos para a staff: `/ryoiki modo [jogador]` e
+  `/ryoiki tecnica <vazio|santuario|nenhuma> [jogador]` (a técnica fica salva com o jogador).
 * **No modo, fora de um choque, o jogador ainda não bate em ninguém:** o ataque do Minecraft está desligado e os
   golpes do nosso sistema só existem no choque. Isso espera as decisões do dono (ver `PLANO-COMBATE.md`).
+
+### O rodapé (`client/ModeHud`, peça M2, 2026-11-13)
+
+![O rodapé](img/modo-rodape.png)
+
+Pedido do dono: as quatro habilidades no rodapé, a última a Expansão de Domínio, e **uma barra de vida com textura
+bonita, sem fome e sem barra de experiência**.
+
+* **A barra de vida:** uma barra só, de pontas em bico, com moldura de laca escura e friso na cor da técnica; à
+  esquerda um **losango com a vida em número**. A vida é uma faixa com veios e um fio de luz, na cor da técnica
+  (azul para violeta no Vazio, carmim para laranja no Santuário, prata sem técnica), dividida em dez por entalhes.
+  * **Um golpe:** a vida cai de uma vez, o que foi perdido fica **pálido por um instante** e só então escoa, e o
+    friso clareia. Quando sobe, sobe aos poucos.
+  * **Um brilho** atravessa a vida a cada cinco segundos. Com **um quarto de vida ou menos** o friso e o número
+    pulsam em vermelho.
+  * **Veneno** deixa a vida verde, **decomposição** (wither) cinza-roxa; **absorção** é uma linha de ouro por cima.
+  * **Armadura:** um escudo pequeno e o valor, depois da ponta da barra, só quando há armadura.
+* **As quatro casas:** três pequenas e a do domínio, maior, de friso duplo, que **respira** quando está pronta. Cada
+  uma tem o ícone da habilidade, a **tecla** no canto (as teclas 1 a 4 do jogador) e, em recarga, uma sombra que
+  escoa e os **segundos** que faltam. Apertar a tecla faz a casa responder (cresce um pouco e acende). Uma
+  habilidade que ainda não existe aparece apagada.
+* **O chat** sobe para cima do rodapé enquanto o jogador está no modo (no jogo normal as últimas linhas dele ficam
+  por cima dos corações).
+* **A textura** é uma folha só, `assets/ryoikitenkai/textures/gui/modo.png`, desenho próprio **gerado por
+  `tools/hud/gerar.py`** (numpy e Pillow), com dois texels por pixel da interface. As peças são brancas ou cinza e o
+  jogo tinge com a cor da técnica; quem quiser outra arte troca o arquivo por um pacote de recursos, mantendo as
+  posições.
+* **O que ainda não faz:** as teclas 1 a 4 só fazem a casa responder. A quarta passa a conjurar na peça M3; as três
+  primeiras são **propostas** (`PLANO-COMBATE.md`) que o dono ainda vai aprovar, e os ícones delas também.
 
 **Medido em 2026-11-13** (dois clientes no Crucible de teste, e o cliente de desenvolvimento num servidor Forge
 puro, sem plugin):
@@ -367,6 +400,9 @@ puro, sem plugin):
 | Morrer no Forge puro | no modo normal perde tudo (controle); no modo Feiticeiro volta com tudo nas mesmas casas e a armadura vestida |
 | Morrer no Crucible de teste (com BetterKeepInventory) | no modo volta com tudo no lugar; fora dele o plugin devolve os itens com a armadura no inventário |
 | Trocar de modo dentro de um domínio | recusado, com aviso no chat; depois do domínio volta a funcionar |
+| Fome com o efeito Fome forte (6 s) | fora do modo cai de 20 a 0; no modo fica em 20; ao sair volta a 0 |
+| O rodapé no Crucible de teste, dois clientes | Santuário, Vazio e sem técnica; a técnica dada pelo console muda o rodapé na hora |
+| Dano, recarga e tecla, filmados | a perda pálida escoa, a sombra da recarga conta os segundos, a casa responde |
 
 **A verificar:** com placa de vídeo e o modpack completo; morrer no modo e sair do servidor antes de renascer (os
 itens estão nos dados do jogador e voltam ao renascer, mas isso não foi ensaiado); mundos com inventário separado

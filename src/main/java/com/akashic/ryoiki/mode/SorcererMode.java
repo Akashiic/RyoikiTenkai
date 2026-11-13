@@ -32,6 +32,7 @@ import net.minecraftforge.event.entity.player.PlayerUseItemEvent;
 import net.minecraftforge.event.world.BlockEvent;
 
 import com.akashic.ryoiki.Config;
+import com.akashic.ryoiki.DomainType;
 import com.akashic.ryoiki.RyoikiTenkai;
 import com.akashic.ryoiki.domain.DomainManager;
 
@@ -68,6 +69,11 @@ public final class SorcererMode {
 
     /** In the player's persisted data: its inventory, kept from a death in the mode until it lives again. */
     private static final String KEPT = "ryoikiModoGuardado";
+    /**
+     * There too: the player's technique (the id of its domain), and its hunger as it was when it went into the mode.
+     */
+    private static final String TECHNIQUE = "ryoikiTecnica";
+    private static final String HUNGER = "ryoikiModoFome";
 
     private final Set<UUID> on = new HashSet<>();
     private final Map<UUID, Long> changed = new HashMap<>();
@@ -127,12 +133,13 @@ public final class SorcererMode {
             }
         }
         MinecraftServer server = MinecraftServer.getServer();
-        if (!on.isEmpty() && server.getTickCounter() % 20 == 0) {
-            // A death something else undid after its things were put away: it has them back.
+        if (!on.isEmpty() && server.getTickCounter() % 10 == 0) {
             for (UUID id : on) {
                 EntityPlayerMP player = player(id);
                 if (player != null && player.isEntityAlive()) {
+                    // A death something else undid after its things were put away: it has them back.
                     giveBack(player);
+                    fed(player);
                 }
             }
         }
@@ -171,8 +178,10 @@ public final class SorcererMode {
                 player.closeScreen();
             }
             player.clearItemInUse();
+            holdHunger(player);
         } else {
             on.remove(id);
+            releaseHunger(player);
         }
         tell(player, want);
         return ModeRules.OK;
@@ -189,6 +198,88 @@ public final class SorcererMode {
                     send((EntityPlayerMP) watcher, data);
                 }
             }
+        }
+    }
+
+    // The technique: which of the domains a player's four techniques belong to. Its own, whatever mode it is in.
+
+    /** A player's technique, or null if it has none yet. */
+    public static DomainType technique(EntityPlayer player) {
+        NBTTagCompound data = player.getEntityData();
+        return data.hasKey(EntityPlayer.PERSISTED_NBT_TAG) ? DomainType.byId(
+            data.getCompoundTag(EntityPlayer.PERSISTED_NBT_TAG)
+                .getString(TECHNIQUE))
+            : null;
+    }
+
+    /** Gives a player a technique, or takes it away (null). It is kept with the player. */
+    public void setTechnique(EntityPlayerMP player, DomainType technique) {
+        NBTTagCompound data = player.getEntityData();
+        NBTTagCompound persisted = data.getCompoundTag(EntityPlayer.PERSISTED_NBT_TAG);
+        if (technique == null) {
+            persisted.removeTag(TECHNIQUE);
+        } else {
+            persisted.setString(TECHNIQUE, technique.id);
+        }
+        data.setTag(EntityPlayer.PERSISTED_NBT_TAG, persisted);
+        tellTechnique(player);
+    }
+
+    private void tellTechnique(EntityPlayerMP player) {
+        DomainType technique = technique(player);
+        send(player, ModeWire.technique(technique == null ? 0 : technique.ordinal() + 1));
+    }
+
+    /**
+     * Tells a player that one of its four techniques (1 to {@link ModeWire#SLOTS}) recharges: for {@code total}
+     * ticks, of which {@code left} are left. Its screen counts down from there on its own.
+     */
+    public void cooldown(EntityPlayerMP player, int slot, int total, int left) {
+        send(player, ModeWire.cooldown(slot, total, left));
+    }
+
+    // Hunger. The mode has no hunger bar, so it has no hunger: a player in it counts as fed, and does not get
+    // hungrier. What it had when it came in is waiting for it when it goes out.
+
+    private static void holdHunger(EntityPlayerMP player) {
+        NBTTagCompound data = player.getEntityData();
+        NBTTagCompound persisted = data.getCompoundTag(EntityPlayer.PERSISTED_NBT_TAG);
+        if (!persisted.hasKey(HUNGER)) {
+            NBTTagCompound was = new NBTTagCompound();
+            player.getFoodStats()
+                .writeNBT(was);
+            persisted.setTag(HUNGER, was);
+            data.setTag(EntityPlayer.PERSISTED_NBT_TAG, persisted);
+        }
+        fed(player);
+    }
+
+    /** Fed, and none the hungrier for what it just did. The count toward the next heal is its own. */
+    private static void fed(EntityPlayerMP player) {
+        NBTTagCompound now = new NBTTagCompound();
+        player.getFoodStats()
+            .writeNBT(now);
+        if (now.getInteger("foodLevel") == 20 && now.getFloat("foodExhaustionLevel") == 0
+            && now.getFloat("foodSaturationLevel") == 5) {
+            return;
+        }
+        now.setInteger("foodLevel", 20);
+        now.setFloat("foodSaturationLevel", 5);
+        now.setFloat("foodExhaustionLevel", 0);
+        player.getFoodStats()
+            .readNBT(now);
+    }
+
+    private static void releaseHunger(EntityPlayerMP player) {
+        NBTTagCompound data = player.getEntityData();
+        if (!data.hasKey(EntityPlayer.PERSISTED_NBT_TAG)) {
+            return;
+        }
+        NBTTagCompound persisted = data.getCompoundTag(EntityPlayer.PERSISTED_NBT_TAG);
+        if (persisted.hasKey(HUNGER)) {
+            player.getFoodStats()
+                .readNBT(persisted.getCompoundTag(HUNGER));
+            persisted.removeTag(HUNGER);
         }
     }
 
@@ -221,15 +312,26 @@ public final class SorcererMode {
 
     @SubscribeEvent
     public void onLogin(PlayerEvent.PlayerLoggedInEvent event) {
-        if (event.player instanceof EntityPlayerMP && event.player.isEntityAlive()) {
-            // It died in the mode and the server stopped, or it left, before it lived again and got its things.
-            giveBack((EntityPlayerMP) event.player);
+        if (!(event.player instanceof EntityPlayerMP)) {
+            return;
         }
+        EntityPlayerMP player = (EntityPlayerMP) event.player;
+        if (player.isEntityAlive()) {
+            // It died in the mode and the server stopped, or it left, before it lived again and got its things.
+            giveBack(player);
+        }
+        // Nobody arrives in the mode: a hunger still held is from a server that stopped with the player in it.
+        releaseHunger(player);
+        tellTechnique(player);
     }
 
     @SubscribeEvent
     public void onLogout(PlayerEvent.PlayerLoggedOutEvent event) {
-        // The mode is not kept from one visit to the next: there is nothing of it to keep.
+        // The mode is not kept from one visit to the next: there is nothing of it to keep. This is before the
+        // player is saved, so it is saved with its own hunger.
+        if (event.player instanceof EntityPlayerMP && on.contains(event.player.getUniqueID())) {
+            releaseHunger((EntityPlayerMP) event.player);
+        }
         on.remove(event.player.getUniqueID());
         changed.remove(event.player.getUniqueID());
     }
@@ -252,8 +354,12 @@ public final class SorcererMode {
         if (player.isEntityAlive()) {
             giveBack((EntityPlayerMP) player);
         }
+        tellTechnique((EntityPlayerMP) player);
         if (isOn(player)) {
             send((EntityPlayerMP) player, ModeWire.state(player.getEntityId(), true));
+            if (player.isEntityAlive()) {
+                holdHunger((EntityPlayerMP) player);
+            }
         }
     }
 
@@ -349,6 +455,8 @@ public final class SorcererMode {
         if (persisted.hasKey(KEPT)) {
             return;
         }
+        // Who dies comes back fed, in the mode or out of it: the hunger it had before the mode died with it.
+        persisted.removeTag(HUNGER);
         NBTTagList things = player.inventory.writeToNBT(new NBTTagList());
         if (things.tagCount() == 0) {
             return;

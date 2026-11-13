@@ -44,8 +44,23 @@ quando um clique é golpe.
 | | Peça | Estado |
 |---|---|---|
 | M1 | **O modo em si:** Ctrl+R, a barra some, a mão fica vazia, nada do inventário pode ser usado, movido, largado ou pego, sem quebrar bloco nem ataque do Minecraft, e morrer no modo não perde nada. O servidor decide | feito em 2026-11-13 (`VISUAL.md`, "Modo Feiticeiro") |
-| M2 | **O rodapé:** as quatro casas de habilidade com ícone, tecla (1 a 4) e recarga, no lugar da barra | a fazer |
+| M2 | **O rodapé:** a barra de vida própria (sem fome nem experiência, pedido do dono) e as quatro casas de habilidade com ícone, tecla (1 a 4) e recarga | feito em 2026-11-13 (`VISUAL.md`, "O rodapé") |
 | M3 | **A quarta casa conjura o domínio**, no lugar do comando `/ryoiki expandir` | a fazer |
+
+### As habilidades: proposta do agente, a aprovar pelo dono
+
+O dono pediu a proposta em 2026-11-13. São desenho próprio, com a ideia de cada técnica, e reaproveitam os efeitos
+que já existem (os cortes, os riscos, os feixes). Os ícones do rodapé já são os destas. Nada disto está feito.
+
+| | Vazio Estelar: domina o espaço | Santuário Carmesim: corta |
+|---|---|---|
+| 1 | **Atração.** Um ponto azul na mira, a até 8 blocos, puxa para si quem estiver a 4 blocos dele por 1 s: junta os alvos e os tira do lugar. Abre a luta. Recarga 8 s | **Talho.** Uma lâmina que não se vê voa em linha reta por até 12 blocos, corta o primeiro que encontrar e deixa a cicatriz no chão. O golpe de longe. Recarga 5 s |
+| 2 | **Repulsão.** Um estouro vermelho a partir da mão arremessa para longe quem estiver num cone curto à frente. Em quem foi puxado pela Atração há menos de 2 s, os dois se somam num **colapso** roxo, que arremessa o dobro. Recarga 10 s | **Retalhar.** De perto (3 blocos), uma rajada de cortes cruzados no alvo à frente: quanto mais perto, mais cortes acertam (de 3 a 6). O golpe de perto. Recarga 9 s |
+| 3 | **Passo do Vazio.** Some e reaparece até 7 blocos adiante (ou atrás do alvo na mira), deixando rastros; por um instante nada o acerta. Para chegar e para sair. Recarga 6 s | **Rede de Cortes.** Marca um quadrado de 5 blocos no chão à frente; 1 s depois a área é retalhada por 2 s. Quem ficar apanha, quem está fora pensa antes de entrar. Para negar terreno. Recarga 14 s |
+| 4 | **Expansão de Domínio: Vazio Estelar** | **Expansão de Domínio: Santuário Carmesim** |
+
+O Vazio é controle (puxar, afastar, reposicionar) e o Santuário é agressão (longe, perto, área), para os dois
+jogarem diferente. Para fazê-las faltam as mesmas decisões de baixo (quem pode ser atingido e quanto dano).
 
 Decisões que o dono ainda não tomou (perguntadas em 2026-11-13): quem pode ser golpeado fora do choque (o agente
 recomenda só quem também está no modo, respeitando PvP e proteção de terreno); se os golpes dão dano fora do choque

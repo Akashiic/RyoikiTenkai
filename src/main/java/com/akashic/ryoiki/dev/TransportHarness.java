@@ -659,13 +659,25 @@ public final class TransportHarness {
             case "slot":
                 mc.thePlayer.inventory.currentItem = Integer.parseInt(rest);
                 break;
+            case "cool": {
+                // "cool 4 200 200": a recharge of a technique as the server would announce it (slot, total, left).
+                String[] n = rest.split(" ");
+                com.akashic.ryoiki.client.SorcererClient.INSTANCE
+                    .recharge(Integer.parseInt(n[0]) - 1, Integer.parseInt(n[1]), Integer.parseInt(n[2]));
+                break;
+            }
+            case "press":
+                com.akashic.ryoiki.client.SorcererClient.INSTANCE.press(Integer.parseInt(rest) - 1);
+                break;
             case "drop":
                 // The drop key, as the game sends it: the server is asked to toss the item in the hand.
                 mc.thePlayer.dropOneItem(false);
                 break;
             case "use":
                 // The use button with the item in the hand, as the game sends it.
-                mc.playerController.sendUseItem(mc.thePlayer, mc.theWorld, mc.thePlayer.inventory.getCurrentItem());
+                if (mc.thePlayer.inventory.getCurrentItem() != null) {
+                    mc.playerController.sendUseItem(mc.thePlayer, mc.theWorld, mc.thePlayer.inventory.getCurrentItem());
+                }
                 break;
             case "attack": {
                 // The game's own strike at the nearest other player, as the game sends it.
@@ -723,7 +735,7 @@ public final class TransportHarness {
                 }
                 report(
                     String.format(
-                        "inv mode %s%s%s, slot %d, hand shows %s, health %.0f, armor %d, things: %s| %s| chat: %s",
+                        "inv mode %s%s%s, slot %d, hand shows %s, health %.0f, food %d, armor %d, things: %s| %s| chat: %s",
                         com.akashic.ryoiki.client.SorcererClient.INSTANCE.on() ? "sorcerer" : "normal",
                         mc.thePlayer.isSwingInProgress ? " swinging" : "",
                         Boolean.TRUE.equals(
@@ -735,6 +747,8 @@ public final class TransportHarness {
                         inv.currentItem,
                         hand == null ? "nothing" : hand.getUnlocalizedName(),
                         mc.thePlayer.getHealth(),
+                        mc.thePlayer.getFoodStats()
+                            .getFoodLevel(),
                         armor,
                         things,
                         modes,

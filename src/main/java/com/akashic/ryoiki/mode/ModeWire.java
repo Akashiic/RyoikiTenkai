@@ -15,6 +15,18 @@ public final class ModeWire {
     /** Server to client: what you asked was not done, and why ({@link ModeRules}). */
     public static final byte REFUSED = 3;
 
+    /** Server to client: your technique, the domain it ends in ({@code 0} none, else the domain's number plus one). */
+    public static final byte TECHNIQUE = 4;
+    /**
+     * Server to client: one of your four techniques is recharging: for {@code total} ticks, {@code left} of them left.
+     */
+    public static final byte COOLDOWN = 5;
+
+    /** The techniques of the mode: three and the domain expansion, numbered from 1. */
+    public static final int SLOTS = 4;
+    /** No recharge is longer than an hour. */
+    public static final int LONGEST = 72000;
+
     /** One decoded message; which fields are set depends on {@link #op}. */
     public static final class Message {
 
@@ -25,6 +37,12 @@ public final class ModeWire {
         public int entity;
         /** REFUSED. */
         public int reason;
+        /** TECHNIQUE: 0 for none, else the number of the domain plus one. */
+        public int technique;
+        /** COOLDOWN: which technique (1 to {@link #SLOTS}), and its recharge in ticks. */
+        public int slot;
+        public int total;
+        public int left;
     }
 
     private ModeWire() {}
@@ -42,6 +60,19 @@ public final class ModeWire {
         return new byte[] { REFUSED, (byte) reason };
     }
 
+    public static byte[] technique(int technique) {
+        return new byte[] { TECHNIQUE, (byte) technique };
+    }
+
+    public static byte[] cooldown(int slot, int total, int left) {
+        return new byte[] { COOLDOWN, (byte) slot, (byte) (total >>> 24), (byte) (total >>> 16), (byte) (total >>> 8),
+            (byte) total, (byte) (left >>> 24), (byte) (left >>> 16), (byte) (left >>> 8), (byte) left };
+    }
+
+    private static int number(byte[] data, int at) {
+        return (data[at] & 0xFF) << 24 | (data[at + 1] & 0xFF) << 16 | (data[at + 2] & 0xFF) << 8 | data[at + 3] & 0xFF;
+    }
+
     /** The message in these bytes, or null if they are not one: whatever a client sends is not to be trusted. */
     public static Message decode(byte[] data) {
         if (data == null || data.length == 0) {
@@ -54,13 +85,25 @@ public final class ModeWire {
             return m;
         }
         if (m.op == STATE && data.length == 6 && (data[5] == 0 || data[5] == 1)) {
-            m.entity = (data[1] & 0xFF) << 24 | (data[2] & 0xFF) << 16 | (data[3] & 0xFF) << 8 | data[4] & 0xFF;
+            m.entity = number(data, 1);
             m.on = data[5] == 1;
             return m;
         }
         if (m.op == REFUSED && data.length == 2) {
             m.reason = data[1];
             return m;
+        }
+        if (m.op == TECHNIQUE && data.length == 2 && data[1] >= 0) {
+            m.technique = data[1];
+            return m;
+        }
+        if (m.op == COOLDOWN && data.length == 10) {
+            m.slot = data[1];
+            m.total = number(data, 2);
+            m.left = number(data, 6);
+            if (m.slot >= 1 && m.slot <= SLOTS && m.left >= 0 && m.left <= m.total && m.total <= LONGEST) {
+                return m;
+            }
         }
         return null;
     }

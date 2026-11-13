@@ -28,6 +28,21 @@ class ModeWireTest {
         m = ModeWire.decode(ModeWire.refused(ModeRules.DOMAIN));
         assertEquals(ModeWire.REFUSED, m.op);
         assertEquals(ModeRules.DOMAIN, m.reason);
+
+        for (int technique = 0; technique <= 2; technique++) {
+            m = ModeWire.decode(ModeWire.technique(technique));
+            assertEquals(ModeWire.TECHNIQUE, m.op);
+            assertEquals(technique, m.technique);
+        }
+
+        m = ModeWire.decode(ModeWire.cooldown(4, 1200, 1187));
+        assertEquals(ModeWire.COOLDOWN, m.op);
+        assertEquals(4, m.slot);
+        assertEquals(1200, m.total);
+        assertEquals(1187, m.left);
+        // Ready again: nothing left of nothing.
+        m = ModeWire.decode(ModeWire.cooldown(1, 0, 0));
+        assertEquals(0, m.total);
     }
 
     @Test
@@ -41,6 +56,13 @@ class ModeWireTest {
         assertNull(ModeWire.decode(new byte[] { ModeWire.STATE, 0, 0, 0, 1 }));
         assertNull(ModeWire.decode(new byte[] { ModeWire.STATE, 0, 0, 0, 1, 7 }));
         assertNull(ModeWire.decode(new byte[] { 99, 1 }));
+        assertNull(ModeWire.decode(new byte[] { ModeWire.TECHNIQUE, -1 }));
+        // A recharge of a technique there is not, with more left than it lasts, or longer than any is.
+        assertNull(ModeWire.decode(ModeWire.cooldown(0, 100, 50)));
+        assertNull(ModeWire.decode(ModeWire.cooldown(5, 100, 50)));
+        assertNull(ModeWire.decode(ModeWire.cooldown(2, 100, 101)));
+        assertNull(ModeWire.decode(ModeWire.cooldown(2, 100, -1)));
+        assertNull(ModeWire.decode(ModeWire.cooldown(2, ModeWire.LONGEST + 1, 5)));
         assertNotNull(ModeWire.decode(new byte[] { ModeWire.ASK, 0 }));
     }
 }

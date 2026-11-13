@@ -15,6 +15,7 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.EnumChatFormatting;
+import net.minecraftforge.client.GuiIngameForge;
 import net.minecraftforge.client.event.MouseEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.client.event.RenderPlayerEvent;
@@ -22,6 +23,7 @@ import net.minecraftforge.common.MinecraftForge;
 
 import org.lwjgl.input.Keyboard;
 
+import com.akashic.ryoiki.DomainType;
 import com.akashic.ryoiki.mode.ModeRules;
 import com.akashic.ryoiki.mode.ModeWire;
 import com.akashic.ryoiki.mode.SorcererMode;
@@ -69,6 +71,19 @@ public final class SorcererClient {
     private int askedAt = -1000;
     /** The tick this player's mode last changed, for the HUD's coming and going. */
     private int changedAt = -1000;
+    /** This player's technique, as the server has it: the domain its four techniques belong to, or null. */
+    private DomainType technique;
+    /** For each of the four techniques: how long its recharge is, and the tick of this client it ends at. */
+    private final int[] rechargeTotal = new int[ModeWire.SLOTS];
+    private final int[] rechargeEnds = new int[ModeWire.SLOTS];
+    /** The tick each technique's key was last pressed, for the answer of its place on the screen. */
+    private final int[] pressedAt = { -1000, -1000, -1000, -1000 };
+    /** Life as the bar shows it: where it is, where it was before the last blows, and when it last fell. */
+    private float life = 1;
+    private float lifeBefore = 1;
+    private float lifeWas = 1;
+    private float lifeWasBefore = 1;
+    private int hurtAt = -1000;
     /** The item taken out of each player's hand while it is drawn, and the slot it goes back to. */
     private final Map<EntityPlayer, Object[]> hidden = new IdentityHashMap<>();
 
@@ -98,6 +113,80 @@ public final class SorcererClient {
     /** Ticks since this player's mode changed, for what comes and goes with it. */
     float sinceChange(float partialTicks) {
         return ticks - changedAt + partialTicks;
+    }
+
+    DomainType technique() {
+        return technique;
+    }
+
+    /**
+     * Whether one of the four techniques (from 0) can be used at all. For now none of the first three exists, and
+     * the fourth, the domain expansion, belongs to whoever has a technique.
+     */
+    boolean has(int slot) {
+        return slot == ModeWire.SLOTS - 1 && technique != null;
+    }
+
+    /** For the development harness: a key of a technique, as if pressed. */
+    public void press(int slot) {
+        pressedAt[slot] = ticks;
+    }
+
+    /** How much of a technique's recharge is left, from 1 (just used) to 0 (ready). */
+    float recharge(int slot, float partialTicks) {
+        float left = rechargeEnds[slot] - ticks - partialTicks;
+        return rechargeTotal[slot] <= 0 || left <= 0 ? 0 : Math.min(1, left / rechargeTotal[slot]);
+    }
+
+    /** Seconds of a technique's recharge left, rounded up; 0 when ready. */
+    int rechargeSeconds(int slot) {
+        int left = rechargeEnds[slot] - ticks;
+        return rechargeTotal[slot] <= 0 || left <= 0 ? 0 : (left + 19) / 20;
+    }
+
+    /** Ticks since a technique's key was pressed. */
+    float sincePress(int slot, float partialTicks) {
+        return ticks - pressedAt[slot] + partialTicks;
+    }
+
+    /** Life as the bar shows it now, from 0 to 1, and what it was before the last blows (never less). */
+    float life(float partialTicks) {
+        return lifeBefore + (life - lifeBefore) * partialTicks;
+    }
+
+    float lifeWas(float partialTicks) {
+        return lifeWasBefore + (lifeWas - lifeWasBefore) * partialTicks;
+    }
+
+    float sinceHurt(float partialTicks) {
+        return ticks - hurtAt + partialTicks;
+    }
+
+    /** For the development harness: a recharge as the server would announce it. */
+    public void recharge(int slot, int total, int left) {
+        rechargeTotal[slot] = total;
+        rechargeEnds[slot] = ticks + left;
+    }
+
+    /** Ticks the bar waits after a blow before what was lost starts to go, and how fast it goes (per tick). */
+    private static final int LOSS_WAITS = 12;
+    private static final float LOSS_GOES = 0.02F;
+
+    private void followLife(Minecraft mc) {
+        float max = Math.max(1, mc.thePlayer.getMaxHealth());
+        float now = Math.max(0, Math.min(1, mc.thePlayer.getHealth() / max));
+        lifeBefore = life;
+        lifeWasBefore = lifeWas;
+        if (now < life - 0.001F) {
+            hurtAt = ticks;
+        }
+        // The bar itself goes to the life at once when it falls (a blow is a blow) and climbs to it when it rises.
+        life = now < life ? now : Math.min(now, life + 0.04F);
+        if (lifeWas < life) {
+            lifeWas = life;
+        } else if (ticks - hurtAt > LOSS_WAITS) {
+            lifeWas = Math.max(life, lifeWas - LOSS_GOES);
+        }
     }
 
     /** The key as the player has it, for the screen: "Ctrl+R". */
@@ -143,6 +232,8 @@ public final class SorcererClient {
             hidden.clear();
             heard.clear();
             changedAt = -1000;
+            technique = null;
+            java.util.Arrays.fill(rechargeTotal, 0);
             return;
         }
         for (byte[] data = heard.poll(); data != null; data = heard.poll()) {
@@ -155,12 +246,20 @@ public final class SorcererClient {
                     if (on != m.on) {
                         on = m.on;
                         changedAt = ticks;
+                        // The bar opens on the life as it is: nothing was lost in front of it.
+                        life = lifeWas = Math
+                            .max(0, Math.min(1, mc.thePlayer.getHealth() / Math.max(1, mc.thePlayer.getMaxHealth())));
                     }
                 } else if (m.on) {
                     others.add(m.entity);
                 } else {
                     others.remove(m.entity);
                 }
+            } else if (m.op == ModeWire.TECHNIQUE) {
+                DomainType[] all = DomainType.values();
+                technique = m.technique >= 1 && m.technique <= all.length ? all[m.technique - 1] : null;
+            } else if (m.op == ModeWire.COOLDOWN) {
+                recharge(m.slot - 1, m.total, m.left);
             } else if (m.op == ModeWire.REFUSED) {
                 String words = ModeRules.key(m.reason);
                 if (words != null) {
@@ -171,6 +270,7 @@ public final class SorcererClient {
                 }
             }
         }
+        followLife(mc);
         if (on) {
             release(mc);
         }
@@ -201,10 +301,17 @@ public final class SorcererClient {
         if (!on) {
             return;
         }
-        // The keys of the inventory do nothing: the presses are taken before the game looks for them.
+        // The keys of the inventory do nothing: the presses are taken before the game looks for them. The first
+        // four are the keys of the four techniques now.
         GameSettings keys = mc.gameSettings;
-        for (KeyBinding slot : keys.keyBindsHotbar) {
-            drain(slot);
+        for (int i = 0; i < keys.keyBindsHotbar.length; i++) {
+            boolean pressed = false;
+            while (keys.keyBindsHotbar[i].isPressed()) {
+                pressed = true;
+            }
+            if (pressed && i < ModeWire.SLOTS) {
+                pressedAt[i] = ticks;
+            }
         }
         drain(keys.keyBindInventory);
         drain(keys.keyBindDrop);
@@ -260,11 +367,53 @@ public final class SorcererClient {
 
     // What is seen.
 
+    /**
+     * In the mode the foot of the screen is the mode's own ({@link ModeHud}): the hotbar, the hearts, the armour, the
+     * hunger and the experience are not drawn. What the game still draws there (the air under water, a mount's
+     * hearts) goes above it.
+     */
     @SubscribeEvent
     public void onOverlayBefore(RenderGameOverlayEvent.Pre event) {
-        if (on && event.type == RenderGameOverlayEvent.ElementType.HOTBAR) {
-            event.setCanceled(true);
+        if (!on) {
+            return;
         }
+        switch (event.type) {
+            case HOTBAR:
+            case HEALTH:
+            case ARMOR:
+            case FOOD:
+            case EXPERIENCE:
+            case JUMPBAR:
+                event.setCanceled(true);
+                break;
+            case AIR:
+            case HEALTHMOUNT:
+                GuiIngameForge.left_height = Math.max(GuiIngameForge.left_height, ModeHud.HEIGHT + 10);
+                GuiIngameForge.right_height = Math.max(GuiIngameForge.right_height, ModeHud.HEIGHT + 10);
+                break;
+            default:
+                break;
+        }
+    }
+
+    /**
+     * The chat's last lines sit where the game's hearts are, over them: in the mode they go above the mode's own
+     * foot of the screen instead.
+     */
+    @SubscribeEvent
+    public void onChat(RenderGameOverlayEvent.Chat event) {
+        if (on) {
+            // The game draws the chat's lowest line 20 below this place.
+            event.posY = Math.min(
+                event.posY,
+                event.resolution.getScaledHeight() - 20 - Math.round(ModeHud.chatFloor(this, event.partialTicks)));
+        }
+    }
+
+    /** The keys of the four techniques as the player has them, for the screen. */
+    String slotKey(int slot) {
+        return GameSettings
+            .getKeyDisplayString(Minecraft.getMinecraft().gameSettings.keyBindsHotbar[slot].getKeyCode());
     }
 
     @SubscribeEvent
