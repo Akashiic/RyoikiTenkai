@@ -73,14 +73,15 @@ modelo, textura nem som no mod (os sons são arquivos do dono, ver "Som"). A are
 
   Antes disto cada corte era uma linha reta de 66 blocos atravessando a arena: lia como risco, não como corte.
 * **Riscos no ar** (`fx/ScratchField`, `ScratchFx`; pedido do dono em 2026-11-13): além dos cortes grandes, marcas
-  pequenas de lâmina **por toda parte no ar**: um risco **preto**, fino, pontudo nas duas extremidades, de 0,7 a 2,3
-  blocos, em qualquer ângulo, riscado em um tick, parado um instante e sumindo (5 ticks ao todo). "Só um efeito
-  básico", nas palavras dele, "o suficiente para poluir sutilmente a visão". O ar é tomado em células de 3 blocos
-  (três camadas a partir do chão); cada célula faz um risco a cada 21 ticks, no seu próprio momento, num lugar e
-  ângulo novos a cada vez, então a qualquer instante perto de um quarto das células tem um risco. Sai do número do
-  domínio, da célula e do tempo: todos veem os mesmos. Só as células a até 24 blocos da câmera são desenhadas, e
-  nenhum risco a menos de 1,6 bloco do olho. Um fio vermelho-claro num dos lados faz o preto aparecer também contra
-  o escuro.
+  pequenas de lâmina **por toda parte no ar**: um risco **preto com contorno branco brilhante**, fino, pontudo nas
+  duas extremidades, de 1,1 a 3 blocos, em qualquer ângulo, riscado em um tick, parado um instante e sumindo (5
+  ticks ao todo). "Só um efeito básico", nas palavras dele, o bastante para poluir a visão. O ar é tomado em células
+  de 3 blocos (três camadas a partir do chão); cada célula faz um risco a cada 14 ticks, no seu próprio momento,
+  num lugar e ângulo novos a cada vez, então a qualquer instante perto de um terço das células tem um risco. Sai do
+  número do domínio, da célula e do tempo: todos veem os mesmos. Só as células a até 24 blocos da câmera são
+  desenhadas, e nenhum risco a menos de 1,6 bloco do olho. O contorno é o mesmo traço em luz branca, um pouco mais
+  comprido e duas vezes mais largo, por baixo do preto, com um brilho mais largo e fraco por baixo dele. Na primeira
+  versão do contorno os riscos eram curtos e viravam losangos; foram alongados para manter a proporção de um traço.
 
 ## Choque de Domínios (`ClashHud`, `ClientDomain#shown`)
 

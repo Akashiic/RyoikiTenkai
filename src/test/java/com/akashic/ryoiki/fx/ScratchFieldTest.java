@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 class ScratchFieldTest {
 
     @Test
-    void aFifthOfTheCellsAreMarkedAtAnyMomentAndNeverAllOrNone() {
+    void aSteadyShareOfTheCellsIsMarkedAtAnyMoment() {
         ScratchField.Scratch s = new ScratchField.Scratch();
         for (float time = 0; time < 200; time += 13.7F) {
             int marked = 0;
@@ -47,7 +47,7 @@ class ScratchFieldTest {
                         }
                         seen++;
                         double length = Math.sqrt(sq(s.toX - s.fromX) + sq(s.toY - s.fromY) + sq(s.toZ - s.fromZ));
-                        assertTrue(length >= 0.7 - 1e-3 && length <= 2.3 + 1e-3, "length " + length);
+                        assertTrue(length >= 1.1 - 1e-3 && length <= 3.0 + 1e-3, "length " + length);
                         longest = (float) Math.max(longest, length);
                         assertTrue(s.fromY >= 0.25F - 1e-3F && s.toY >= 0.25F - 1e-3F);
                         // Its middle is in its cell, across the floor.
@@ -60,7 +60,7 @@ class ScratchFieldTest {
                 }
             }
         }
-        assertTrue(seen > 2000 && longest > 1.8F, seen + " marks, the longest " + longest);
+        assertTrue(seen > 2000 && longest > 2.6F, seen + " marks, the longest " + longest);
     }
 
     @Test

@@ -13,7 +13,7 @@ package com.akashic.ryoiki.fx;
 public final class ScratchField {
 
     public static final float CELL = 3;
-    public static final int PERIOD = 21;
+    public static final int PERIOD = 14;
     /** Ticks a mark is there. */
     public static final float LIFE = 5;
     /** Ticks the blade takes to draw it. */
@@ -21,8 +21,8 @@ public final class ScratchField {
     /** Cells upward from the floor that have marks. */
     public static final int LAYERS = 3;
 
-    private static final float MIN_LENGTH = 0.7F;
-    private static final float MAX_LENGTH = 2.3F;
+    private static final float MIN_LENGTH = 1.1F;
+    private static final float MAX_LENGTH = 3.0F;
 
     /** One mark: a straight stroke from one point to another, relative to the arena's centre. */
     public static final class Scratch {
@@ -61,7 +61,7 @@ public final class ScratchField {
             return false;
         }
         long h = mix(cell + turn * 0x632BE59BD9B4E019L);
-        float length = MIN_LENGTH + (MAX_LENGTH - MIN_LENGTH) * unit(h >>> 12) * unit(h >>> 20);
+        float length = MIN_LENGTH + (MAX_LENGTH - MIN_LENGTH) * unit(h >>> 12);
         // Any way round, and as often steep as level: a blade comes from anywhere.
         double around = unit(h >>> 28) * Math.PI * 2;
         double steep = (unit(h >>> 36) - 0.5) * Math.PI * 0.9;

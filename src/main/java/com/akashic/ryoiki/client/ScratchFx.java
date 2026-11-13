@@ -8,14 +8,17 @@ import com.akashic.ryoiki.fx.ScratchField;
 
 /**
  * The small cuts in the air of the crimson shrine ({@link ScratchField}), drawn: a black stroke, thin, widest in its
- * middle and pointed at both ends, turned to face the eye, with a hair of pale red along one side so that it shows
- * against the dark as well as against the light. Only the cells about the camera are drawn: further off a stroke
+ * middle and pointed at both ends, turned to face the eye, with a bright white outline all round it and a glow of
+ * the same light about that: black on white shows against anything. Only the cells about the camera are drawn: further
+ * off a stroke
  * this thin is nothing.
  */
 final class ScratchFx {
 
     private static final int BLACK = 0x000000;
-    private static final int RIM = 0xFF7A68;
+    private static final int WHITE = 0xFFFFFF;
+    /** How far past each end of the stroke its outline reaches, for the stroke's length. */
+    private static final float OVER = 0.07F;
     /** Blocks from the camera that marks are drawn to, and the nearest one may be: nearer is a bar across the eye. */
     private static final float FAR = 24;
     private static final float NEAR = 1.6F;
@@ -34,12 +37,12 @@ final class ScratchFx {
         int cz = (int) Math.floor(camZ / ScratchField.CELL);
         float inside = (radius - 1.5F) * (radius - 1.5F);
         GL11.glDepthMask(false);
-        // Black is laid over what is there; the rim is light, added.
+        // The outlines first, in light, added; then the black strokes, laid over them.
         for (int pass = 0; pass < 2; pass++) {
             if (pass == 0) {
-                Draw.translucent();
-            } else {
                 Draw.additive();
+            } else {
+                Draw.translucent();
             }
             t.startDrawingQuads();
             for (int x = cx - reach; x <= cx + reach; x++) {
@@ -51,7 +54,7 @@ final class ScratchFx {
                     }
                     for (int y = 0; y < ScratchField.LAYERS; y++) {
                         if (ScratchField.at(seed, x, y, z, time, SCRATCH)) {
-                            stroke(t, pass == 1, camX, camY, camZ);
+                            stroke(t, pass == 0, camX, camY, camZ);
                         }
                     }
                 }
@@ -95,25 +98,58 @@ final class ScratchFx {
             return;
         }
         // Thin, but never thinner than the eye can see at its distance; and fainter toward the far end of sight.
-        double width = Math.max(WIDTH, distance * 0.0032) / length;
+        double width = Math.max(WIDTH, distance * 0.0016) / length;
         wx *= width;
         wy *= width;
         wz *= width;
         float fade = shown * Draw.clamp01((FAR - (float) distance) / 6F);
         if (rim) {
-            // A hair of light along one side, half as wide again: two slivers, from each end to the middle.
-            for (int end = 0; end < 2; end++) {
-                Draw.color(t, RIM, 0);
-                t.addVertex(end == 0 ? ax : bx, end == 0 ? ay : by, end == 0 ? az : bz);
-                Draw.color(t, RIM, 0.32F * fade);
-                t.addVertex(mx + wx, my + wy, mz + wz);
-                t.addVertex(mx + wx * 1.5, my + wy * 1.5, mz + wz * 1.5);
-                t.addVertex(mx + wx * 1.5, my + wy * 1.5, mz + wz * 1.5);
-            }
+            // The outline: the same sliver in white light, a little longer and a good deal wider, under the black;
+            // and a wider, fainter one under that, its glow.
+            double ex = dx * OVER;
+            double ey = dy * OVER;
+            double ez = dz * OVER;
+            sliver(
+                t,
+                ax - ex,
+                ay - ey,
+                az - ez,
+                bx + ex,
+                by + ey,
+                bz + ez,
+                mx,
+                my,
+                mz,
+                wx * 4.2,
+                wy * 4.2,
+                wz * 4.2,
+                WHITE,
+                0.2F * fade);
+            sliver(
+                t,
+                ax - ex,
+                ay - ey,
+                az - ez,
+                bx + ex,
+                by + ey,
+                bz + ez,
+                mx,
+                my,
+                mz,
+                wx * 2.1,
+                wy * 2.1,
+                wz * 2.1,
+                WHITE,
+                0.95F * fade);
             return;
         }
-        // A sliver: pointed at both ends, widest in the middle.
-        Draw.color(t, BLACK, 0.92F * fade);
+        sliver(t, ax, ay, az, bx, by, bz, mx, my, mz, wx, wy, wz, BLACK, 0.95F * fade);
+    }
+
+    /** A sliver from one point to another: pointed at both ends, widest in the middle. */
+    private static void sliver(Tessellator t, double ax, double ay, double az, double bx, double by, double bz,
+        double mx, double my, double mz, double wx, double wy, double wz, int color, float alpha) {
+        Draw.color(t, color, alpha);
         t.addVertex(ax, ay, az);
         t.addVertex(mx + wx, my + wy, mz + wz);
         t.addVertex(bx, by, bz);
