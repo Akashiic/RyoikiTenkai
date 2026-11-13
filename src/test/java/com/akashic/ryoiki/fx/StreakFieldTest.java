@@ -30,6 +30,19 @@ class StreakFieldTest {
     }
 
     @Test
+    void theRushSummedIsWhatItAddsUpTo() {
+        assertEquals(0, StreakField.rushed(0));
+        assertEquals(10, StreakField.rushed(10));
+        float sum = 0;
+        for (float t = 0; t < 70; t += 0.01F) {
+            sum += StreakField.rush(t) * 0.01F;
+            assertEquals(sum, StreakField.rushed(t + 0.01F), 0.05F, "at " + t);
+        }
+        // After the opening it grows no more.
+        assertEquals(StreakField.rushed(StreakField.OPENING), StreakField.rushed(300));
+    }
+
+    @Test
     void everyStreakFliesStraightOutOfTheFocusAtTheSpeedItWasSentWith() {
         StreakField.Streak a = new StreakField.Streak();
         StreakField.Streak b = new StreakField.Streak();

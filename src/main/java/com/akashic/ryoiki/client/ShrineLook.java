@@ -36,7 +36,7 @@ final class ShrineLook implements DomainLook {
     }
 
     @Override
-    public float[] backdrop() {
+    public float[] backdrop(float time) {
         return new float[] { 0x000000, 0x4A050B, 0x000000, 0.42F };
     }
 

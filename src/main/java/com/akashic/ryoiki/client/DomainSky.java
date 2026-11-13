@@ -136,9 +136,9 @@ final class DomainSky extends IRenderHandler {
         Draw.spheres(
             radius,
             Scene.look(domain, 0)
-                .backdrop(),
+                .backdrop(time),
             Scene.look(domain, 1)
-                .backdrop(),
+                .backdrop(time),
             (dx, dy, dz) -> {
                 float before = Frontier
                     .before(line, (float) (cam[0] + dx * radius), (float) (cam[1] + dz * radius) - seam);

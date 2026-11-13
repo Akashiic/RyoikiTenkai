@@ -73,6 +73,23 @@ public final class StreakField {
         return left * left;
     }
 
+    /**
+     * The rush so far, summed: ticks' worth of full rush since the domain opened. What turns with the rush (the
+     * void's sky) has turned by this much.
+     */
+    public static float rushed(float time) {
+        float half = OPENING / 2;
+        if (time <= 0) {
+            return 0;
+        }
+        if (time <= half) {
+            return time;
+        }
+        // Past the half the rush is the square of what is left, twice over: its sum is a cube.
+        float left = Math.max(0, 1 - time / OPENING) * 2;
+        return half + OPENING / 6 * (1 - left * left * left);
+    }
+
     /** The number of the latest moment at which a lane may have sent a streak, at this time. */
     public static int moment(float time) {
         return (int) Math.floor(time * SLOTS / PERIOD);

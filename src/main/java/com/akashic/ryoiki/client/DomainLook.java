@@ -11,8 +11,11 @@ interface DomainLook {
      */
     void sky(float radius, float time);
 
-    /** The sky's ground colours, as {@link Draw#sphere} takes them: top, horizon, below, and the band's power. */
-    float[] backdrop();
+    /**
+     * The sky's ground colours at a time, as {@link Draw#sphere} takes them: top, horizon, below, and the band's
+     * power.
+     */
+    float[] backdrop(float time);
 
     /** What is in the sky over its ground colours, with the camera at the origin: its lights, and their reflection. */
     void skyFeatures(float radius, float time);
