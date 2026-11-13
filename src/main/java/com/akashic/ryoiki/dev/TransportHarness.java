@@ -519,6 +519,17 @@ public final class TransportHarness {
     private int filmLeft;
     private int[] digAt;
     private int digIn;
+    private final java.util.Set<net.minecraft.client.settings.KeyBinding> heldKeys = new java.util.HashSet<>();
+
+    private void held(net.minecraft.client.settings.KeyBinding key, boolean down) {
+        if (down) {
+            heldKeys.add(key);
+        } else {
+            heldKeys.remove(key);
+            net.minecraft.client.settings.KeyBinding.setKeyBindState(key.getKeyCode(), false);
+        }
+    }
+
     private float walkStrafe;
     private float walkForward;
     private int heldBlow;
@@ -567,6 +578,9 @@ public final class TransportHarness {
             report(
                 "dig: the block under the feet is " + mc.theWorld.getBlock(digAt[0], digAt[1], digAt[2])
                     .getUnlocalizedName());
+        }
+        for (net.minecraft.client.settings.KeyBinding key : heldKeys) {
+            net.minecraft.client.settings.KeyBinding.setKeyBindState(key.getKeyCode(), true);
         }
         net.minecraft.client.settings.KeyBinding
             .setKeyBindState(mc.gameSettings.keyBindForward.getKeyCode(), walkForward > 0);
@@ -629,7 +643,23 @@ public final class TransportHarness {
                 // "turn 1 2.5": the first blow, two and a half ticks in. "turn guard". "turn on": the bones file.
                 turnPose = null;
                 turnBones = com.akashic.ryoiki.fx.BlowPose.BONES;
-                if (rest.startsWith("cast ")) {
+                if (rest.startsWith("gait ")) {
+                    // "turn gait 1 0.25 0": the stride of the mode: how much sprint, where in the stride, which way
+                    // (degrees). "turn gait air 0.42": in the air, rising that fast. "turn gait stand".
+                    String[] at = rest.split(" ");
+                    com.akashic.ryoiki.fx.Gait.State state = new com.akashic.ryoiki.fx.Gait.State();
+                    if ("air".equals(at[1])) {
+                        state.moving = 1;
+                        state.air = 1;
+                        state.rising = Float.parseFloat(at[2]);
+                    } else if (!"stand".equals(at[1])) {
+                        state.moving = 1;
+                        state.sprint = Float.parseFloat(at[1]);
+                        state.phase = Float.parseFloat(at[2]);
+                        state.heading = at.length > 3 ? Float.parseFloat(at[3]) : 0;
+                    }
+                    turnPose = com.akashic.ryoiki.fx.Gait.sample(state);
+                } else if (rest.startsWith("cast ")) {
                     // "turn cast 1 6": the gesture of a technique (1 the pull, 2 the cut), six ticks in.
                     String[] at = rest.split(" ");
                     turnBones = com.akashic.ryoiki.fx.CastPose.BONES;
@@ -763,6 +793,17 @@ public final class TransportHarness {
                         lastChat(mc)));
                 break;
             }
+            case "gait":
+                // "gait off": the models move as they do without the mode, to compare.
+                com.akashic.ryoiki.client.Stride.enabled = !"off".equals(rest);
+                break;
+            case "sprint":
+                held(mc.gameSettings.keyBindSprint, "on".equals(rest));
+                break;
+            case "jump":
+                // "jump on": the jump key held, until "jump off".
+                held(mc.gameSettings.keyBindJump, "on".equals(rest));
+                break;
             case "walk":
                 // "walk 0 -1": hold the keys for strafe and forward (here: backward), until "walk 0 0".
                 String[] way = rest.split(" ");

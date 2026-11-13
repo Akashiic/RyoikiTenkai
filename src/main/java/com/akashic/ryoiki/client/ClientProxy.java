@@ -36,6 +36,9 @@ public final class ClientProxy extends CommonProxy {
             .bus()
             .register(AbilityFx.INSTANCE);
         MinecraftForge.EVENT_BUS.register(AbilityFx.INSTANCE);
+        FMLCommonHandler.instance()
+            .bus()
+            .register(Stride.INSTANCE);
         // Development only, never in the release jar: -Dryoiki.devHarness=true and a "ryoiki-harness" file.
         if (Boolean.getBoolean("ryoiki.devHarness")
             && new File(Minecraft.getMinecraft().mcDataDir, "ryoiki-harness").isFile()) {

@@ -388,6 +388,39 @@ bonita, sem fome e sem barra de experiência**.
 * **O que ainda não faz:** as teclas 1 a 3 só fazem a casa responder: as habilidades são **propostas**
   (`PLANO-COMBATE.md`) que o dono ainda vai aprovar, e os ícones delas também.
 
+### Parar, correr e pular no modo (`fx/Gait`, `client/Stride`, `client/PlayerPoses`, 2026-11-13)
+
+Pedido do dono junto com a habilidade 1: "melhore a animação de andar, correr, pular no modo". No modo o corpo do
+modelo (Futura3D) deixa de usar a animação do próprio modelo para os 13 ossos do corpo e passa a ser posado por um
+**modelo da passada**, lógica pura com teste, como os golpes.
+
+![A passada](img/modo-passada.png)
+
+* **O andar do jogo já é uma corrida** (mais de 4 blocos por segundo, com pernas de três quartos de bloco), então
+  as duas marchas são corridas, com os dois pés fora do chão entre os passos:
+  * **Trote** (o andar do jogo): corpo quase reto, braços dobrados balançando contra as pernas, joelho subindo
+    pouco. Uma passada completa cobre 2,3 blocos.
+  * **Disparada** (o correr do jogo): corpo inclinado 21 graus, passada mais longa (2,7 blocos), calcanhar
+    subindo atrás e joelho alto na frente, e os **braços deitados para trás** ao longo do corpo.
+* **Como a passada é feita:** cada perna fica no chão uma parte do ciclo, indo para trás sob o quadril na velocidade
+  do chão, e o resto no ar, dobrando para vir à frente; as duas ficam a meio ciclo uma da outra. O quadril gira
+  com a perna da frente, o peito contra o quadril, os braços contra as pernas, e a cabeça desfaz tudo isso para
+  ficar nivelada e olhando o caminho. O pé no chão fica com a sola nivelada. A passada avança pela **distância
+  percorrida**, não pelo tempo, e para no ar.
+* **De lado e de costas:** a passada encurta e, de lado, as pernas abrem e fecham em vez de ir e vir.
+* **Parado:** uma postura de prontidão, um pé à frente, mãos baixas na frente do corpo, respirando.
+* **Pulo:** subindo, um joelho vai alto (a perna que vinha à frente), a outra perna fica para trás e os braços vão
+  para trás; descendo, as pernas se abrem sob o corpo e os braços saem para os lados; ao tocar o chão o peito cede
+  para a frente e volta.
+* **Camadas:** por cima disso entram a guarda e os golpes do choque (correndo, as pernas continuam correndo; os
+  dois de um choque mantêm os braços em guarda entre os golpes) e o gesto de uma habilidade.
+* **Quando o modo não posa:** agachado, na água, numa escada, montado, dormindo ou voando; aí vale a animação do
+  próprio modelo.
+* **Limites:** só para modelos do Futura3D (a skin comum continua com a animação do jogo). O quadril não sobe nem
+  desce, porque a API do Futura3D só gira ossos: por isso a aterrissagem não dobra os joelhos e o pé "flutua" um
+  pouco no começo e no fim do apoio. Dar deslocamento de osso ao Futura3D resolveria (peça à parte, noutro
+  repositório). O modelo de teste tem mangas longas, que exageram os braços para trás.
+
 ### A tecla 1: Atração e Talho (2026-11-13)
 
 O dono aprovou as seis habilidades propostas (`PLANO-COMBATE.md`) e mandou fazer a primeira de cada técnica.
@@ -458,6 +491,7 @@ puro, sem plugin):
 | Talho a 9 blocos, e a 6 | vida de 20 para 15, jogado 3 a 4 blocos para trás; a cicatriz fica no chão |
 | As duas onde o WorldGuard nega PvP | "you can't PvP here" para quem usou; o alvo não leva dano nem se move |
 | As duas onde a região é `invincible` (o spawn da rede) | nada acontece ao alvo, sem aviso |
+| A passada no visor de quatro vistas (parado, trote, disparada, pulo) e filmada de lado e de trás | trote, disparada e pulo reconhecíveis; braços para trás e queda ajustados depois da primeira vista |
 | Gestos no visor de quatro vistas | mão à frente na altura do ombro e recolhida; mão acima do ombro oposto, e baixa do lado dela no fim |
 
 **A verificar:** a recarga do domínio depois de sair e voltar ao servidor (está nos dados do jogador, mas não foi

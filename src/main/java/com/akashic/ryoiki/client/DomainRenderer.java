@@ -20,7 +20,6 @@ import org.lwjgl.opengl.GL11;
 import com.akashic.ryoiki.DomainType;
 import com.akashic.ryoiki.RyoikiTenkai;
 import com.akashic.ryoiki.fx.BlowPose;
-import com.akashic.ryoiki.fx.CastPose;
 import com.akashic.ryoiki.fx.Frontier;
 import com.akashic.ryoiki.fx.StreakField;
 
@@ -367,23 +366,27 @@ public final class DomainRenderer {
         }
         ClientDomain.Blow blow = domain.blows.get(id);
         ClientDomain.Struck struck = domain.strucks.get(id);
+        float partial = event.partialRenderTick;
+        // The blow it gives, or its guard; and the blow it takes on top of that.
+        float[] fight = null;
+        float fightShows = 0;
         if (blow != null || struck != null) {
-            // The blow it gives, or its guard; and the blow it takes on top of that.
-            float partial = event.partialRenderTick;
-            float[] pose = blow != null ? blow.pose(partial) : BlowPose.guard();
-            float layer = blow != null ? blow.layer(partial) : 0;
+            fight = blow != null ? blow.pose(partial) : BlowPose.guard();
+            fightShows = blow != null ? blow.layer(partial) : 0;
             if (struck != null) {
-                pose = BlowPose.struck(pose, struck.age + partial, struck.side);
-                layer = Math.max(layer, struck.layer(partial));
+                fight = BlowPose.struck(fight, struck.age + partial, struck.side);
+                fightShows = Math.max(fightShows, struck.layer(partial));
             }
-            FuturaBridge.INSTANCE.pose(event.entityPlayer, BlowPose.BONES, pose, layer);
-            return;
         }
-        // The gesture of a technique of the sorcerer mode: the chest, the head and the arms; the legs go on.
+        // The gesture of a technique of the sorcerer mode: the chest, the head and the arms.
         float[][] gesture = new float[1][];
-        float shows = AbilityFx.INSTANCE.gesture(id, event.partialRenderTick, gesture);
-        if (shows > 0) {
-            FuturaBridge.INSTANCE.pose(event.entityPlayer, CastPose.BONES, gesture[0], shows);
+        float gestureShows = AbilityFx.INSTANCE.gesture(id, partial, gesture);
+        boolean fighter = domain.fused() && (domain.clashEntities[0] == id || domain.clashEntities[1] == id);
+        boolean signing = domain.rivalSign != null && domain.rivalSign.casterEntity == id
+            || domain.inside != null && domain.casterEntity == id && domain.age < HOLD_SIGN_TICKS;
+        // Under those, how the body stands, runs and jumps in the mode: unless its hands are making a domain's sign.
+        if ((fight != null || gestureShows > 0 || !signing)
+            && PlayerPoses.apply(event.entityPlayer, partial, fight, fightShows, fighter, gesture[0], gestureShows)) {
             return;
         }
         if (domain.rivalSign != null && domain.rivalSign.casterEntity == id) {

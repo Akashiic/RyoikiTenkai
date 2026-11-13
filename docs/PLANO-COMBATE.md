@@ -47,6 +47,10 @@ quando um clique é golpe.
 | M2 | **O rodapé:** a barra de vida própria (sem fome nem experiência, pedido do dono) e as quatro casas de habilidade com ícone, tecla (1 a 4) e recarga | feito em 2026-11-13 (`VISUAL.md`, "O rodapé") |
 | M3 | **A quarta casa conjura o domínio:** a tecla 4, no modo, expande o domínio da técnica do jogador, com **60 s de recarga** (decisão do dono) contados do sinal de mão. Responder ao domínio de outro pela tecla 4 abre o choque. O comando `/ryoiki expandir` continua, para a staff, sem recarga | feito em 2026-11-13 (`VISUAL.md`, "A tecla 4") |
 
+**Feito também em 2026-11-13, a pedido do dono:** parar, correr e pular no modo, por um modelo da passada
+(`VISUAL.md`, "Parar, correr e pular no modo"). Próximo passo possível: deslocamento de osso no Futura3D, para o
+quadril subir e descer (aterrissagem com joelhos dobrados).
+
 ### As habilidades: aprovadas pelo dono em 2026-11-13
 
 O agente propôs e o dono aprovou as seis. São desenho próprio, com a ideia de cada técnica. **Feitas: a 1 de cada
