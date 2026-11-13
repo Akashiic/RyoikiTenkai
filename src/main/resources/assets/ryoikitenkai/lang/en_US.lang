@@ -1,5 +1,5 @@
 tile.ryoikitenkai.veu.name=Domain Veil
-ryoikitenkai.comando.uso=/ryoiki expandir <vazio|santuario> [player] | /ryoiki encerrar | /ryoiki preparar
+ryoikitenkai.comando.uso=/ryoiki expandir <vazio|santuario> [player] | /ryoiki modo [player] | /ryoiki encerrar | /ryoiki preparar
 ryoikitenkai.comando.preparando=Arenas ready. Chunks around them still to empty: %s
 ryoikitenkai.erro.dentro=You are already in a domain.
 ryoikitenkai.erro.no_ar=You cannot expand a domain in the air.
@@ -11,3 +11,9 @@ ryoikitenkai.expansao=DOMAIN EXPANSION
 ryoikitenkai.dominio.vazio=STAR VOID
 ryoikitenkai.dominio.santuario=CRIMSON SHRINE
 ryoikitenkai.choque=DOMAIN CLASH
+ryoikitenkai.modo.desligado=The sorcerer mode is turned off on this server.
+ryoikitenkai.modo.dominio=You cannot change mode in the middle of a domain.
+ryoikitenkai.modo.nome=SORCERER MODE
+ryoikitenkai.modo.sair=%s to leave
+ryoikitenkai.tecla.modo=Sorcerer mode (holding Ctrl)
+ryoikitenkai.tecla.categoria=RyoikiTenkai

@@ -67,6 +67,7 @@ public final class TransportHarness {
     private boolean cold;
     /** On a real server: no access to the server's objects, everything goes through chat commands. */
     private boolean remote;
+    private boolean local;
     private String host;
     private int port;
     private int casts = 2;
@@ -143,6 +144,10 @@ public final class TransportHarness {
                     host = words[1];
                     port = Integer.parseInt(words[2]);
                 }
+                // "local": this client's own server, with no plugin and no other mod, driven by commands like a
+                // server is.
+                local = words[0].equals("local");
+                remote |= local;
             } catch (IOException | RuntimeException e) {
                 cold = false;
             }
@@ -158,7 +163,15 @@ public final class TransportHarness {
                     deltaY = 0;
                 }
             };
-            if (remote) {
+            if (local) {
+                step = Step.JOIN;
+                host = "this client";
+                mc.launchIntegratedServer(
+                    WORLD + "-local",
+                    WORLD + "-local",
+                    new WorldSettings(20261113L, WorldSettings.GameType.SURVIVAL, false, false, WorldType.FLAT)
+                        .enableCommands());
+            } else if (remote) {
                 step = Step.JOIN;
                 join(mc);
             } else {
@@ -637,6 +650,95 @@ public final class TransportHarness {
                 mc.playerController.clickBlock(bx, by, bz, 1);
                 digAt = new int[] { bx, by, bz };
                 digIn = 12;
+                break;
+            }
+            case "mode":
+                // What Ctrl+R does: asks the server for the other mode.
+                com.akashic.ryoiki.client.SorcererClient.INSTANCE.ask();
+                break;
+            case "slot":
+                mc.thePlayer.inventory.currentItem = Integer.parseInt(rest);
+                break;
+            case "drop":
+                // The drop key, as the game sends it: the server is asked to toss the item in the hand.
+                mc.thePlayer.dropOneItem(false);
+                break;
+            case "use":
+                // The use button with the item in the hand, as the game sends it.
+                mc.playerController.sendUseItem(mc.thePlayer, mc.theWorld, mc.thePlayer.inventory.getCurrentItem());
+                break;
+            case "attack": {
+                // The game's own strike at the nearest other player, as the game sends it.
+                net.minecraft.entity.player.EntityPlayer near = null;
+                for (Object o : mc.theWorld.playerEntities) {
+                    net.minecraft.entity.player.EntityPlayer p = (net.minecraft.entity.player.EntityPlayer) o;
+                    if (p != mc.thePlayer && (near == null
+                        || p.getDistanceToEntity(mc.thePlayer) < near.getDistanceToEntity(mc.thePlayer))) {
+                        near = p;
+                    }
+                }
+                if (near != null) {
+                    mc.playerController.attackEntity(mc.thePlayer, near);
+                }
+                break;
+            }
+            case "respawn":
+                mc.thePlayer.respawnPlayer();
+                mc.displayGuiScreen(null);
+                break;
+            case "inv": {
+                // The mode and the player's things as this client has them, and what its first-person hand shows.
+                net.minecraft.entity.player.InventoryPlayer inv = mc.thePlayer.inventory;
+                StringBuilder things = new StringBuilder();
+                for (int i = 0; i < inv.mainInventory.length; i++) {
+                    if (inv.mainInventory[i] != null) {
+                        things.append(i)
+                            .append('=')
+                            .append(inv.mainInventory[i].getUnlocalizedName())
+                            .append('x')
+                            .append(inv.mainInventory[i].stackSize)
+                            .append(' ');
+                    }
+                }
+                int armor = 0;
+                for (net.minecraft.item.ItemStack piece : inv.armorInventory) {
+                    armor += piece == null ? 0 : 1;
+                }
+                net.minecraft.item.ItemStack hand = cpw.mods.fml.relauncher.ReflectionHelper.getPrivateValue(
+                    net.minecraft.client.renderer.ItemRenderer.class,
+                    mc.entityRenderer.itemRenderer,
+                    "itemToRender",
+                    "field_78453_b");
+                StringBuilder modes = new StringBuilder();
+                for (Object o : mc.theWorld.playerEntities) {
+                    net.minecraft.entity.player.EntityPlayer p = (net.minecraft.entity.player.EntityPlayer) o;
+                    modes.append(p.getCommandSenderName())
+                        .append(com.akashic.ryoiki.client.SorcererClient.INSTANCE.inMode(p) ? "=sorcerer " : "=normal ")
+                        .append("holds ")
+                        .append(
+                            p.getHeldItem() == null ? "nothing"
+                                : p.getHeldItem()
+                                    .getUnlocalizedName())
+                        .append("; ");
+                }
+                report(
+                    String.format(
+                        "inv mode %s%s%s, slot %d, hand shows %s, health %.0f, armor %d, things: %s| %s| chat: %s",
+                        com.akashic.ryoiki.client.SorcererClient.INSTANCE.on() ? "sorcerer" : "normal",
+                        mc.thePlayer.isSwingInProgress ? " swinging" : "",
+                        Boolean.TRUE.equals(
+                            cpw.mods.fml.relauncher.ReflectionHelper.getPrivateValue(
+                                net.minecraft.client.multiplayer.PlayerControllerMP.class,
+                                mc.playerController,
+                                "isHittingBlock",
+                                "field_78778_j")) ? " breaking-a-block" : "",
+                        inv.currentItem,
+                        hand == null ? "nothing" : hand.getUnlocalizedName(),
+                        mc.thePlayer.getHealth(),
+                        armor,
+                        things,
+                        modes,
+                        lastChat(mc)));
                 break;
             }
             case "walk":

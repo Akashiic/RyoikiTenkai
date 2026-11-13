@@ -326,6 +326,53 @@ shaderpack (os planos de corte e as listas são da pipeline fixa do OpenGL; um s
 `-Dryoiki.fusionLists=false` desliga as listas), quem assiste de fora perto do domo, mais de um jogador pego
 além dos dois conjuradores, e o choque em sobrevivência com armas e habilidades de outros mods.
 
+## Modo Feiticeiro (`mode/SorcererMode`, `client/SorcererClient`, `client/ModeHud`)
+
+Peça M1 do plano, feita em 2026-11-13 a pedido do dono. **Ctrl+R** entra e sai (a tecla é configurável em
+Controles; o Ctrl é fixo). O servidor decide e avisa quem pediu e quem está vendo (`mode/ModeWire`, canal
+`ryoiki:mode`; as regras estão em `mode/ModeRules`, lógica pura com teste).
+
+![Modo Feiticeiro](img/modo.png)
+
+* **O que se vê:** a barra de itens some e no lugar dela fica o nome do modo numa linha que abre do meio (as quatro
+  habilidades entram ali na peça M2); por alguns segundos, "Ctrl+R para sair". Vida, fome e experiência continuam.
+  A **mão fica vazia**: em primeira pessoa a mão abaixa o que segurava e volta nua (a animação é a do próprio jogo
+  ao esvaziar uma casa), e os outros jogadores veem quem está no modo sem item na mão, com skin comum ou com modelo
+  do Futura3D.
+* **O que não se pode:** usar item, trocar de casa (teclas 1 a 9 e roda do mouse), abrir o inventário, largar,
+  pegar item do chão, quebrar ou usar bloco, bater do jeito do Minecraft. Um clique é só o balanço do braço, como
+  para os conjuradores de um choque. O cliente nem tenta; o servidor recusa de quem tentar.
+* **O inventário não é mexido.** Os itens ficam onde estão, só não são mostrados nem usáveis. Nada é guardado à
+  parte, então não há o que devolver, perder ou duplicar. (O item some da mão só no instante em que o jogador é
+  desenhado, e volta antes de qualquer outra coisa olhar: há mod que reabastece mão vazia, como o InventoryTweaks.)
+* **Morrer no modo não perde nada.** Antes de o jogo derrubar os itens, eles são escritos nos dados salvos do
+  próprio jogador e tirados das mãos; o jogador que renasce os recebe de volta, cada um na sua casa, armadura
+  vestida. Quem morre continua no modo. A experiência segue a regra normal do servidor, e os inventários de outros
+  mods (Baubles, Tinkers, mochilas) seguem as regras deles.
+* **Quando não dá para trocar:** no meio de um domínio (nem entrar, nem sair), morto, ou menos de 1 s depois da
+  última troca. Sair do servidor tira do modo.
+* **Config:** `modo.ativo` e `modo.recarga`. Comando para a staff: `/ryoiki modo [jogador]`.
+* **No modo, fora de um choque, o jogador ainda não bate em ninguém:** o ataque do Minecraft está desligado e os
+  golpes do nosso sistema só existem no choque. Isso espera as decisões do dono (ver `PLANO-COMBATE.md`).
+
+**Medido em 2026-11-13** (dois clientes no Crucible de teste, e o cliente de desenvolvimento num servidor Forge
+puro, sem plugin):
+
+| O que | Resultado |
+|---|---|
+| Teclas de verdade (xdotool): Ctrl+R; R sozinho; 3, roda, Q e E no modo | entra e sai; nada; nada, a casa e os itens não mudam |
+| Clique de verdade segurado 2 s no chão, criativo | no modo o chão fica inteiro; no normal abre um buraco |
+| Largar, usar, quebrar e atacar mandados direto ao servidor, no modo | recusados: itens iguais, bloco no lugar, o outro com a vida cheia |
+| Item no chão | no modo não é pego (31 pedras); no normal é (32) |
+| Morrer no Forge puro | no modo normal perde tudo (controle); no modo Feiticeiro volta com tudo nas mesmas casas e a armadura vestida |
+| Morrer no Crucible de teste (com BetterKeepInventory) | no modo volta com tudo no lugar; fora dele o plugin devolve os itens com a armadura no inventário |
+| Trocar de modo dentro de um domínio | recusado, com aviso no chat; depois do domínio volta a funcionar |
+
+**A verificar:** com placa de vídeo e o modpack completo; morrer no modo e sair do servidor antes de renascer (os
+itens estão nos dados do jogador e voltam ao renascer, mas isso não foi ensaiado); mundos com inventário separado
+(PerWorldInventory); teclas de outros mods que abrem inventários próprios (Baubles, mochilas) não são travadas; no
+modo não se abre porta nem se aperta botão (o clique direito está todo desligado).
+
 ## Som (`DomainSounds`, `SoundCues`, `OwnerSounds`)
 
 **O mod não traz som nenhum** (decisão do dono: só a trilha dele). Cada som é um `<nome>.ogg` em

@@ -14,6 +14,7 @@ import com.akashic.ryoiki.arena.ArenaManager;
 import com.akashic.ryoiki.block.BlockVeil;
 import com.akashic.ryoiki.command.CommandRyoiki;
 import com.akashic.ryoiki.domain.DomainManager;
+import com.akashic.ryoiki.mode.SorcererMode;
 
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.Mod;
@@ -68,6 +69,7 @@ public final class RyoikiTenkai {
                 }
             }
         });
+        SorcererMode.INSTANCE.init();
         proxy.init();
     }
 
@@ -79,6 +81,7 @@ public final class RyoikiTenkai {
     @Mod.EventHandler
     public void serverStopping(FMLServerStoppingEvent event) {
         DomainManager.INSTANCE.endAll();
+        SorcererMode.INSTANCE.reset();
         ArenaManager.INSTANCE.reset();
     }
 }

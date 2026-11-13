@@ -14,6 +14,7 @@ import com.akashic.ryoiki.DomainType;
 import com.akashic.ryoiki.arena.ArenaManager;
 import com.akashic.ryoiki.domain.DomainManager;
 import com.akashic.ryoiki.domain.DomainSession;
+import com.akashic.ryoiki.mode.SorcererMode;
 
 /**
  * /ryoiki expandir &lt;vazio|santuario&gt; [jogador] : casts a domain; /ryoiki encerrar : ends the caller's;
@@ -56,6 +57,14 @@ public final class CommandRyoiki extends CommandBase {
                     .setColor(EnumChatFormatting.RED);
                 sender.addChatMessage(message);
             }
+        } else if ("modo".equalsIgnoreCase(args[0])) {
+            // The same as the player's own key, for who has none: a console, a test, an event's staff.
+            EntityPlayerMP player = args.length >= 2 ? getPlayer(sender, args[1]) : getCommandSenderAsPlayer(sender);
+            int reason = SorcererMode.INSTANCE.set(player, !SorcererMode.INSTANCE.isOn(player));
+            ChatComponentTranslation message = SorcererMode.words(reason);
+            if (message != null) {
+                sender.addChatMessage(message);
+            }
         } else if ("encerrar".equalsIgnoreCase(args[0])) {
             EntityPlayerMP player = getCommandSenderAsPlayer(sender);
             DomainSession s = DomainManager.INSTANCE.sessionOf(player.getUniqueID());
@@ -83,7 +92,7 @@ public final class CommandRyoiki extends CommandBase {
     @SuppressWarnings("rawtypes")
     public List addTabCompletionOptions(ICommandSender sender, String[] args) {
         if (args.length == 1) {
-            return getListOfStringsMatchingLastWord(args, "expandir", "encerrar", "preparar");
+            return getListOfStringsMatchingLastWord(args, "expandir", "encerrar", "preparar", "modo");
         }
         if (args.length == 2 && "expandir".equalsIgnoreCase(args[0])) {
             return getListOfStringsMatchingLastWord(args, "vazio", "santuario");

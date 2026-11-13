@@ -33,6 +33,26 @@ documento é a ordem das peças. O estado de cada uma está em [`VISUAL.md`](VIS
 | B2 | **Vazio: a rajada e o congelamento.** Feito em 2026-11-13. O dono esclareceu os dois modos do Vazio: "iniciando" (a rajada de feixes que irradia do astrolábio, 2,5 s) e "completo" (o Vazio parado, com todos os pegos congelados até o fim). Ver `VISUAL.md` |
 | B3 | **No choque, os dois misturados.** Feito em 2026-11-13: cortes e riscos entram no chão do Vazio e os feixes atravessam o do Santuário, cada um rareando por 14 blocos; o feixe chega cortado ao Santuário e a cicatriz do corte esfria no Vazio; a rajada do Vazio não para enquanto ele é contestado (`VISUAL.md`). Filmado dos dois lados, em primeira e em terceira pessoa |
 
+## Fase M: o modo Feiticeiro (ideia do dono em 2026-11-13)
+
+O dono propôs organizar tudo num **modo**: o Minecraft normal de um lado (inventário, blocos, interação) e, com
+**Ctrl+R**, o modo Feiticeiro do outro: o inventário some, a luta do nosso sistema fica ligada, e no rodapé entram
+**quatro habilidades, a última sendo a Expansão de Domínio**. Ctrl+R de novo volta ao normal, com o inventário
+intacto mesmo que a pessoa tenha morrido no modo. As peças vêm antes dos golpes da fase C, porque é o modo que diz
+quando um clique é golpe.
+
+| | Peça | Estado |
+|---|---|---|
+| M1 | **O modo em si:** Ctrl+R, a barra some, a mão fica vazia, nada do inventário pode ser usado, movido, largado ou pego, sem quebrar bloco nem ataque do Minecraft, e morrer no modo não perde nada. O servidor decide | feito em 2026-11-13 (`VISUAL.md`, "Modo Feiticeiro") |
+| M2 | **O rodapé:** as quatro casas de habilidade com ícone, tecla (1 a 4) e recarga, no lugar da barra | a fazer |
+| M3 | **A quarta casa conjura o domínio**, no lugar do comando `/ryoiki expandir` | a fazer |
+
+Decisões que o dono ainda não tomou (perguntadas em 2026-11-13): quem pode ser golpeado fora do choque (o agente
+recomenda só quem também está no modo, respeitando PvP e proteção de terreno); se os golpes dão dano fora do choque
+(recomenda dano pequeno e fixo); como o jogador ganha a técnica (Vazio ou Santuário); quais são as habilidades 1 a 3.
+Enquanto isso, **no modo o jogador não bate em ninguém fora de um choque**: o ataque do Minecraft está desligado e
+os golpes do nosso sistema só existem no choque.
+
 ## Fase C: os golpes, um por vez
 
 Kits diferentes por domínio, com pernas (proposta em `VISUAL.md`; o dono ainda não disse se troca algum golpe).

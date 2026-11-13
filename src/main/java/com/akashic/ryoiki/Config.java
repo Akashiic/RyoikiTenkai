@@ -15,6 +15,10 @@ public final class Config {
     public static int maxDomains = 2;
     /** Ticks after a domain opens in which someone caught may still answer it with a domain, and clash. */
     public static int clashWindow = 60;
+    /** Whether players may go into the sorcerer mode at all. */
+    public static boolean modeEnabled = true;
+    /** Ticks a player must wait between two changes of mode. */
+    public static int modeCooldown = 20;
     public static int arenaX = 200000;
     public static int arenaZ = 200000;
     public static int arenaY = 120;
@@ -39,6 +43,13 @@ public final class Config {
             400,
             "Ticks depois de um dominio abrir em que quem foi pego ainda pode responder com um dominio e chocar. "
                 + "Durante o sinal de mao do primeiro sempre pode.");
+        modeEnabled = cfg.getBoolean(
+            "ativo",
+            "modo",
+            modeEnabled,
+            "Se os jogadores podem entrar no modo Feiticeiro (Ctrl+R). Desligado, quem esta nele ainda pode sair.");
+        modeCooldown = cfg
+            .getInt("recarga", "modo", modeCooldown, 0, 1200, "Ticks entre duas trocas de modo do mesmo jogador.");
         arenaX = cfg.getInt(
             "x",
             "arena",

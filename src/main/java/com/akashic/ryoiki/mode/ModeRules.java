@@ -1,0 +1,59 @@
+package com.akashic.ryoiki.mode;
+
+/**
+ * When a player may go into the sorcerer mode and out of it. The mode is the player's other way of being in the
+ * world: no inventory, no blocks, no items, only its technique. Going in and out is free, with a breath between two
+ * changes, but not in the middle of a domain: who was in the mode when it opened stays in it, and who was not stays
+ * out. No Minecraft classes.
+ */
+public final class ModeRules {
+
+    public static final int OK = 0;
+    /** The server has the mode turned off. */
+    public static final int DISABLED = 1;
+    public static final int DEAD = 2;
+    /** In a domain, or making the hand sign of one. */
+    public static final int DOMAIN = 3;
+    /** Changed a moment ago. */
+    public static final int SOON = 4;
+
+    private ModeRules() {}
+
+    /**
+     * Whether a player may change to the mode it wants: {@link #OK}, or why not.
+     *
+     * @param want     the mode asked for
+     * @param enabled  whether the server allows the mode at all
+     * @param inDomain whether the player is in a domain or casting one
+     * @param since    ticks since its last change
+     * @param cooldown ticks there must be between two changes
+     */
+    public static int ask(boolean want, boolean enabled, boolean alive, boolean inDomain, long since, int cooldown) {
+        if (!alive) {
+            return DEAD;
+        }
+        if (want && !enabled) {
+            // Going out is always allowed where the mode is turned off: nobody is left stuck in it.
+            return DISABLED;
+        }
+        if (inDomain) {
+            return DOMAIN;
+        }
+        if (since < cooldown) {
+            return SOON;
+        }
+        return OK;
+    }
+
+    /** The translation key of a refusal, to show the player; null for one that needs no words. */
+    public static String key(int reason) {
+        switch (reason) {
+            case DISABLED:
+                return "ryoikitenkai.modo.desligado";
+            case DOMAIN:
+                return "ryoikitenkai.modo.dominio";
+            default:
+                return null;
+        }
+    }
+}

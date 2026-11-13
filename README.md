@@ -16,6 +16,9 @@ O estado do projeto, as decisões e o que falta estão em [`docs/HANDOFF.md`](do
   ele, choca com ele. São 15 s: os cliques viram um combo de quatro golpes (três socos e um chute que arremessa), e cada
   golpe que acerta o conjurador rival enche 6,25 % da barra; vence quem encher ou quem tiver
   mais no fim, e o vencedor fica com a arena. Empate quebra os dois.
+* **Modo Feiticeiro (Ctrl+R):** o inventário some da tela e fica intocável, a mão fica vazia, e não se quebra bloco
+  nem se bate do jeito do Minecraft; Ctrl+R de novo volta ao normal. Morrer no modo não perde nada. É a base das
+  quatro habilidades do rodapé (a fazer). `/ryoiki modo [jogador]` faz o mesmo para a staff.
 * Quem fica de fora vê o domo (branco ou preto) no lugar da conjuração.
 * O visual dos dois domínios (Vazio Estelar e Santuário Carmesim), todo desenhado por código: faixa de entrada com o
   rosto da skin do conjurador, selo no chão, céu com reflexo, estruturas, cortes, tremor e saída em estilhaços. Ver
