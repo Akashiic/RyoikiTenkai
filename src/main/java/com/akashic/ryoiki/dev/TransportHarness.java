@@ -530,6 +530,10 @@ public final class TransportHarness {
         }
     }
 
+    private double scrubFar;
+    private float scrubStep;
+    private float scrubAt = -1;
+    private int scrubWait;
     private float walkStrafe;
     private float walkForward;
     private int heldBlow;
@@ -590,6 +594,35 @@ public final class TransportHarness {
             .setKeyBindState(mc.gameSettings.keyBindLeft.getKeyCode(), walkStrafe > 0);
         net.minecraft.client.settings.KeyBinding
             .setKeyBindState(mc.gameSettings.keyBindRight.getKeyCode(), walkStrafe < 0);
+        if (scrubAt >= 0 && --scrubWait <= 0) {
+            // One moment at a time: set, left on the screen for long enough to be drawn (a slow machine draws less
+            // than a frame a tick), photographed, and the next one set.
+            scrubWait = 8;
+            if (scrubAt > 0) {
+                shot(mc, String.format("ryoiki-scrub-%04d", (int) (scrubAt - scrubStep)));
+            }
+            if (scrubAt == 0) {
+                com.akashic.ryoiki.client.BlackFlashFx.INSTANCE.reset();
+                net.minecraft.util.Vec3 look = mc.thePlayer.getLookVec();
+                com.akashic.ryoiki.client.BlackFlashFx.INSTANCE.start(
+                    mc.thePlayer.posX + look.xCoord * scrubFar,
+                    mc.thePlayer.boundingBox.minY + 1 + look.yCoord * scrubFar,
+                    mc.thePlayer.posZ + look.zCoord * scrubFar,
+                    (float) look.xCoord,
+                    0,
+                    (float) look.zCoord,
+                    mc.thePlayer.getEntityId(),
+                    -2);
+            }
+            if (scrubAt > 1900) {
+                scrubAt = -1;
+                com.akashic.ryoiki.client.BlackFlashFx.frozen = -1;
+                com.akashic.ryoiki.client.BlackFlashFx.INSTANCE.reset();
+            } else {
+                com.akashic.ryoiki.client.BlackFlashFx.frozen = scrubAt;
+                scrubAt += scrubStep;
+            }
+        }
         if (filmLeft > 0) {
             // A screenshot every other tick: what a blow looks like from one tick to the next.
             if (filmLeft % 2 == 0) {
@@ -722,6 +755,39 @@ public final class TransportHarness {
                         0,
                         com.akashic.ryoiki.mode.AbilityMath.ORB_RADIUS,
                         600));
+                break;
+            }
+            case "kscrub": {
+                // "kscrub 3 40": the black blow that far ahead, photographed every so many milliseconds of it.
+                String[] n = rest.split(" ");
+                scrubFar = Double.parseDouble(n[0]);
+                scrubStep = Float.parseFloat(n[1]);
+                scrubAt = 0;
+                break;
+            }
+            case "kokusen": {
+                // "kokusen 4": the black blow that far before the eyes, as its two would see it. "kokusen 4 100":
+                // held at that many milliseconds into it, to look at one moment. "kokusen off".
+                com.akashic.ryoiki.client.BlackFlashFx.frozen = -1;
+                com.akashic.ryoiki.client.BlackFlashFx.INSTANCE.reset();
+                if ("off".equals(rest)) {
+                    break;
+                }
+                String[] n = rest.split(" ");
+                net.minecraft.util.Vec3 look = mc.thePlayer.getLookVec();
+                double far = Double.parseDouble(n[0]);
+                com.akashic.ryoiki.client.BlackFlashFx.INSTANCE.start(
+                    mc.thePlayer.posX + look.xCoord * far,
+                    mc.thePlayer.boundingBox.minY + 1 + look.yCoord * far,
+                    mc.thePlayer.posZ + look.zCoord * far,
+                    (float) look.xCoord,
+                    0,
+                    (float) look.zCoord,
+                    mc.thePlayer.getEntityId(),
+                    -2);
+                if (n.length > 1) {
+                    com.akashic.ryoiki.client.BlackFlashFx.frozen = Float.parseFloat(n[1]);
+                }
                 break;
             }
             case "hold":

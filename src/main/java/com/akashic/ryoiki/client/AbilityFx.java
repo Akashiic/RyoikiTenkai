@@ -69,8 +69,6 @@ public final class AbilityFx {
     private final Map<Integer, Red> reds = new HashMap<>();
     /** Who waits for its red orb to come back: 0 on guard, 1 striking, and for how many ticks, by entity. */
     private final Map<Integer, int[]> punches = new HashMap<>();
-    /** Ticks since the black blow flashed on this screen; negative when it has not. */
-    private int flash = -1;
     /** Who is making the gesture of a technique: its kind, how long ago it began and how long it lasts, by entity. */
     private final Map<Integer, int[]> gestures = new HashMap<>();
 
@@ -176,7 +174,7 @@ public final class AbilityFx {
     void clear() {
         reds.clear();
         punches.clear();
-        flash = -1;
+        BlackFlashFx.INSTANCE.clear();
         orbs.clear();
         cuts.clear();
         gestures.clear();
@@ -295,13 +293,10 @@ public final class AbilityFx {
                 int own = mc.thePlayer == null ? -1 : mc.thePlayer.getEntityId();
                 int victim = Math.round(m.size);
                 if (black) {
-                    // Who takes it is thrown by it, and whoever of the two this is feels it.
+                    // Who takes it is thrown by it; and it is seen, on every screen near and in the world.
                     ClientDomain.Struck struck = new ClientDomain.Struck();
                     ClientDomain.INSTANCE.strucks.put(victim, struck);
-                    if (own == m.entity || own == victim) {
-                        CameraShake.INSTANCE.kick(own == victim ? 9 : 4);
-                        flash = 0;
-                    }
+                    BlackFlashFx.INSTANCE.start(m.x, m.y, m.z, m.dx, m.dy, m.dz, m.entity, victim);
                 } else {
                     punches.remove(m.entity);
                     if (r.burst && own == m.entity) {
@@ -487,9 +482,7 @@ public final class AbilityFx {
                 i.remove();
             }
         }
-        if (flash >= 0 && ++flash > 9) {
-            flash = -1;
-        }
+        BlackFlashFx.INSTANCE.tick();
         for (Iterator<Cut> i = cuts.iterator(); i.hasNext();) {
             Cut c = i.next();
             c.age++;
@@ -511,7 +504,7 @@ public final class AbilityFx {
 
     @SubscribeEvent
     public void onRenderWorldLast(RenderWorldLastEvent event) {
-        if (orbs.isEmpty() && cuts.isEmpty() && reds.isEmpty()) {
+        if (orbs.isEmpty() && cuts.isEmpty() && reds.isEmpty() && !BlackFlashFx.INSTANCE.active()) {
             return;
         }
         Minecraft mc = Minecraft.getMinecraft();
@@ -549,6 +542,7 @@ public final class AbilityFx {
         for (Red r : reds.values()) {
             red(t, mc, r, camX, camY, camZ, event.partialTicks);
         }
+        BlackFlashFx.INSTANCE.world(t, mc, camX, camY, camZ, event.partialTicks);
         for (Cut c : cuts) {
             if (c.ground == null) {
                 c.ground = ground(mc.theWorld, c);
@@ -574,8 +568,8 @@ public final class AbilityFx {
      * A sphere at a place (blocks from the camera), coloured by how its surface faces the eye, with bands of light
      * that turn about it.
      */
-    private static void sphere(Tessellator t, float x, float y, float z, float radius, float age, float alpha,
-        int[] ramp, int rim) {
+    static void sphere(Tessellator t, float x, float y, float z, float radius, float age, float alpha, int[] ramp,
+        int rim) {
         if (alpha <= 0.02F) {
             return;
         }
@@ -918,9 +912,7 @@ public final class AbilityFx {
             float ex = (float) (r.ex - camX);
             float ey = (float) (r.ey - camY);
             float ez = (float) (r.ez - camZ);
-            if (r.ended == 1) {
-                black(t, r, ex, ey, ez, since);
-            } else if (r.burst && since < RED_ENDS) {
+            if (r.ended == 2 && r.burst && since < RED_ENDS) {
                 // Back with nobody: it breaks on who let it fly.
                 float burst = 1 - since / RED_ENDS;
                 Draw.additive();
@@ -1271,6 +1263,67 @@ public final class AbilityFx {
         // The fist that waits: small lights jumping about it, white and ice, brighter as the orb nears.
         float[] h = hand(mc, caster, partialTicks, camX, camY, camZ, false);
         float ready = Draw.clamp01(r.back / 6F);
+        if (r.state == 2) {
+            // The blow is on its way: black sparks break out of the fist, red at their edges.
+            Random sparks = new Random(r.caster * 71L + (long) (age * 2) * 7919L);
+            // Whoever is set before the fist has it a hand from its eyes: there the sparks are thin, not bars
+            // across the screen.
+            float thin = Draw.clamp01(((float) Math.sqrt(h[0] * h[0] + h[1] * h[1] + h[2] * h[2]) - 0.6F) / 2.6F);
+            float[][][] bolts = new float[9][5][3];
+            for (float[][] bolt : bolts) {
+                float sx = sparks.nextFloat() * 2 - 1;
+                float sy = sparks.nextFloat() * 2 - 1;
+                float sz = sparks.nextFloat() * 2 - 1;
+                float reach = 0.25F + 0.3F * sparks.nextFloat();
+                for (int k = 0; k < 5; k++) {
+                    bolt[k][0] = h[0] + sx * reach * k + (k == 0 ? 0 : (sparks.nextFloat() - 0.5F) * 0.3F);
+                    bolt[k][1] = h[1] + sy * reach * k + (k == 0 ? 0 : (sparks.nextFloat() - 0.5F) * 0.3F);
+                    bolt[k][2] = h[2] + sz * reach * k + (k == 0 ? 0 : (sparks.nextFloat() - 0.5F) * 0.3F);
+                }
+            }
+            Draw.additive();
+            t.startDrawingQuads();
+            for (float[][] bolt : bolts) {
+                for (int k = 0; k < 4; k++) {
+                    ribbon(
+                        t,
+                        bolt[k][0],
+                        bolt[k][1],
+                        bolt[k][2],
+                        bolt[k + 1][0],
+                        bolt[k + 1][1],
+                        bolt[k + 1][2],
+                        0.16F * thin,
+                        0.1F * thin,
+                        RED,
+                        0.6F,
+                        RED,
+                        0.4F);
+                }
+            }
+            t.draw();
+            Draw.translucent();
+            t.startDrawingQuads();
+            for (float[][] bolt : bolts) {
+                for (int k = 0; k < 4; k++) {
+                    ribbon(
+                        t,
+                        bolt[k][0],
+                        bolt[k][1],
+                        bolt[k][2],
+                        bolt[k + 1][0],
+                        bolt[k + 1][1],
+                        bolt[k + 1][2],
+                        0.06F * thin,
+                        0.025F * thin,
+                        0x000000,
+                        1,
+                        0x000000,
+                        1);
+                }
+            }
+            t.draw();
+        }
         Draw.additive();
         t.startDrawing(GL11.GL_TRIANGLES);
         Draw.glow(t, h[0], h[1], h[2], 0.55F, ICE, 0.55F * ready);
@@ -1286,141 +1339,6 @@ public final class AbilityFx {
                 ready);
         }
         t.draw();
-    }
-
-    /**
-     * The black blow, where it lands: a white instant, then black lightning in red light, thrown out mostly the
-     * way of the blow, jumping from one shape to another as it dies.
-     */
-    private static void black(Tessellator t, Red r, float x, float y, float z, float since) {
-        float left = 1 - since / BLACK_ENDS;
-        if (left <= 0) {
-            return;
-        }
-        float grown = Draw.clamp01(since / 3);
-        Draw.additive();
-        t.startDrawing(GL11.GL_TRIANGLES);
-        Draw.glow(t, x, y, z, 5.5F * (0.5F + 0.5F * grown), RED, 0.8F * left);
-        Draw.glow(t, x, y, z, 2.6F, DEEP_RED, 0.7F * left);
-        if (since < 4) {
-            Draw.glow(t, x, y, z, 3.2F * (1 - since / 4), WHITE, 1 - since / 4);
-        }
-        t.draw();
-        // The ring of the blow, across its way.
-        float[] d = { r.edx, r.edy, r.edz };
-        float[] side = cross(d, new float[] { 0, 1, 0 });
-        if (length(side) < 1e-3F) {
-            side = new float[] { 1, 0, 0 };
-        }
-        normalize(side);
-        float[] up = cross(side, d);
-        normalize(up);
-        float wide = 0.4F + 4.2F * (float) Math.pow(since / BLACK_ENDS, 0.6);
-        t.startDrawingQuads();
-        for (int k = 0; k < 28; k++) {
-            float a0 = k * 6.2832F / 28;
-            float a1 = (k + 1) * 6.2832F / 28;
-            ribbon(
-                t,
-                x + (side[0] * MathHelper.cos(a0) + up[0] * MathHelper.sin(a0)) * wide,
-                y + (side[1] * MathHelper.cos(a0) + up[1] * MathHelper.sin(a0)) * wide,
-                z + (side[2] * MathHelper.cos(a0) + up[2] * MathHelper.sin(a0)) * wide,
-                x + (side[0] * MathHelper.cos(a1) + up[0] * MathHelper.sin(a1)) * wide,
-                y + (side[1] * MathHelper.cos(a1) + up[1] * MathHelper.sin(a1)) * wide,
-                z + (side[2] * MathHelper.cos(a1) + up[2] * MathHelper.sin(a1)) * wide,
-                0.12F * left,
-                0.12F * left,
-                RED,
-                left,
-                RED,
-                left);
-        }
-        t.draw();
-        // The lightning: each bolt a broken line, redrawn in a new shape every other tick.
-        float[][][] bolts = new float[BOLTS][7][3];
-        for (int bolt = 0; bolt < BOLTS; bolt++) {
-            Random random = new Random(r.caster * 7919L + bolt * 104729L + (long) (since / 2) * 31L);
-            float bx = (random.nextFloat() - 0.5F) * 2 + d[0] * 0.9F;
-            float by = (random.nextFloat() - 0.5F) * 2 + d[1] * 0.9F + 0.15F;
-            float bz = (random.nextFloat() - 0.5F) * 2 + d[2] * 0.9F;
-            float n = (float) Math.sqrt(bx * bx + by * by + bz * bz) + 1e-4F;
-            float reach = (2.2F + 3.8F * random.nextFloat()) * grown * (0.55F + 0.45F * left) / n;
-            for (int k = 0; k < 7; k++) {
-                float along = k / 6F;
-                float jag = k == 0 ? 0 : 0.42F * reach * n / 6;
-                bolts[bolt][k][0] = x + bx * reach * along + (random.nextFloat() - 0.5F) * 2 * jag;
-                bolts[bolt][k][1] = y + by * reach * along + (random.nextFloat() - 0.5F) * 2 * jag;
-                bolts[bolt][k][2] = z + bz * reach * along + (random.nextFloat() - 0.5F) * 2 * jag;
-            }
-        }
-        // Red light about each bolt first, then the black of it over that.
-        t.startDrawingQuads();
-        for (float[][] bolt : bolts) {
-            for (int k = 0; k < 6; k++) {
-                float f0 = 1 - k / 6F;
-                float f1 = 1 - (k + 1) / 6F;
-                ribbon(
-                    t,
-                    bolt[k][0],
-                    bolt[k][1],
-                    bolt[k][2],
-                    bolt[k + 1][0],
-                    bolt[k + 1][1],
-                    bolt[k + 1][2],
-                    0.3F * f0,
-                    0.3F * f1,
-                    RED,
-                    0.6F * left,
-                    RED,
-                    0.6F * left * f1);
-            }
-        }
-        t.draw();
-        Draw.translucent();
-        t.startDrawingQuads();
-        for (float[][] bolt : bolts) {
-            for (int k = 0; k < 6; k++) {
-                float f0 = 1 - k / 6.5F;
-                float f1 = 1 - (k + 1) / 6.5F;
-                ribbon(
-                    t,
-                    bolt[k][0],
-                    bolt[k][1],
-                    bolt[k][2],
-                    bolt[k + 1][0],
-                    bolt[k + 1][1],
-                    bolt[k + 1][2],
-                    0.12F * f0,
-                    0.12F * f1,
-                    0x000000,
-                    Math.min(1, left * 1.6F),
-                    0x000000,
-                    Math.min(1, left * 1.6F));
-            }
-        }
-        t.draw();
-        Draw.additive();
-    }
-
-    /** On the screen of who gives the black blow or takes it: a white instant and a red one after it. */
-    @SubscribeEvent
-    public void onOverlay(net.minecraftforge.client.event.RenderGameOverlayEvent.Post event) {
-        if (flash < 0 || event.type != net.minecraftforge.client.event.RenderGameOverlayEvent.ElementType.ALL) {
-            return;
-        }
-        float since = flash + event.partialTicks;
-        int w = event.resolution.getScaledWidth();
-        int h = event.resolution.getScaledHeight();
-        int white = (int) (150 * Draw.clamp01(1 - since / 2.5F));
-        int red = (int) (80 * Draw.clamp01(1 - since / 9));
-        if (red > 2) {
-            net.minecraft.client.gui.Gui.drawRect(0, 0, w, h, red << 24 | 0xC00010);
-        }
-        if (white > 2) {
-            net.minecraft.client.gui.Gui.drawRect(0, 0, w, h, white << 24 | 0xFFFFFF);
-        }
-        GL11.glColor4f(1, 1, 1, 1);
-        GL11.glEnable(GL11.GL_BLEND);
     }
 
     // Talho.
@@ -1647,7 +1565,7 @@ public final class AbilityFx {
     // Pieces. Places are in blocks from the camera, which is at the origin.
 
     /** A band of light between two places, turned to face the eye, with a width and a colour at each end. */
-    private static void ribbon(Tessellator t, float ax, float ay, float az, float bx, float by, float bz, float widthA,
+    static void ribbon(Tessellator t, float ax, float ay, float az, float bx, float by, float bz, float widthA,
         float widthB, int colorA, float alphaA, int colorB, float alphaB) {
         float dx = bx - ax;
         float dy = by - ay;
@@ -1689,15 +1607,15 @@ public final class AbilityFx {
         t.addVertex(ax + side[0] * width, ay, az + side[2] * width);
     }
 
-    private static float[] cross(float[] a, float[] b) {
+    static float[] cross(float[] a, float[] b) {
         return new float[] { a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0] };
     }
 
-    private static float length(float[] v) {
+    static float length(float[] v) {
         return (float) Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
     }
 
-    private static void normalize(float[] v) {
+    static void normalize(float[] v) {
         float length = length(v);
         v[0] /= length;
         v[1] /= length;

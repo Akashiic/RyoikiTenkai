@@ -36,6 +36,7 @@ public final class ClientProxy extends CommonProxy {
             .bus()
             .register(AbilityFx.INSTANCE);
         MinecraftForge.EVENT_BUS.register(AbilityFx.INSTANCE);
+        MinecraftForge.EVENT_BUS.register(BlackFlashFx.INSTANCE);
         FMLCommonHandler.instance()
             .bus()
             .register(Stride.INSTANCE);

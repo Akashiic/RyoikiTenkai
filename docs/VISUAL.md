@@ -506,9 +506,31 @@ o desenho e o nome no mod são próprios, como no resto.
 * **O que se vê:** uma esfera **pequena e vermelha de verdade** (0,26 bloco de raio, do vinho ao vermelho vivo,
   sem branco no meio), fios vermelhos entrando nela e arcos vermelhos de fio branco em volta do corpo na carga,
   chão avermelhado; no voo, rastro vermelho, anéis vermelhos pelo caminho e estilhaços em cada um que ela
-  atravessa. **O golpe negro:** um instante branco, depois **raios pretos em luz vermelha**, jogados sobretudo
-  na direção do soco e mudando de forma a cada dois ticks, um anel vermelho que se abre, e um clarão branco e
-  vermelho na tela de quem bate e de quem apanha, com tremor.
+  atravessa. O golpe negro tem a sua própria sequência, abaixo.
+* **O golpe negro** (`client/BlackFlashFx`, refeito em 2026-11-13: o dono recusou a primeira versão, uns raios
+  finos e um clarão, como "trabalho preguiçoso", e mandou fazer igual ou melhor que o do jogo de referência). O
+  agente reviu o trecho quadro a quadro. É uma sequência **cronometrada pelo relógio**, não pelos ticks, para ser
+  igual com qualquer taxa de quadros:
+
+  ![O golpe negro](img/golpe-negro.png)
+
+  1. **Os quadros do impacto** (160 ms): a imagem do mundo vira **duas cores, sem cinzas**: vermelho e preto
+     (60 ms), o negativo em preto e branco (20 ms), **a tela branca**, só com o que era mais escuro em preto
+     (50 ms), e o negativo de novo (30 ms). A imagem é o próprio quadro: copiado da tela para uma textura,
+     redesenhado como brilho (produto escalar no estágio de textura) e endurecido elevando ao quadrado e dobrando
+     três vezes. Sem shader, e conferido com a Angelica.
+  2. **A explosão** (até 0,7 s): tudo estourado em branco, **raios vermelhos grossos** saindo de onde o golpe
+     pegou até além das bordas da tela, e um **emaranhado de traços vermelhos**, com pretos no meio, cobrindo a
+     tela inteira, **outro emaranhado a cada 70 ms**. Os dois corpos brilham.
+  3. **As faíscas negras** (até 1,9 s): a luz some e fica o que resta do emaranhado, **preto de borda vermelha**,
+     cada vez menos traços, que pulam de lugar; e **contas vermelhas** que sobem do chão e encolhem.
+
+  O mesmo acontece **no mundo**, em três dimensões, em volta do lugar do golpe (emaranhado, raios, dois anéis,
+  contas, pedaços do chão arremessados), para quem está longe. Na tela ele aparece inteiro para os dois e para
+  quem está a até 7 blocos, e vai sumindo até 26. A interface do jogo fica por cima, legível. Antes do golpe,
+  enquanto o punho vem, saem dele **faíscas pretas de borda vermelha**. Tremor de câmera para quem está perto.
+  `-Dryoiki.impactFrame=false` troca os quadros do impacto por cores chapadas, se alguma placa de vídeo não
+  gostar da cópia da tela.
 * **Limites:** a carga não é interrompida por levar golpe; o modelo não tem dedo indicador separado, então a mão
   aponta inteira; o trazido é levado por teleporte a cada tick (num cliente com atraso pode parecer aos saltos).
   O Santuário ainda não tem a habilidade 2 (a casa fica apagada).
@@ -557,6 +579,8 @@ puro, sem plugin):
 | Repulsão carregada no ar (pulo) | quem conjurou ficou a 1 bloco do chão durante a carga; o alvo foi de 59,5 para 66,6, vida 15 |
 | Repulsão com R segurado, alvo a 8 blocos | atravessado na ida (20 para 16), trazido de volta para diante do conjurador, golpe negro (para 7), arremessado |
 | Repulsão com R segurado, ninguém no caminho | o orbe volta e o conjurador vai de 20 para 16 |
+| O golpe negro, momento a momento (relógio parado, a cada 20 ms), no cliente de desenvolvimento com e sem a Angelica | os quatro quadros do impacto, a explosão e as faíscas, como descrito; nenhum erro de desenho no registro |
+| O golpe negro de verdade, entre dois jogadores, filmado nas duas telas | faíscas no punho, quadro de impacto, tela tomada pelo emaranhado, traços pretos e contas; alvo de 20 para 8 |
 | O gesto no visor de quatro vistas e no jogo (terceira pessoa, e visto pelo outro) | braço acima da cabeça com o orbe sobre a mão; braço apontando no disparo |
 | A passada no visor de quatro vistas (parado, trote, disparada, pulo) e filmada de lado e de trás | trote, disparada e pulo reconhecíveis; braços para trás e queda ajustados depois da primeira vista |
 | Gestos no visor de quatro vistas | mão à frente na altura do ombro e recolhida; mão acima do ombro oposto, e baixa do lado dela no fim |
