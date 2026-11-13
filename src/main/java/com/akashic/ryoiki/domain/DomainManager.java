@@ -237,6 +237,8 @@ public final class DomainManager {
     private static final double LUNGE_FINISHER = 0.6;
     private static final double THROW = 0.85;
     private static final double THROW_UP = 0.3;
+    /** Ticks from the click to the fist arriving: the same the model takes to strike ({@code BlowPose.IMPACT}). */
+    private static final int IMPACT_TICKS = 3;
 
     /**
      * The blows of one caster this tick. A blow is a swing of the arm: at the other, at the air, it is the same
@@ -248,6 +250,10 @@ public final class DomainManager {
         int progress = attacker.isSwingInProgress ? attacker.swingProgressInt : -1;
         boolean began = attacker.isSwingInProgress && (s.swing[side] < 0 || progress < s.swing[side]);
         s.swing[side] = progress;
+        if (s.coming[side] > 0 && tick >= s.arrives[side]) {
+            land(s, side, attacker, victim, s.coming[side]);
+            s.coming[side] = 0;
+        }
         ComboChain chain = s.chains[side];
         int blow = chain.tick(tick);
         if (blow == 0 && began) {
@@ -256,32 +262,42 @@ public final class DomainManager {
         if (blow == 0) {
             return;
         }
+        // The blow begins: the step into it now, unless the other is already at arm's length. Whether it lands is
+        // seen when the fist arrives.
+        double yaw = Math.toRadians(attacker.rotationYaw);
+        double dx = victim.posX - attacker.posX;
+        double dz = victim.posZ - attacker.posZ;
+        if (dx * dx + dz * dz > 1.6 * 1.6) {
+            double lunge = blow == ComboChain.BLOWS ? LUNGE_FINISHER : LUNGE;
+            attacker.addVelocity(-Math.sin(yaw) * lunge, 0, Math.cos(yaw) * lunge);
+            attacker.velocityChanged = true;
+        }
+        s.coming[side] = blow;
+        s.arrives[side] = tick + IMPACT_TICKS;
+        sendAll(s, DomainWire.blow(s.id, attacker.getEntityId(), blow, false));
+    }
+
+    /** The fist arrives: the blow lands on the other if it is in reach and before the one who strikes. */
+    private void land(DomainSession s, int side, EntityPlayerMP attacker, EntityPlayerMP victim, int blow) {
         double yaw = Math.toRadians(attacker.rotationYaw);
         double lookX = -Math.sin(yaw);
         double lookZ = Math.cos(yaw);
         double dx = victim.posX - attacker.posX;
         double dz = victim.posZ - attacker.posZ;
         double distance = Math.sqrt(dx * dx + dz * dz);
-        boolean finisher = blow == ComboChain.BLOWS;
-        boolean landed = Math.abs(victim.posY - attacker.posY) <= 2.5
-            && (distance <= REACH_ANYWAY || distance <= REACH && (dx * lookX + dz * lookZ) / distance >= FRONT)
-            && s.score.hit(side);
-        // The step into the blow, unless the other is already in reach of the arm.
-        if (distance > 1.6 || !landed) {
-            double lunge = finisher ? LUNGE_FINISHER : LUNGE;
-            attacker.addVelocity(lookX * lunge, 0, lookZ * lunge);
-            attacker.velocityChanged = true;
+        boolean inReach = Math.abs(victim.posY - attacker.posY) <= 2.5
+            && (distance <= REACH_ANYWAY || distance <= REACH && (dx * lookX + dz * lookZ) / distance >= FRONT);
+        if (!inReach || !s.score.hit(side)) {
+            return;
         }
-        if (landed) {
-            // The other flinches and sounds hurt, as in a hit; the finisher throws it back.
-            victim.worldObj.setEntityState(victim, (byte) 2);
-            if (finisher) {
-                victim.addVelocity(lookX * THROW, THROW_UP, lookZ * THROW);
-                victim.velocityChanged = true;
-            }
-            sendAll(s, DomainWire.clashScore(s.id, s.score.hits(ClashScore.HOST), s.score.hits(ClashScore.RIVAL)));
+        // The other flinches and sounds hurt, as in a hit; the finisher throws it back.
+        victim.worldObj.setEntityState(victim, (byte) 2);
+        if (blow == ComboChain.BLOWS) {
+            victim.addVelocity(lookX * THROW, THROW_UP, lookZ * THROW);
+            victim.velocityChanged = true;
         }
-        sendAll(s, DomainWire.blow(s.id, attacker.getEntityId(), blow, landed));
+        sendAll(s, DomainWire.clashScore(s.id, s.score.hits(ClashScore.HOST), s.score.hits(ClashScore.RIVAL)));
+        sendAll(s, DomainWire.blow(s.id, attacker.getEntityId(), blow, true));
     }
 
     /** The winner keeps the arena, with its own domain from the start; a tie breaks both. */

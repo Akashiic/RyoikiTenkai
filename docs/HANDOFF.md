@@ -147,7 +147,8 @@ Regras da seção 5.4 do `ESTUDO.md`, decididas pelo agente (carta branca) em 20
 * **Limite conhecido:** o salão do Santuário é sólido e é erguido na conjuração. Se o Santuário entra como rival, o
   salão é só desenhado (recuado, com os conjuradores diante da porta), não construído: há gente onde as paredes
   ficariam. Se o Santuário anfitrião perde, o salão é removido.
-* **Código:** `domain/ClashScore` (regras puras, com teste), `domain/ComboChain` (idem), `DomainManager` (`clashHost`, `answer`,
+* **Código:** `domain/ClashScore` (regras puras, com teste), `domain/ComboChain` (idem), `fx/BlowPose` (o corpo em cada golpe: só a guarda e o golpe 1 estão
+  trabalhados; os golpes 2 a 4 são provisórios e devem ser feitos um por vez, ver `VISUAL.md`), `DomainManager` (`clashHost`, `answer`,
   `beginClash`, `tickClash`, `blows`, `resolve`), `DomainWire` (`RIVAL`, `CLASH`, `CLASH_SCORE`, `BLOW`, `CLASH_END`),
   `ClientDomain#shown` e `client/ClashHud`.
 

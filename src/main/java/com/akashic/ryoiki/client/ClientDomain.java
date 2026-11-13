@@ -9,6 +9,7 @@ import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.entity.Entity;
 
 import com.akashic.ryoiki.DomainType;
+import com.akashic.ryoiki.fx.BlowPose;
 import com.akashic.ryoiki.fx.SlashField;
 import com.akashic.ryoiki.fx.SoundCues;
 import com.akashic.ryoiki.net.ChunkKeep;
@@ -36,33 +37,50 @@ public final class ClientDomain {
      */
     private static final int CLASH_FLICKER = 10;
 
-    /** A blow of a caster in a clash, as it is drawn. */
+    /** A blow of a caster in a clash, as it is drawn: the pose of the body comes from {@link BlowPose}. */
     public static final class Blow {
 
-        /** Ticks a blow is drawn for: it strikes in {@link #STRIKE}, holds, and lets go. */
-        public static final int TICKS = 10;
-        private static final float STRIKE = 2;
-        private static final float HOLD = 4;
+        /**
+         * Ticks the fighter stays out of its ordinary animation: the blow, then the guard for as long as the chain
+         * may go on, let go over the last {@link #LET_GO}.
+         */
+        public static final int TICKS = 16;
+        private static final float TAKE = 1.5F;
+        private static final float LET_GO = 4;
+        /** Ticks the blow before is still mixed into this one. */
+        private static final float JOIN = 2;
 
         /** Which of the chain, 1 to 4. */
         public int blow;
-        public boolean landed;
-        /** The entity it landed on, or -1. */
+        /** The entity it landed on, or -1, and how old the blow was when it did. */
         public int victim = -1;
+        public int landedAt;
         public int age;
-        /** The blow before, and how much of its pose was left when this one began. */
+        /** The blow before: which, how far into it the fighter was, and how much out of its ordinary animation. */
         public int from;
-        public float fromWeight;
+        public float fromAge;
+        public float fromLayer;
 
-        /** How much of the blow's pose the model is in. */
-        public float weight(float partialTicks) {
+        /** How much the fighter is out of its ordinary animation, 0 to 1. */
+        public float layer(float partialTicks) {
             float t = age + partialTicks;
-            return t < STRIKE ? t / STRIKE : t < HOLD ? 1 : Math.max(0, 1 - (t - HOLD) / (TICKS - HOLD));
+            float in = fromLayer + (1 - fromLayer) * Draw.clamp01(t / TAKE);
+            return Math.min(in, Draw.clamp01((TICKS - t) / LET_GO));
         }
 
-        /** How much of the blow before is still in the pose. */
-        public float fromWeight(float partialTicks) {
-            return fromWeight * Math.max(0, 1 - (age + partialTicks) / STRIKE);
+        /** The pose of {@link BlowPose#BONES} now: this blow, with the one before still leaving it. */
+        public float[] pose(float partialTicks) {
+            float t = age + partialTicks;
+            float[] now = BlowPose.sample(blow, t);
+            if (from > 0 && t < JOIN) {
+                float[] before = BlowPose.sample(from, fromAge + t);
+                float k = t / JOIN;
+                k = k * k * (3 - 2 * k);
+                for (int i = 0; i < now.length; i++) {
+                    now[i] = before[i] + (now[i] - before[i]) * k;
+                }
+            }
+            return now;
         }
     }
 
@@ -265,31 +283,38 @@ public final class ClientDomain {
             }
             case DomainWire.BLOW:
                 if (clash == m.session) {
-                    Blow blow = blows.get(m.casterEntity);
-                    Blow next = new Blow();
-                    next.blow = m.blow;
-                    next.landed = m.landed;
-                    if (blow != null) {
-                        // The pose the last blow is in fades as this one comes.
-                        next.from = blow.blow;
-                        next.fromWeight = blow.weight(0);
-                    }
-                    blows.put(m.casterEntity, next);
                     Minecraft mc = Minecraft.getMinecraft();
-                    Entity attacker = mc.theWorld == null ? null : mc.theWorld.getEntityByID(m.casterEntity);
+                    Blow blow = blows.get(m.casterEntity);
+                    if (!m.landed) {
+                        // The blow begins: the body moves, and whatever blow it was in flows into this one.
+                        Blow next = new Blow();
+                        next.blow = m.blow;
+                        if (blow != null) {
+                            next.from = blow.blow;
+                            next.fromAge = blow.age;
+                            next.fromLayer = blow.layer(0);
+                        }
+                        blows.put(m.casterEntity, next);
+                        Entity attacker = mc.theWorld == null ? null : mc.theWorld.getEntityByID(m.casterEntity);
+                        if (attacker != null) {
+                            DomainSounds.playAt(SoundCues.BLOW, attacker.posX, attacker.posY + 1, attacker.posZ, 1F);
+                        }
+                        break;
+                    }
+                    // The fist arrives, and lands.
                     int other = clashEntities[clashEntities[0] == m.casterEntity ? 1 : 0];
                     Entity victim = mc.theWorld == null ? null : mc.theWorld.getEntityByID(other);
-                    if (attacker != null) {
-                        DomainSounds.playAt(SoundCues.BLOW, attacker.posX, attacker.posY + 1, attacker.posZ, 1F);
+                    if (blow != null && blow.blow == m.blow) {
+                        blow.victim = other;
+                        blow.landedAt = blow.age;
                     }
-                    if (m.landed && victim != null) {
+                    if (victim != null) {
                         DomainSounds.playAt(SoundCues.IMPACT, victim.posX, victim.posY + 1, victim.posZ, 1F);
-                        next.victim = other;
-                        // Whoever gives or takes the blow feels it; the finisher more.
-                        if (mc.thePlayer != null
-                            && (mc.thePlayer.getEntityId() == other || mc.thePlayer.getEntityId() == m.casterEntity)) {
-                            CameraShake.INSTANCE.kick(m.blow == 4 ? 1.6F : 0.6F);
-                        }
+                    }
+                    // Whoever gives or takes the blow feels it; the finisher more.
+                    if (mc.thePlayer != null
+                        && (mc.thePlayer.getEntityId() == other || mc.thePlayer.getEntityId() == m.casterEntity)) {
+                        CameraShake.INSTANCE.kick(m.blow == 4 ? 1.6F : 0.6F);
                     }
                 }
                 break;

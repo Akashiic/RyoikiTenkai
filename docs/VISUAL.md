@@ -68,28 +68,63 @@ modelo, textura nem som no mod (os sons são arquivos do dono, ver "Som"). A are
   meio. Fica no topo porque embaixo estão a vida, a armadura e a barra de itens.
 * **Resolução:** clarão na cor do vencedor e tremor; o domínio do vencedor recomeça. No empate, a quebra de sempre.
 
-### Os quatro golpes (`ComboChain`, `ClientDomain.Blow`)
+### Os golpes do choque (`ComboChain`, `BlowPose`, `ClientDomain.Blow`)
 
-![Os quatro golpes](img/golpes.png)
+No choque, cada clique dos dois conjuradores é um golpe de uma **cadeia de quatro**. O dono pediu este trabalho
+**meticuloso e uma peça por vez**: cada golpe é um movimento do corpo inteiro, calculado, e só se passa ao seguinte
+quando o anterior está bom. **Estado: a guarda e o golpe 1 estão feitos; os golpes 2, 3 e 4 são provisórios** (uma
+pose cada, tomada pelo corpo todo de uma vez), só para a cadeia existir.
 
-No choque, cada clique dos dois conjuradores é um golpe de uma **cadeia de quatro**: direto de direita, cruzado de
-esquerda, gancho subindo e, para fechar, um chute frontal. Em cima, de lado; embaixo, por trás.
+**O que cada eixo faz** (medido no modelo de teste com o visor de quatro vistas; graus como num arquivo de animação):
 
-* **Ritmo:** um golpe a cada 6 ticks; um clique até 4 ticks adiantado fica guardado e sai na hora certa; 18 ticks
-  sem golpear e a cadeia volta ao primeiro; depois do quarto, 14 ticks de recuperação.
-* **Acerto:** não precisa mirar no boneco. Vale o rival a até 3,6 blocos e dentro de 60° da direção do olhar (ou
-  colado). Cada acerto enche 6,25 % da barra.
-* **Movimento:** cada golpe dá um passo à frente (maior no quarto), e o quarto **arremessa** o rival para trás.
-* **Animação:** o modelo do Futura3D faz a pose de cada golpe (2 ticks para bater, segura, solta), e a pose de um
-  golpe se mistura na do seguinte, sem voltar ao repouso entre eles. Os quatro golpes posam os mesmos ossos
-  (`UpBody`, braços, antebraços, pernas). Com a skin comum só há o balanço de braço do jogo.
-* **Impacto:** um clarão no peito de quem leva, na cor do domínio de quem bate (maior no quarto), o tranco de dano e
-  um tremor de câmera para os dois.
+| Eixo | Positivo |
+|---|---|
+| X | inclina o corpo para a frente; leva braço ou perna **para trás** (negativo: para a frente); dobra o joelho (`LowerLeg`) e o cotovelo é o contrário (`ForeArm` negativo dobra); aponta os dedos do pé para baixo |
+| Y | gira para a **direita do próprio modelo** (o ombro esquerdo vem à frente); num braço erguido, leva-o para a direita |
+| Z | inclina para a direita; abre o braço e a perna **direitos** para fora (os esquerdos são espelhados) |
+
+Ossos usados (`BlowPose.BONES`): `AllBody` (quadril e tudo acima e abaixo), `UpBody` (tronco), `AllHead`, `RightArm`,
+`RightForeArm`, `LeftArm`, `LeftForeArm`, `RightLeg`, `RightLowerLeg`, `RightFoot` e os três da perna esquerda.
+
+**A guarda** (de onde todo golpe sai e para onde volta): lado esquerdo à frente, corpo 20° fora da linha, joelhos
+dobrados com o peso entre as pernas, punho de trás no queixo e o da frente um pouco adiante.
+
+**Golpe 1, o direto de direita** (10 ticks; o punho chega no tick 3):
+
+![Golpe 1](img/golpe1.png)
+
+| Fase | Ticks | O que acontece |
+|---|---|---|
+| Antecipação | 0 a 1 | o corpo gira 5° a mais para trás, o peso vai para a perna de trás, o punho recolhe |
+| Golpe | 0,9 a 3 | **em cadeia**: o quadril gira primeiro (0,9 a 2,4), o tronco depois (1,2 a 2,7), o braço por último (1,5 a 3). No fim o quadril passou 32° pela linha e o tronco mais 22°; o peso está na perna da frente e a de trás, esticada |
+| Retorno | 4 a 9,2 | na ordem inversa: o braço volta primeiro, o quadril por último |
+
+Três coisas são **calculadas a cada instante, não posadas**, e têm teste (`BlowPoseTest`):
+
+* **o punho anda em linha reta** do queixo ao alvo: ombro e cotovelo são resolvidos para isso (dois segmentos
+  iguais), em vez de cada um girar por conta própria, o que levava o punho num arco para cima;
+* **a cabeça desfaz o giro do corpo**: o olhar fica no alvo (a menos de 3,5°) enquanto quadril e tronco giram;
+* **os pés ficam no chão**: a sola do pé da frente fica nivelada e apontada para o alvo o tempo todo; o pé de trás
+  gira sobre a ponta (de 42° para 12°) e o calcanhar sobe (de 8° para 26°) conforme o quadril vem.
+
+**No jogo:** a pose entra em 1,5 tick e o lutador fica na guarda enquanto a cadeia pode continuar (16 ticks), saindo
+em 4; um golpe emenda no seguinte em 2 ticks, de onde o corpo estiver. O acerto é decidido **quando o punho chega**
+(3 ticks depois do clique), não no clique: é aí que vêm o clarão no peito de quem leva, o tranco, o tremor e o
+som.
+
+* **Ritmo:** um golpe a cada 6 ticks; um clique até 4 ticks adiantado fica guardado; 18 ticks sem golpear e a cadeia
+  volta ao primeiro; depois do quarto, 14 ticks de recuperação.
+* **Acerto:** vale o rival a até 3,6 blocos e dentro de 60° da direção do olhar (ou colado). Cada um enche 6,25 %.
+* **Movimento:** cada golpe dá um passo à frente (maior no quarto), e o quarto arremessa o rival.
 * **Som (opcional):** `golpe.ogg` e `impacto.ogg` em `config/ryoikitenkai/sons/`.
+* **Como trabalhar num golpe:** no harness, `turn guard` e `turn <golpe> <tick>` mostram o modelo de frente, de três
+  quartos, de perfil e de cima; com `ryoiki-bones.txt` na pasta do jogo (linhas `<osso> <x> <y> <z>`), `turn on`
+  mostra essa pose crua.
 
 Verificado com dois clientes no servidor de teste: rival vencendo por tempo e por barra cheia, anfitrião vencendo por
-barra cheia, empate, resposta durante o sinal de mão e depois de o domínio abrir. Os quatro golpes foram vistos com o modelo de teste. **A verificar:** a sensação do combo com jogadores de verdade (ritmo,
-alcance, força do arremesso), as poses em outros modelos, a alternância de
+barra cheia, empate, resposta durante o sinal de mão e depois de o domínio abrir. O golpe 1 foi visto quadro a quadro no modelo de teste e rodou num choque com dois clientes. **A verificar:** a
+sensação do combo com jogadores de verdade (ritmo, alcance, força do arremesso), os golpes em outros modelos (ossos
+com outros nomes ou outra pose de repouso), a alternância de
 cenários vista ao vivo (as capturas pegam um quadro só), quem assiste de fora perto do domo, mais de um jogador pego
 além dos dois conjuradores, e o choque em sobrevivência com armas e habilidades de outros mods.
 

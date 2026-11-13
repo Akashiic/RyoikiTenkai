@@ -35,6 +35,13 @@ atrapalhando, converse com ele.
 * **[Kunftig](https://github.com/Akashiic/Kunftig)** é o mod (motor) próprio da rede, no cliente e no servidor:
   exibições GeckoLib no mundo, HUD, câmera, teclas, lâminas e efeitos, partículas. Guia: `docs/API.md` no Kunftig.
 
+## Como o dono quer o trabalho
+
+* **Uma peça por vez, bem feita.** Em 2026-11-13, sobre as animações de luta, o dono disse que quer trabalho
+  "meticuloso, trabalhado, detalhado, matemático" (jogo de pernas, quadril, braços, inclinação de cada parte, simetria,
+  nada que cause estranheza) e que fazer tudo de uma vez "é um erro": os melhores trabalhos se formam de pequenas
+  coisas bem feitas. Faça um golpe (ou uma parte) por vez, meça, mostre, e só então passe ao seguinte.
+
 ## Regras
 
 * Trabalhe em branches e abra PRs. Não use force-push.

@@ -19,6 +19,7 @@ import org.lwjgl.opengl.GL11;
 import com.akashic.ryoiki.DomainType;
 import com.akashic.ryoiki.RyoikiTenkai;
 import com.akashic.ryoiki.arena.ShrineCore;
+import com.akashic.ryoiki.fx.BlowPose;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 
@@ -100,12 +101,13 @@ public final class DomainRenderer {
             GL11.glPopMatrix();
         }
         for (ClientDomain.Blow blow : domain.blows.values()) {
-            Entity victim = blow.victim < 0 || blow.age >= IMPACT_TICKS ? null : mc.theWorld.getEntityByID(blow.victim);
+            int since = blow.age - blow.landedAt;
+            Entity victim = blow.victim < 0 || since >= IMPACT_TICKS ? null : mc.theWorld.getEntityByID(blow.victim);
             if (victim == null) {
                 continue;
             }
             // Where a blow lands: a burst of light at the chest, larger for the finisher.
-            float t = (blow.age + event.partialTicks) / IMPACT_TICKS;
+            float t = (since + event.partialTicks) / IMPACT_TICKS;
             float size = (blow.blow == 4 ? 1.9F : 1.1F) * (0.35F + 0.65F * Draw.easeOut(t));
             int color = domain.clashTypes[0] == null ? 0xFFFFFF
                 : look(domain.clashTypes[domain.clashEntities[0] == blow.victim ? 1 : 0]).bandTrim();
@@ -284,12 +286,11 @@ public final class DomainRenderer {
         }
         ClientDomain.Blow blow = domain.blows.get(id);
         if (blow != null) {
-            FuturaBridge.INSTANCE.blend(
+            FuturaBridge.INSTANCE.pose(
                 event.entityPlayer,
-                "golpe" + blow.blow,
-                blow.weight(event.partialRenderTick),
-                "golpe" + blow.from,
-                blow.fromWeight(event.partialRenderTick));
+                BlowPose.BONES,
+                blow.pose(event.partialRenderTick),
+                blow.layer(event.partialRenderTick));
             return;
         }
         if (domain.rivalSign != null && domain.rivalSign.casterEntity == id) {

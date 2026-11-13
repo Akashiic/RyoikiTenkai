@@ -37,7 +37,10 @@ public final class DomainWire {
     public static final byte RIVAL = 8;
     /** The hits of the host and of the rival so far. */
     public static final byte CLASH_SCORE = 9;
-    /** A caster in a clash begins a blow of its chain ({@code blow}, 1 to 4), and whether it lands. */
+    /**
+     * A caster in a clash begins a blow of its chain ({@code blow}, 1 to 4); sent again, with {@code landed}, when
+     * its fist arrives and lands.
+     */
     public static final byte BLOW = 10;
 
     /** One decoded message; which fields are set depends on {@link #op}. */

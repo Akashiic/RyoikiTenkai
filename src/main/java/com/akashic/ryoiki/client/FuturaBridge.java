@@ -25,9 +25,9 @@ import com.akashic.ryoiki.RyoikiTenkai;
  * 6), so nothing here needs it: without it, or with an older one, {@link #modelled} is false and the cut-in draws the
  * plain skin instead.
  */
-final class FuturaBridge {
+public final class FuturaBridge {
 
-    static final FuturaBridge INSTANCE = new FuturaBridge();
+    public static final FuturaBridge INSTANCE = new FuturaBridge();
 
     /** One sign: the bones it poses and, three for each, their rotations in degrees as in an animation file. */
     private static final class Sign {
@@ -40,7 +40,7 @@ final class FuturaBridge {
     private MethodHandle setBonePose;
     private MethodHandle setScreenDraw;
     private MethodHandle locatorInLastDraw;
-    /** By name: a domain's id for its hand sign, {@code golpe1} to {@code golpe4} for the blows of a clash. */
+    /** By the domain's id: its hand sign. */
     private final Map<String, Sign> signs = new HashMap<>();
     private File override;
     private long overrideStamp;
@@ -97,52 +97,6 @@ final class FuturaBridge {
                 "right_ffg 0 0 0",
                 "left_dmz 0 0 -45",
                 "Head -5 0 0"));
-        // The four blows pose the same bones, so one flows into the next: a straight right, a left cross, a rising
-        // right hook with the body turned into it, and a front kick leaning back.
-        signs.put(
-            "golpe1",
-            sign(
-                "UpBody 0 -22 0",
-                "RightArm -88 0 0",
-                "RightForeArm -8 0 0",
-                "LeftArm -48 0 0",
-                "LeftForeArm -112 0 0",
-                "RightLeg 0 0 0",
-                "RightLowerLeg 0 0 0",
-                "LeftLeg 0 0 0"));
-        signs.put(
-            "golpe2",
-            sign(
-                "UpBody 0 22 0",
-                "RightArm -48 0 0",
-                "RightForeArm -112 0 0",
-                "LeftArm -88 0 0",
-                "LeftForeArm -8 0 0",
-                "RightLeg 0 0 0",
-                "RightLowerLeg 0 0 0",
-                "LeftLeg 0 0 0"));
-        signs.put(
-            "golpe3",
-            sign(
-                "UpBody -6 -34 0",
-                "RightArm -128 0 0",
-                "RightForeArm -78 0 0",
-                "LeftArm -40 0 0",
-                "LeftForeArm -100 0 0",
-                "RightLeg 0 0 0",
-                "RightLowerLeg 0 0 0",
-                "LeftLeg 0 0 0"));
-        signs.put(
-            "golpe4",
-            sign(
-                "UpBody 14 0 0",
-                "RightArm 28 0 0",
-                "RightForeArm -30 0 0",
-                "LeftArm -42 0 0",
-                "LeftForeArm -70 0 0",
-                "RightLeg -92 0 0",
-                "RightLowerLeg 6 0 0",
-                "LeftLeg 8 0 0"));
         if (Boolean.getBoolean("ryoiki.devHarness")) {
             // Development: the signs can be retuned while the game runs.
             override = new File(Minecraft.getMinecraft().mcDataDir, "ryoiki-pose.txt");
@@ -182,44 +136,39 @@ final class FuturaBridge {
      * @param sign 0 (as the model's animation has it) to 1 (the sign held)
      */
     void pose(EntityPlayer player, DomainType type, float sign) {
-        blend(player, type.id, sign, null, 0);
-    }
-
-    /**
-     * Poses the player's model between two poses of the same bones, each with its weight: the one a blow leaves and
-     * the one the next takes. With one pose, that pose.
-     */
-    void blend(EntityPlayer player, String first, float firstWeight, String second, float secondWeight) {
-        if (setBonePose == null || player == null) {
+        if (setBonePose == null || player == null || sign <= 0) {
             return;
         }
         reload();
-        Sign a = firstWeight > 0 ? signs.get(first) : null;
-        Sign c = secondWeight > 0 ? signs.get(second) : null;
-        if (a == null && c == null) {
-            return;
-        }
-        Sign s = a != null ? a : c;
-        float[] degrees = s.degrees;
-        float weight = a != null ? firstWeight : secondWeight;
-        if (a != null && c != null && a.degrees.length == c.degrees.length) {
-            float sum = firstWeight + secondWeight;
-            degrees = new float[a.degrees.length];
-            for (int i = 0; i < degrees.length; i++) {
-                degrees[i] = (a.degrees[i] * firstWeight + c.degrees[i] * secondWeight) / sum;
-            }
-            weight = Math.max(firstWeight, secondWeight);
-        }
+        Sign s = signs.get(type.id);
         try {
-            boolean ignored = (boolean) setBonePose.invoke(player, s.bones, degrees, Math.min(1, weight));
+            boolean ignored = (boolean) setBonePose.invoke(player, s.bones, s.degrees, Math.min(1, sign));
         } catch (Throwable e) {
             setBonePose = null;
             RyoikiTenkai.LOG.warn("3D Futura Engine refused the hand sign: using the plain skin from now on", e);
         }
     }
 
+    /** Poses bones of the player's model for the next draw: three angles for each, in degrees as in an animation. */
+    public void pose(EntityPlayer player, String[] bones, float[] degrees, float weight) {
+        if (setBonePose == null || player == null || weight <= 0) {
+            return;
+        }
+        try {
+            boolean ignored = (boolean) setBonePose.invoke(player, bones, degrees, Math.min(1, weight));
+        } catch (Throwable e) {
+            setBonePose = null;
+            RyoikiTenkai.LOG.warn("3D Futura Engine refused the pose: using the plain skin from now on", e);
+        }
+    }
+
+    /** Around a draw of a player outside the world: no name tag, and no pose but the one given. */
+    public static void drawingOnScreen(boolean drawing) {
+        CutIn.drawingPlayer = drawing;
+    }
+
     /** Around a draw of the player's model on the HUD: the model goes where the matrix puts it, not in the world. */
-    void screenDraw(boolean drawing) {
+    public void screenDraw(boolean drawing) {
         if (setScreenDraw != null) {
             try {
                 setScreenDraw.invoke(drawing);

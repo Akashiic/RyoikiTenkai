@@ -68,6 +68,9 @@ public final class DomainSession {
     /** The chain of blows of the host and of the rival, and how far each one's arm was in its swing last tick. */
     final ComboChain[] chains = { new ComboChain(), new ComboChain() };
     final int[] swing = { -1, -1 };
+    /** The blow of each on its way, 0 when none, and the tick its fist arrives. */
+    final int[] coming = new int[2];
+    final long[] arrives = new long[2];
     /** Who is in the arena, and where each goes back to. */
     final Map<UUID, ReturnPoint> inside = new LinkedHashMap<>();
     /** Who was told about this domain (the hand sign or the dome) and must be told when it ends. */

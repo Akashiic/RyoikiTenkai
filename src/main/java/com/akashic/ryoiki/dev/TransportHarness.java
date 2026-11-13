@@ -495,7 +495,8 @@ public final class TransportHarness {
      * On a server the test is driven from outside: lines appended to a {@code ryoiki-harness-cmd} file in the run
      * directory, one command at a time. {@code chat <text>} sends a chat line or a command; {@code cast <domain>}
      * casts and records the trip; {@code view <0|1|2>} sets the camera; {@code look <yaw> <pitch>};
-     * {@code shot <name>}; {@code blow <n>} holds a blow's pose on this player ({@code blow 0} lets go);
+     * {@code shot <name>}; {@code turn on|off} shows the model in four views, in the pose of {@code ryoiki-bones.txt};
+     * {@code blow <n>} holds a blow's pose on this player ({@code blow 0} lets go);
      * {@code film <ticks>} takes a screenshot every other tick; {@code hit <n>} gives n blows to
      * the nearest other player; {@code watch <seconds>} takes a
      * screenshot every second and a half; {@code where} writes
@@ -504,6 +505,22 @@ public final class TransportHarness {
     private int hitsLeft;
     private int filmLeft;
     private int heldBlow;
+    private boolean turnaround;
+    private float[] turnPose;
+
+    /** The model in four views, over everything, while it is asked for. */
+    @SubscribeEvent
+    public void onOverlay(net.minecraftforge.client.event.RenderGameOverlayEvent.Post event) {
+        if (turnaround && event.type == net.minecraftforge.client.event.RenderGameOverlayEvent.ElementType.ALL) {
+            Turnaround.draw(
+                Minecraft.getMinecraft(),
+                event.resolution.getScaledWidth(),
+                event.resolution.getScaledHeight(),
+                turnPose == null ? null : com.akashic.ryoiki.fx.BlowPose.BONES,
+                turnPose);
+        }
+    }
+
     private int filmed;
 
     private void command(Minecraft mc) {
@@ -570,6 +587,17 @@ public final class TransportHarness {
             case "cast":
                 castType = DomainType.byId(rest);
                 next(Step.CAST);
+                break;
+            case "turn":
+                turnaround = !"off".equals(rest);
+                // "turn 1 2.5": the first blow, two and a half ticks in. "turn guard". "turn on": the bones file.
+                turnPose = null;
+                if ("guard".equals(rest)) {
+                    turnPose = com.akashic.ryoiki.fx.BlowPose.guard();
+                } else if (rest.contains(" ")) {
+                    String[] at = rest.split(" ");
+                    turnPose = com.akashic.ryoiki.fx.BlowPose.sample(Integer.parseInt(at[0]), Float.parseFloat(at[1]));
+                }
                 break;
             case "blow":
                 heldBlow = Integer.parseInt(rest);
