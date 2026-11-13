@@ -645,6 +645,22 @@ public final class TransportHarness {
                 walkStrafe = Float.parseFloat(way[0]);
                 walkForward = Float.parseFloat(way[1]);
                 break;
+            case "slashes": {
+                // Where the next flurries of cuts will be, to go and look at one: for each, the tick of the domain
+                // it starts at, where the middle of its first cut is from the arena's centre, and how far that is.
+                ClientDomain d = ClientDomain.INSTANCE;
+                com.akashic.ryoiki.fx.SlashField.Slash cut = new com.akashic.ryoiki.fx.SlashField.Slash();
+                StringBuilder next = new StringBuilder("slashes now " + d.age + ":");
+                int flurry = com.akashic.ryoiki.fx.SlashField.flurry(d.age) + 1;
+                for (int i = 0; i < 40; i++, flurry++) {
+                    int first = flurry * com.akashic.ryoiki.fx.SlashField.FLURRY;
+                    int born = com.akashic.ryoiki.fx.SlashField.born(first);
+                    com.akashic.ryoiki.fx.SlashField.at(d.session, first, born, d.radius, cut);
+                    next.append(String.format(" %d,%.1f,%.1f,%.1f", born, cut.midX, cut.midY, cut.midZ));
+                }
+                report(next.toString());
+                break;
+            }
             case "fly":
                 mc.thePlayer.capabilities.isFlying = true;
                 mc.thePlayer.sendPlayerAbilities();

@@ -49,9 +49,29 @@ modelo, textura nem som no mod (os sons são arquivos do dono, ver "Som"). A are
     agente não reproduz.
 * **Em volta:** doze **portais** em anel, fora da parede, cada um com duas lanternas que tremulam;
   **torres** negras no horizonte; névoa vermelha rasteira em faixas; brasas subindo.
-* **Cortes:** a cada 4 ticks um risco branco cruza a arena num instante e deixa um rastro vermelho que some
-  (`fx/SlashField`). A posição de cada corte sai do número do domínio e do tempo, então **todos os clientes veem os
-  mesmos cortes sem nenhuma mensagem**. Cada corte dá um tranco na câmera. Por enquanto é só visual: não causa dano.
+* **Cortes** (`fx/SlashField`, `SlashFx`; refeitos em 2026-11-13, peça B1 do `PLANO-COMBATE.md`):
+
+  ![Cortes](img/cortes.png)
+
+  Cada corte é **o arco que uma lâmina varre no ar**: um pedaço de círculo (3,5 a 7,5 blocos de raio, 70° a 130°
+  de abertura) num plano próprio, nivelado ou inclinado, bojudo para cima ou para o lado. Vêm em **rajadas de três**,
+  a 2 ticks um do outro, **cruzando-se no mesmo lugar**, e uma rajada nova a cada 5 ticks noutro ponto do chão
+  (nunca no meio, onde o salão os esconderia). Tudo sai do número do domínio e do tempo: todos veem os mesmos.
+
+  * **A varrida:** a lâmina cruza o arco em 2,2 ticks, rápida no começo, com um ponto branco na frente.
+  * **O crescente:** grosso no meio (um quarto do raio) e afinando até as pontas; branco no fio que corta, passando
+    por laranja até carmesim por dentro, sobre uma **sombra escura** que lhe dá corpo contra qualquer fundo claro.
+    Depois afina em direção ao fio e se apaga a partir da ponta por onde começou (10 ticks ao todo).
+  * **O fio:** uma linha quente ao longo do arco, sempre de frente para o olho: um corte visto de perfil continua
+    sendo um corte.
+  * **Estilhaços:** onze por corte, atirados na direção da lâmina quando ela passa por cada ponto, caindo,
+    esfriando de branco para vermelho.
+  * **A cicatriz:** onde o arco passa baixo (até 3,2 blocos do chão) ele risca o chão; o risco é desenhado junto
+    com a lâmina e fica aceso por 44 ticks.
+  * Um corte que passa rente à câmera é atenuado (não vira tela branca). Cada rajada dá um tremor e toca
+    `santuario_corte.ogg`, se o dono o pôs.
+
+  Antes disto cada corte era uma linha reta de 66 blocos atravessando a arena: lia como risco, não como corte.
 
 ## Choque de Domínios (`ClashHud`, `ClientDomain#shown`)
 

@@ -5,7 +5,6 @@ import net.minecraft.client.renderer.Tessellator;
 import org.lwjgl.opengl.GL11;
 
 import com.akashic.ryoiki.arena.ShrineCore;
-import com.akashic.ryoiki.fx.SlashField;
 
 /**
  * The crimson shrine: a black sky over still red water and a blood moon; in the middle, behind the caster, the
@@ -28,8 +27,6 @@ final class ShrineLook implements DomainLook {
      * server builds in the middle of the arena ({@code ShrineCore}).
      */
     private static final float SHRINE_SCALE = ShrineCore.HALF / 5.4F;
-
-    private final SlashField.Slash slash = new SlashField.Slash();
 
     @Override
     public void sky(float radius, float time) {
@@ -182,7 +179,7 @@ final class ShrineLook implements DomainLook {
         lights(t, radius, time);
         mist(radius, time);
         embers(t, radius, time);
-        slashes(t, radius, time, seed, camX, camY, camZ);
+        SlashFx.draw(t, radius, time, seed, camX, camY, camZ);
     }
 
     /** Two pillars and two beams, with a lantern under each end of the lower beam. Drawn across the X axis. */
@@ -497,94 +494,6 @@ final class ShrineLook implements DomainLook {
         }
         t.draw();
         GL11.glDepthMask(true);
-    }
-
-    /** The cuts: a white line that runs across the arena in an instant and leaves a red wake that fades. */
-    private void slashes(Tessellator t, int radius, float time, int seed, double camX, double camY, double camZ) {
-        Draw.additive();
-        GL11.glDepthMask(false);
-        int latest = SlashField.index((int) time);
-        t.startDrawingQuads();
-        for (int index = latest - 2; index <= latest; index++) {
-            if (!SlashField.at(seed, index, time, radius, slash)) {
-                continue;
-            }
-            // The line draws itself from one end to the other in the first fifth of its life.
-            float drawn = Draw.clamp01(slash.life * 5);
-            float fade = 1 - slash.life;
-            float half = slash.length / 2;
-            float fromX = slash.x - slash.dirX * half;
-            float fromY = slash.y - slash.dirY * half;
-            float fromZ = slash.z - slash.dirZ * half;
-            float toX = fromX + slash.dirX * slash.length * drawn;
-            float toY = fromY + slash.dirY * slash.length * drawn;
-            float toZ = fromZ + slash.dirZ * slash.length * drawn;
-            // Across the line and across the line of sight: the ribbon always shows its face.
-            double sx = slash.x - camX;
-            double sy = slash.y - camY;
-            double sz = slash.z - camZ;
-            double wx = slash.dirY * sz - slash.dirZ * sy;
-            double wy = slash.dirZ * sx - slash.dirX * sz;
-            double wz = slash.dirX * sy - slash.dirY * sx;
-            double wl = Math.sqrt(wx * wx + wy * wy + wz * wz);
-            if (wl < 1.0e-5) {
-                continue;
-            }
-            wx /= wl;
-            wy /= wl;
-            wz /= wl;
-            ribbon(
-                t,
-                fromX,
-                fromY,
-                fromZ,
-                toX,
-                toY,
-                toZ,
-                wx,
-                wy,
-                wz,
-                0.55F + slash.life * 0.5F,
-                0xFF1020,
-                0.42F * fade);
-            ribbon(t, fromX, fromY, fromZ, toX, toY, toZ, wx, wy, wz, 0.16F, 0xFF6050, 0.7F * fade);
-            ribbon(
-                t,
-                fromX,
-                fromY,
-                fromZ,
-                toX,
-                toY,
-                toZ,
-                wx,
-                wy,
-                wz,
-                0.045F * (1 - slash.life * 0.6F),
-                0xFFFFFF,
-                fade * fade * 1.2F);
-        }
-        t.draw();
-        GL11.glDepthMask(true);
-    }
-
-    /** A sliver from one point to another, brightest along its middle and tapering to both ends. */
-    private static void ribbon(Tessellator t, float ax, float ay, float az, float bx, float by, float bz, double wx,
-        double wy, double wz, float width, int rgb, float alpha) {
-        float mx = (ax + bx) / 2;
-        float my = (ay + by) / 2;
-        float mz = (az + bz) / 2;
-        double ox = wx * width;
-        double oy = wy * width;
-        double oz = wz * width;
-        // A diamond: the quad is split along the line itself, so the light is on the line and dies to the sides.
-        Draw.color(t, rgb, alpha);
-        t.addVertex(ax, ay, az);
-        Draw.color(t, rgb, 0);
-        t.addVertex(mx + ox, my + oy, mz + oz);
-        Draw.color(t, rgb, alpha);
-        t.addVertex(bx, by, bz);
-        Draw.color(t, rgb, 0);
-        t.addVertex(mx - ox, my - oy, mz - oz);
     }
 
     @Override

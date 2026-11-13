@@ -578,11 +578,10 @@ public final class ClientDomain {
             age++;
             sky.install(world.provider);
             // Each cut of the crimson shrine jolts the view.
-            if (inside == DomainType.MALEVOLENT_SHRINE && SlashField.startsAt(age)
-                && age % (SlashField.PERIOD * 2) == 0) {
+            if (inside == DomainType.MALEVOLENT_SHRINE && SlashField.flurryStartsAt(age)) {
+                // Each flurry of cuts jolts the view, and sounds: its pitch varies, the same on every client.
                 CameraShake.INSTANCE.kick(0.9F);
-                // The pitch varies with the cut, the same on every client.
-                DomainSounds.play(inside, SoundCues.SLASH, 0.45F, 0.85F + (age / SlashField.PERIOD * 7 % 5) * 0.075F);
+                DomainSounds.play(inside, SoundCues.SLASH, 0.45F, 0.85F + (SlashField.flurry(age) * 7 % 5) * 0.075F);
             }
         } else {
             sky.restore();
