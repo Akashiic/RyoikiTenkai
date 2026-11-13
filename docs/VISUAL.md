@@ -385,8 +385,23 @@ bonita, sem fome e sem barra de experiência**.
   `tools/hud/gerar.py`** (numpy e Pillow), com dois texels por pixel da interface. As peças são brancas ou cinza e o
   jogo tinge com a cor da técnica; quem quiser outra arte troca o arquivo por um pacote de recursos, mantendo as
   posições.
-* **O que ainda não faz:** as teclas 1 a 4 só fazem a casa responder. A quarta passa a conjurar na peça M3; as três
-  primeiras são **propostas** (`PLANO-COMBATE.md`) que o dono ainda vai aprovar, e os ícones delas também.
+* **O que ainda não faz:** as teclas 1 a 3 só fazem a casa responder: as habilidades são **propostas**
+  (`PLANO-COMBATE.md`) que o dono ainda vai aprovar, e os ícones delas também.
+
+### A tecla 4: Expansão de Domínio (peça M3, 2026-11-13)
+
+No modo, a tecla 4 expande o domínio da técnica do jogador. O cliente só pede (`ModeWire.USE`); o servidor decide
+(`SorcererMode#use`, regra pura em `ModeRules#expand`) e conjura pelo mesmo caminho do comando
+(`DomainManager#cast`), então tudo o que vale para um domínio vale aqui: o sinal de mão, quem é pego, e **responder
+ao domínio de outro pela tecla 4 abre o choque**.
+
+* **Recarga: 60 s** (`dominio.recarga`, decisão do dono), contados **do sinal de mão**: como o domínio dura 14 ou
+  18 s, sobram uns 45 s depois que ele acaba. A casa escurece e conta os segundos. Fica guardada com o jogador pelo
+  relógio, então sair e voltar não a zera.
+* **Quando não conjura:** fora do modo (a tecla 4 é a casa 4 da barra de itens, como sempre), sem técnica, ou em
+  recarga: nada acontece. Se o domínio não pode abrir ali (no ar, outro perto demais, domínios demais), o jogador lê
+  o motivo no chat e **não gasta a recarga**.
+* `/ryoiki expandir` continua existindo, para a staff, sem recarga.
 
 **Medido em 2026-11-13** (dois clientes no Crucible de teste, e o cliente de desenvolvimento num servidor Forge
 puro, sem plugin):
@@ -403,8 +418,15 @@ puro, sem plugin):
 | Fome com o efeito Fome forte (6 s) | fora do modo cai de 20 a 0; no modo fica em 20; ao sair volta a 0 |
 | O rodapé no Crucible de teste, dois clientes | Santuário, Vazio e sem técnica; a técnica dada pelo console muda o rodapé na hora |
 | Dano, recarga e tecla, filmados | a perda pálida escoa, a sombra da recarga conta os segundos, a casa responde |
+| Tecla 4 de verdade, fora do modo | troca para a casa 4 da barra de itens; nenhum domínio |
+| Tecla 4 de verdade, no modo, com a técnica do Vazio | o domínio abre; 5 s depois o rodapé marca 55 s |
+| O outro jogador responde pela tecla 4 (Santuário) | choque de domínios; os dois ficam em recarga |
+| Tecla 4 durante a recarga (aos 30 s) | nada; a contagem segue |
+| Tecla 4 depois dos 60 s | o domínio abre de novo |
+| Tecla 4 sem técnica | nada |
 
-**A verificar:** com placa de vídeo e o modpack completo; morrer no modo e sair do servidor antes de renascer (os
+**A verificar:** a recarga do domínio depois de sair e voltar ao servidor (está nos dados do jogador, mas não foi
+ensaiado); com placa de vídeo e o modpack completo; morrer no modo e sair do servidor antes de renascer (os
 itens estão nos dados do jogador e voltam ao renascer, mas isso não foi ensaiado); mundos com inventário separado
 (PerWorldInventory); teclas de outros mods que abrem inventários próprios (Baubles, mochilas) não são travadas; no
 modo não se abre porta nem se aperta botão (o clique direito está todo desligado).

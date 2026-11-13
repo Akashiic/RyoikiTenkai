@@ -74,6 +74,8 @@ public final class SorcererMode {
      */
     private static final String TECHNIQUE = "ryoikiTecnica";
     private static final String HUNGER = "ryoikiModoFome";
+    /** There too: when the player's domain is ready again, by the clock (it does not get ready faster offline). */
+    private static final String DOMAIN_READY = "ryoikiDominioPronto";
 
     private final Set<UUID> on = new HashSet<>();
     private final Map<UUID, Long> changed = new HashMap<>();
@@ -116,8 +118,14 @@ public final class SorcererMode {
         byte[] data = new byte[Math.min(payload.readableBytes(), 16)];
         payload.getBytes(payload.readerIndex(), data);
         ModeWire.Message m = ModeWire.decode(data);
-        if (m != null && m.op == ModeWire.ASK && event.handler instanceof NetHandlerPlayServer) {
-            asked.add(new Object[] { ((NetHandlerPlayServer) event.handler).playerEntity.getUniqueID(), m.on });
+        if (m == null || !(event.handler instanceof NetHandlerPlayServer)) {
+            return;
+        }
+        UUID who = ((NetHandlerPlayServer) event.handler).playerEntity.getUniqueID();
+        if (m.op == ModeWire.ASK) {
+            asked.add(new Object[] { who, m.on });
+        } else if (m.op == ModeWire.USE) {
+            asked.add(new Object[] { who, m.slot });
         }
     }
 
@@ -128,8 +136,13 @@ public final class SorcererMode {
         }
         for (Object[] ask = asked.poll(); ask != null; ask = asked.poll()) {
             EntityPlayerMP player = player((UUID) ask[0]);
-            if (player != null) {
+            if (player == null) {
+                continue;
+            }
+            if (ask[1] instanceof Boolean) {
                 set(player, (Boolean) ask[1]);
+            } else {
+                use(player, (Integer) ask[1]);
             }
         }
         MinecraftServer server = MinecraftServer.getServer();
@@ -238,6 +251,60 @@ public final class SorcererMode {
         send(player, ModeWire.cooldown(slot, total, left));
     }
 
+    /**
+     * A player uses one of its four techniques. Only the fourth exists: the domain expansion, which recharges for
+     * {@link Config#domainCooldown} seconds from the hand sign.
+     */
+    private void use(EntityPlayerMP player, int slot) {
+        if (slot != ModeWire.SLOTS) {
+            return;
+        }
+        DomainType technique = technique(player);
+        long now = System.currentTimeMillis();
+        long left = domainReady(player) - now;
+        int reason = ModeRules.expand(isOn(player), technique != null, left);
+        if (reason == ModeRules.RECHARGING) {
+            // Its screen may have lost count: here is how long, again.
+            tellDomainRecharge(player);
+        }
+        if (reason != ModeRules.OK) {
+            return;
+        }
+        String error = DomainManager.INSTANCE.cast(player, technique);
+        if (error != null) {
+            // The domain could not open here (in the air, another one too near...): no recharge for that.
+            ChatComponentTranslation message = new ChatComponentTranslation(error);
+            message.getChatStyle()
+                .setColor(EnumChatFormatting.RED);
+            player.addChatMessage(message);
+            return;
+        }
+        if (Config.domainCooldown > 0) {
+            NBTTagCompound data = player.getEntityData();
+            NBTTagCompound persisted = data.getCompoundTag(EntityPlayer.PERSISTED_NBT_TAG);
+            persisted.setLong(DOMAIN_READY, now + Config.domainCooldown * 1000L);
+            data.setTag(EntityPlayer.PERSISTED_NBT_TAG, persisted);
+            tellDomainRecharge(player);
+        }
+    }
+
+    private static long domainReady(EntityPlayer player) {
+        NBTTagCompound data = player.getEntityData();
+        return data.hasKey(EntityPlayer.PERSISTED_NBT_TAG) ? data.getCompoundTag(EntityPlayer.PERSISTED_NBT_TAG)
+            .getLong(DOMAIN_READY) : 0;
+    }
+
+    /** If a player's domain is recharging, its screen hears how long is left. */
+    private void tellDomainRecharge(EntityPlayerMP player) {
+        long left = domainReady(player) - System.currentTimeMillis();
+        // A recharge longer than the config's is from before the config was shortened: the config's it is.
+        long total = Math.min(Config.domainCooldown, ModeWire.LONGEST / 20) * 1000L;
+        if (left > 0 && total > 0) {
+            left = Math.min(left, total);
+            cooldown(player, ModeWire.SLOTS, (int) (total / 50), (int) (left / 50));
+        }
+    }
+
     // Hunger. The mode has no hunger bar, so it has no hunger: a player in it counts as fed, and does not get
     // hungrier. What it had when it came in is waiting for it when it goes out.
 
@@ -323,6 +390,7 @@ public final class SorcererMode {
         // Nobody arrives in the mode: a hunger still held is from a server that stopped with the player in it.
         releaseHunger(player);
         tellTechnique(player);
+        tellDomainRecharge(player);
     }
 
     @SubscribeEvent
@@ -355,6 +423,7 @@ public final class SorcererMode {
             giveBack((EntityPlayerMP) player);
         }
         tellTechnique((EntityPlayerMP) player);
+        tellDomainRecharge((EntityPlayerMP) player);
         if (isOn(player)) {
             send((EntityPlayerMP) player, ModeWire.state(player.getEntityId(), true));
             if (player.isEntityAlive()) {

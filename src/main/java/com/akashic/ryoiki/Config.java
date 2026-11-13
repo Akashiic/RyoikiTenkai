@@ -19,6 +19,8 @@ public final class Config {
     public static boolean modeEnabled = true;
     /** Ticks a player must wait between two changes of mode. */
     public static int modeCooldown = 20;
+    /** Seconds from a player expanding its domain with the mode until it may again. */
+    public static int domainCooldown = 60;
     public static int arenaX = 200000;
     public static int arenaZ = 200000;
     public static int arenaY = 120;
@@ -50,6 +52,14 @@ public final class Config {
             "Se os jogadores podem entrar no modo Feiticeiro (Ctrl+R). Desligado, quem esta nele ainda pode sair.");
         modeCooldown = cfg
             .getInt("recarga", "modo", modeCooldown, 0, 1200, "Ticks entre duas trocas de modo do mesmo jogador.");
+        domainCooldown = cfg.getInt(
+            "recarga",
+            "dominio",
+            domainCooldown,
+            0,
+            3600,
+            "Segundos entre duas Expansoes de Dominio do mesmo jogador pelo modo Feiticeiro, contados a partir do "
+                + "sinal de mao. O comando /ryoiki expandir nao tem recarga.");
         arenaX = cfg.getInt(
             "x",
             "arena",

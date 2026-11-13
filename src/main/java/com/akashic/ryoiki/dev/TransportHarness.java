@@ -735,7 +735,7 @@ public final class TransportHarness {
                 }
                 report(
                     String.format(
-                        "inv mode %s%s%s, slot %d, hand shows %s, health %.0f, food %d, armor %d, things: %s| %s| chat: %s",
+                        "inv mode %s%s%s, domain in %d s, slot %d, hand shows %s, health %.0f, food %d, armor %d, things: %s| %s| chat: %s",
                         com.akashic.ryoiki.client.SorcererClient.INSTANCE.on() ? "sorcerer" : "normal",
                         mc.thePlayer.isSwingInProgress ? " swinging" : "",
                         Boolean.TRUE.equals(
@@ -744,6 +744,7 @@ public final class TransportHarness {
                                 mc.playerController,
                                 "isHittingBlock",
                                 "field_78778_j")) ? " breaking-a-block" : "",
+                        com.akashic.ryoiki.client.SorcererClient.INSTANCE.domainSeconds(),
                         inv.currentItem,
                         hand == null ? "nothing" : hand.getUnlocalizedName(),
                         mc.thePlayer.getHealth(),

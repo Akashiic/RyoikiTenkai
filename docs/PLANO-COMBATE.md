@@ -45,7 +45,7 @@ quando um clique é golpe.
 |---|---|---|
 | M1 | **O modo em si:** Ctrl+R, a barra some, a mão fica vazia, nada do inventário pode ser usado, movido, largado ou pego, sem quebrar bloco nem ataque do Minecraft, e morrer no modo não perde nada. O servidor decide | feito em 2026-11-13 (`VISUAL.md`, "Modo Feiticeiro") |
 | M2 | **O rodapé:** a barra de vida própria (sem fome nem experiência, pedido do dono) e as quatro casas de habilidade com ícone, tecla (1 a 4) e recarga | feito em 2026-11-13 (`VISUAL.md`, "O rodapé") |
-| M3 | **A quarta casa conjura o domínio**, no lugar do comando `/ryoiki expandir` | a fazer |
+| M3 | **A quarta casa conjura o domínio:** a tecla 4, no modo, expande o domínio da técnica do jogador, com **60 s de recarga** (decisão do dono) contados do sinal de mão. Responder ao domínio de outro pela tecla 4 abre o choque. O comando `/ryoiki expandir` continua, para a staff, sem recarga | feito em 2026-11-13 (`VISUAL.md`, "A tecla 4") |
 
 ### As habilidades: proposta do agente, a aprovar pelo dono
 

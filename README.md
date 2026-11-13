@@ -18,8 +18,9 @@ O estado do projeto, as decisões e o que falta estão em [`docs/HANDOFF.md`](do
   mais no fim, e o vencedor fica com a arena. Empate quebra os dois.
 * **Modo Feiticeiro (Ctrl+R):** o inventário some da tela e fica intocável, a mão fica vazia, e não se quebra bloco
   nem se bate do jeito do Minecraft; Ctrl+R de novo volta ao normal. Morrer no modo não perde nada. É a base das
-  quatro habilidades. O rodapé do modo tem barra de vida própria (sem fome nem experiência) e as quatro casas; as
-  habilidades em si ainda são proposta. `/ryoiki tecnica <vazio|santuario|nenhuma> [jogador]` dá a técnica. `/ryoiki modo [jogador]` faz o mesmo para a staff.
+  quatro habilidades. O rodapé do modo tem barra de vida própria (sem fome nem experiência) e as quatro casas; a
+  **tecla 4 expande o domínio** da técnica do jogador (60 s de recarga), e as outras três habilidades ainda são
+  proposta. `/ryoiki tecnica <vazio|santuario|nenhuma> [jogador]` dá a técnica. `/ryoiki modo [jogador]` faz o mesmo para a staff.
 * Quem fica de fora vê o domo (branco ou preto) no lugar da conjuração.
 * O visual dos dois domínios (Vazio Estelar e Santuário Carmesim), todo desenhado por código: faixa de entrada com o
   rosto da skin do conjurador, selo no chão, céu com reflexo, estruturas, cortes, tremor e saída em estilhaços. Ver

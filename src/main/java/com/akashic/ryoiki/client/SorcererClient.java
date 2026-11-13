@@ -127,9 +127,16 @@ public final class SorcererClient {
         return slot == ModeWire.SLOTS - 1 && technique != null;
     }
 
-    /** For the development harness: a key of a technique, as if pressed. */
+    /**
+     * The key of one of the four techniques (from 0) was pressed: its place on the screen answers, and if the
+     * technique exists the server is asked to use it. Whether it may is the server's to say.
+     */
     public void press(int slot) {
         pressedAt[slot] = ticks;
+        if (has(slot)) {
+            SorcererMode.INSTANCE.channel()
+                .sendToServer(new FMLProxyPacket(Unpooled.wrappedBuffer(ModeWire.use(slot + 1)), ModeWire.CHANNEL));
+        }
     }
 
     /** How much of a technique's recharge is left, from 1 (just used) to 0 (ready). */
@@ -142,6 +149,11 @@ public final class SorcererClient {
     int rechargeSeconds(int slot) {
         int left = rechargeEnds[slot] - ticks;
         return rechargeTotal[slot] <= 0 || left <= 0 ? 0 : (left + 19) / 20;
+    }
+
+    /** For the development harness: seconds until the domain expansion is ready again. */
+    public int domainSeconds() {
+        return rechargeSeconds(ModeWire.SLOTS - 1);
     }
 
     /** Ticks since a technique's key was pressed. */
@@ -310,7 +322,7 @@ public final class SorcererClient {
                 pressed = true;
             }
             if (pressed && i < ModeWire.SLOTS) {
-                pressedAt[i] = ticks;
+                press(i);
             }
         }
         drain(keys.keyBindInventory);

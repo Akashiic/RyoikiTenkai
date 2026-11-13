@@ -96,6 +96,7 @@ Shenanigans** (JJS), para o servidor Minecraft **1.7.10** da Rede Akashic.
 | Plugin ou mod | **Mod**, confirmado pelo dono em 2026-11-12 ("pode ficar à vontade" para a divisão proposta) |
 | Modo Feiticeiro | Ideia do dono em 2026-11-13: **Ctrl+R** troca entre o Minecraft normal e um modo em que o inventário some, a luta fica ligada e o rodapé mostra **4 habilidades, a última a Expansão de Domínio**; voltar devolve o inventário "salvo mesmo se tiver sido morto". Ele mandou começar pela peça M1 (o modo em si). Plano em `PLANO-COMBATE.md`, fase M |
 | Rodapé do modo | Em 2026-11-13 o dono pediu "uma barra de vida com textura bonita" para o modo e **remover a fome e a barra de experiência**. Feito na peça M2: no modo o jogador conta como alimentado (a fome dele volta ao sair) |
+| Recarga do domínio | **60 s**, dito pelo dono em 2026-11-13 ao aprovar a peça M3 (a tecla 4 do modo conjura). Config `dominio.recarga` |
 | Domínios ao mesmo tempo | **No máximo 2.** Um choque (2 domínios numa arena só) ocupa **uma vaga**: o domínio do rival não ganha arena própria |
 
 ## 4. O caminho escolhido (e o que mudou do plano original)
@@ -184,9 +185,9 @@ feita), B (efeitos de assinatura de cada domínio), C (golpes, um por vez) e D (
    `VISUAL.md`); falta o dano dos cortes no Santuário (2 por corte, bloqueio reduz).
 4. ~~Choque de domínios~~ **Feito** numa primeira versão (seção "Choque de Domínios" abaixo e em `VISUAL.md`). Falta
    ver com jogadores de verdade e com alguém assistindo de fora.
-5. **Como se conjura**: decidido em 2026-11-13, pela quarta habilidade do **modo Feiticeiro** (peça M3 do
-   `PLANO-COMBATE.md`; o modo em si, peça M1, está feito). Falta: recarga, permissões, mundos permitidos, e como o
-   jogador ganha a técnica. O Overkill (katanas) continua sendo um sistema à parte: no modo a mão está vazia.
+5. **Como se conjura**: pela **tecla 4 do modo Feiticeiro**, com 60 s de recarga (peças M1 a M3 do
+   `PLANO-COMBATE.md`, feitas em 2026-11-13). Falta: permissões, mundos permitidos, e como o jogador ganha a técnica
+   (por enquanto `/ryoiki tecnica`). O Overkill (katanas) continua sendo um sistema à parte: no modo a mão está vazia.
 6. **Som**: o mod não traz som (decisão do dono: nada sintetizado, nenhum áudio no jar). Trilha de cada expansão,
    voz no sinal de mão, trilha do choque (`clash_trilha`) e sons por momento são `.ogg` do dono em
    `config/ryoikitenkai/sons/`; a música do jogo é calada enquanto uma trilha toca (ver "Som" em `docs/VISUAL.md` e

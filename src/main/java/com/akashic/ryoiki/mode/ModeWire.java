@@ -22,6 +22,9 @@ public final class ModeWire {
      */
     public static final byte COOLDOWN = 5;
 
+    /** Client to server: this player uses one of its four techniques (1 to {@link #SLOTS}). */
+    public static final byte USE = 6;
+
     /** The techniques of the mode: three and the domain expansion, numbered from 1. */
     public static final int SLOTS = 4;
     /** No recharge is longer than an hour. */
@@ -39,7 +42,7 @@ public final class ModeWire {
         public int reason;
         /** TECHNIQUE: 0 for none, else the number of the domain plus one. */
         public int technique;
-        /** COOLDOWN: which technique (1 to {@link #SLOTS}), and its recharge in ticks. */
+        /** USE and COOLDOWN: which technique (1 to {@link #SLOTS}). COOLDOWN: its recharge in ticks. */
         public int slot;
         public int total;
         public int left;
@@ -58,6 +61,10 @@ public final class ModeWire {
 
     public static byte[] refused(int reason) {
         return new byte[] { REFUSED, (byte) reason };
+    }
+
+    public static byte[] use(int slot) {
+        return new byte[] { USE, (byte) slot };
     }
 
     public static byte[] technique(int technique) {
@@ -91,6 +98,10 @@ public final class ModeWire {
         }
         if (m.op == REFUSED && data.length == 2) {
             m.reason = data[1];
+            return m;
+        }
+        if (m.op == USE && data.length == 2 && data[1] >= 1 && data[1] <= SLOTS) {
+            m.slot = data[1];
             return m;
         }
         if (m.op == TECHNIQUE && data.length == 2 && data[1] >= 0) {

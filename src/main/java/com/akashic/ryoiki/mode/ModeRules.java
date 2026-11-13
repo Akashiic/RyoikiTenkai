@@ -16,6 +16,12 @@ public final class ModeRules {
     public static final int DOMAIN = 3;
     /** Changed a moment ago. */
     public static final int SOON = 4;
+    /** Not in the mode: the techniques are the mode's. */
+    public static final int NOT_IN_MODE = 5;
+    /** No technique: nothing to use. */
+    public static final int NO_TECHNIQUE = 6;
+    /** Used a while ago, and not ready again yet. */
+    public static final int RECHARGING = 7;
 
     private ModeRules() {}
 
@@ -43,6 +49,24 @@ public final class ModeRules {
             return SOON;
         }
         return OK;
+    }
+
+    /**
+     * Whether a player may expand its domain with the mode's fourth technique: {@link #OK}, or why not. Whether the
+     * domain can open where the player stands is another matter, the domain's own.
+     *
+     * @param inMode       whether the player is in the sorcerer mode
+     * @param hasTechnique whether it has a technique, and so a domain
+     * @param left         how long until its domain is ready again, in any unit: ready at 0 or less
+     */
+    public static int expand(boolean inMode, boolean hasTechnique, long left) {
+        if (!inMode) {
+            return NOT_IN_MODE;
+        }
+        if (!hasTechnique) {
+            return NO_TECHNIQUE;
+        }
+        return left > 0 ? RECHARGING : OK;
     }
 
     /** The translation key of a refusal, to show the player; null for one that needs no words. */

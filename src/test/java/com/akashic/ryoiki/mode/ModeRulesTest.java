@@ -32,6 +32,17 @@ class ModeRulesTest {
     }
 
     @Test
+    void theDomainIsTheModesAndWaitsItsRecharge() {
+        assertEquals(ModeRules.OK, ModeRules.expand(true, true, 0));
+        assertEquals(ModeRules.OK, ModeRules.expand(true, true, -500));
+        assertEquals(ModeRules.RECHARGING, ModeRules.expand(true, true, 1));
+        assertEquals(ModeRules.NO_TECHNIQUE, ModeRules.expand(true, false, 0));
+        // Out of the mode nothing of it works, whatever else is true.
+        assertEquals(ModeRules.NOT_IN_MODE, ModeRules.expand(false, true, 0));
+        assertEquals(ModeRules.NOT_IN_MODE, ModeRules.expand(false, false, 99));
+    }
+
+    @Test
     void onlySomeRefusalsNeedWords() {
         assertNotNull(ModeRules.key(ModeRules.DISABLED));
         assertNotNull(ModeRules.key(ModeRules.DOMAIN));
@@ -39,5 +50,9 @@ class ModeRulesTest {
         assertNull(ModeRules.key(ModeRules.SOON));
         assertNull(ModeRules.key(ModeRules.DEAD));
         assertNull(ModeRules.key(ModeRules.OK));
+        // The screen already shows a recharge, an empty place and the mode: no words for those either.
+        assertNull(ModeRules.key(ModeRules.RECHARGING));
+        assertNull(ModeRules.key(ModeRules.NO_TECHNIQUE));
+        assertNull(ModeRules.key(ModeRules.NOT_IN_MODE));
     }
 }

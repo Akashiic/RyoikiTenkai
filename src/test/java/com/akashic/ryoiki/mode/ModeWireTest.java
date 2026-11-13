@@ -35,6 +35,12 @@ class ModeWireTest {
             assertEquals(technique, m.technique);
         }
 
+        for (int slot = 1; slot <= ModeWire.SLOTS; slot++) {
+            m = ModeWire.decode(ModeWire.use(slot));
+            assertEquals(ModeWire.USE, m.op);
+            assertEquals(slot, m.slot);
+        }
+
         m = ModeWire.decode(ModeWire.cooldown(4, 1200, 1187));
         assertEquals(ModeWire.COOLDOWN, m.op);
         assertEquals(4, m.slot);
@@ -57,6 +63,9 @@ class ModeWireTest {
         assertNull(ModeWire.decode(new byte[] { ModeWire.STATE, 0, 0, 0, 1, 7 }));
         assertNull(ModeWire.decode(new byte[] { 99, 1 }));
         assertNull(ModeWire.decode(new byte[] { ModeWire.TECHNIQUE, -1 }));
+        assertNull(ModeWire.decode(ModeWire.use(0)));
+        assertNull(ModeWire.decode(ModeWire.use(5)));
+        assertNull(ModeWire.decode(new byte[] { ModeWire.USE, 4, 0 }));
         // A recharge of a technique there is not, with more left than it lasts, or longer than any is.
         assertNull(ModeWire.decode(ModeWire.cooldown(0, 100, 50)));
         assertNull(ModeWire.decode(ModeWire.cooldown(5, 100, 50)));
