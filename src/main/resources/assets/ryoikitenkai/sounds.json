@@ -1,0 +1,74 @@
+{
+  "sinal": {
+    "category": "player",
+    "sounds": [
+      "sinal"
+    ]
+  },
+  "faixa_corte": {
+    "category": "player",
+    "sounds": [
+      "faixa_corte"
+    ]
+  },
+  "saida": {
+    "category": "player",
+    "sounds": [
+      "saida"
+    ]
+  },
+  "domo": {
+    "category": "player",
+    "sounds": [
+      "domo"
+    ]
+  },
+  "vazio_voz": {
+    "category": "player",
+    "sounds": [
+      "vazio_voz"
+    ]
+  },
+  "vazio_entrada": {
+    "category": "player",
+    "sounds": [
+      "vazio_entrada"
+    ]
+  },
+  "vazio_ambiente": {
+    "category": "ambient",
+    "sounds": [
+      {
+        "name": "vazio_ambiente",
+        "stream": true
+      }
+    ]
+  },
+  "santuario_voz": {
+    "category": "player",
+    "sounds": [
+      "santuario_voz"
+    ]
+  },
+  "santuario_entrada": {
+    "category": "player",
+    "sounds": [
+      "santuario_entrada"
+    ]
+  },
+  "santuario_ambiente": {
+    "category": "ambient",
+    "sounds": [
+      {
+        "name": "santuario_ambiente",
+        "stream": true
+      }
+    ]
+  },
+  "santuario_corte": {
+    "category": "player",
+    "sounds": [
+      "santuario_corte"
+    ]
+  }
+}

@@ -1,7 +1,7 @@
 # Visual dos domínios
 
 O que o jogador vê, do sinal de mão ao fim do domínio. Tudo é **desenhado por código** no cliente (`client/`): não há
-modelo, textura nem som no mod. A arena é feita de blocos invisíveis, então o cliente desenha o domínio inteiro.
+modelo nem textura no mod (os sons são sintetizados, ver "Som"). A arena é feita de blocos invisíveis, então o cliente desenha o domínio inteiro.
 
 > **Sobre a referência.** O dono pediu o visual "igual ao do Jujutsu Shenanigans". O agente não reproduz a arte, os
 > personagens nem as cenas de um jogo ou de um anime existentes (inclusive o santuário de bocas e chifres da
@@ -52,6 +52,36 @@ modelo, textura nem som no mod. A arena é feita de blocos invisíveis, então o
 * **Cortes:** a cada 4 ticks um risco branco cruza a arena num instante e deixa um rastro vermelho que some
   (`fx/SlashField`). A posição de cada corte sai do número do domínio e do tempo, então **todos os clientes veem os
   mesmos cortes sem nenhuma mensagem**. Cada corte dá um tranco na câmera. Por enquanto é só visual: não causa dano.
+
+## Som (`DomainSounds`, `SoundCues`)
+
+Cada momento do domínio tem um som, tocado no cliente junto com o que se vê:
+
+| Som (`<nome>.ogg`) | Quando | Onde | Canais |
+|---|---|---|---|
+| `sinal` | começo do sinal de mão | no conjurador (ouve-se a 48 blocos) | mono |
+| `vazio_voz`, `santuario_voz` | junto com o sinal: a fala do conjurador. **No jar é silêncio** | no conjurador | mono |
+| `faixa_corte` | em cada corte de câmera da faixa (ticks 6 e 12) | no ouvido de quem vê a faixa | estéreo |
+| `vazio_entrada`, `santuario_entrada` | o domínio se fecha | no ouvido de quem entrou; no domo, para quem ficou fora | mono |
+| `vazio_ambiente`, `santuario_ambiente` | em laço enquanto se está dentro, com entrada e saída suaves | no ouvido | estéreo |
+| `santuario_corte` | a cada 8 ticks, junto com o tremor, com o tom variando | no ouvido | estéreo |
+| `saida` | o domínio se quebra | no ouvido | estéreo |
+| `domo` | em laço enquanto o domo está de pé, para quem está fora | no domo (ouve-se a 64 blocos) | mono |
+
+Os eventos estão em `assets/ryoikitenkai/sounds.json` (categoria "ambiente" para os dois laços de dentro, "jogadores"
+para o resto, então os controles de volume do jogo valem). Os sons do jar são **sintetizados** por
+`tools/sons/gerar.py` (numpy + ffmpeg): servem para o mod não ficar mudo.
+
+**Os sons do dono:** um arquivo `config/ryoikitenkai/sons/<nome>.ogg` no cliente substitui o do jar (`OwnerSounds`, um
+resource pack sobre essa pasta, lido ao abrir o jogo e no F3+T). Um resource pack comum com
+`assets/ryoikitenkai/sounds/<nome>.ogg` também funciona. O que toca de um lugar do mundo **precisa ser mono** (o jogo
+não atenua estéreo com a distância). `tools/sons/converter.py` faz a conversão a partir de uma lista
+(`nome | origem | início | duração`): corta, normaliza o volume, põe nos canais certos e grava com o nome certo. Ver
+[`tools/sons/LEIA-ME.md`](../tools/sons/LEIA-ME.md).
+
+Verificado no cliente de teste com o OpenAL gravando num arquivo: os dois domínios inteiros, e um arquivo do dono
+substituindo o do jar. **A verificar:** ouvir num PC de verdade (volumes, a emenda dos laços, se os cortes do
+santuário cansam), o som posicional com dois jogadores, e o modpack completo.
 
 ## A arte do dono na faixa
 
@@ -122,7 +152,7 @@ agente não as embutiu no mod nem as usou nas amostras (as capturas mostram uma 
 
 ## O que falta para o visual
 
-* **Som:** voz, trilha de cada domínio. O mod não tem nenhum arquivo de áudio.
+* **Som:** os efeitos existem (seção "Som"), sintetizados. Voz e trilha de cada domínio ficam para os arquivos do dono; o choque de domínios ainda não tem som.
 * **Efeitos de jogo:** os cortes do santuário e a paralisia do vazio são só imagem.
 * **O sinal de mão no mundo sem o Futura3D:** com a skin comum o jogador fica parado (o gesto só aparece na faixa).
 * **Choque de domínios.**

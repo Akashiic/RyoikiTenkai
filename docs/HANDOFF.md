@@ -136,7 +136,9 @@ O detalhe técnico e as medições estão em [`TRANSPORTE.md`](TRANSPORTE.md). E
 3. **Efeitos garantidos**: congelar quem está no Vazio (14 s), cortes no Santuário (2 de dano por corte, bloqueio reduz).
 4. **Choque de domínios** (seção 4 do `ESTUDO.md`): dois conjuradores na mesma arena, contador de 15 s, barras.
 5. **Como se conjura**: tecla, item ou habilidade de outro sistema (Overkill?), recarga, permissões, mundos permitidos.
-6. **Som**: voz, trilha de cada domínio, trilha do choque.
+6. **Som**: os efeitos de cada momento existem, sintetizados, e o dono troca qualquer um por um `.ogg` em
+   `config/ryoikitenkai/sons/` (ver "Som" em `docs/VISUAL.md` e `tools/sons/`). Falta: ouvir num PC de verdade, a
+   voz e a trilha (arquivos do dono) e o som do choque.
 7. **Voz** (AkashicVoiceChat): decidir se o domínio isola ou se vale uma ponte (seção 5).
 
 ### 4.5 O que ainda pode ir para o Kunftig

@@ -9,6 +9,7 @@ import net.minecraft.client.multiplayer.WorldClient;
 
 import com.akashic.ryoiki.DomainType;
 import com.akashic.ryoiki.fx.SlashField;
+import com.akashic.ryoiki.fx.SoundCues;
 import com.akashic.ryoiki.net.ChunkKeep;
 import com.akashic.ryoiki.net.DomainWire;
 
@@ -25,6 +26,9 @@ public final class ClientDomain {
     public static final int FLASH_HOLD = 3;
     /** Ticks after a domain before the chunks kept for it are given back. */
     private static final int RELEASE_AFTER = 100;
+    /** A sound in the world is heard up to 16 blocks times its volume. */
+    private static final float SIGN_VOLUME = 3F;
+    private static final float DOME_VOLUME = 4F;
 
     /** A domain seen from outside: the hand sign, then the dome. */
     public static final class Dome {
@@ -42,6 +46,8 @@ public final class ClientDomain {
         /** Ticks since it opened. */
         public int age;
         int left;
+        /** Whether this client has started the dome's sounds. */
+        boolean heard;
     }
 
     public final ChunkKeep keep = new ChunkKeep();
@@ -101,6 +107,8 @@ public final class ClientDomain {
                     d.windup = m.ticks;
                     d.windupTotal = m.ticks;
                     d.left = m.ticks + 20 * 60;
+                    DomainSounds.playAt(SoundCues.SIGN, m.x, m.y + 1, m.z, SIGN_VOLUME);
+                    DomainSounds.playAt(SoundCues.of(m.type.id, SoundCues.VOICE), m.x, m.y + 1, m.z, SIGN_VOLUME);
                     Minecraft mc = Minecraft.getMinecraft();
                     // The cut-in is for those who may be caught: the caster and whoever is close.
                     if (mc.thePlayer != null && (mc.thePlayer.getEntityId() == m.casterEntity
@@ -110,6 +118,19 @@ public final class ClientDomain {
                 } else {
                     d.windup = 0;
                     d.left = m.ticks + 40;
+                    if (!d.heard && inside == null) {
+                        // Seen from outside: the domain closing, then the dome's hum for as long as it stands.
+                        d.heard = true;
+                        Dome dome = d;
+                        DomainSounds.playAt(SoundCues.of(m.type.id, SoundCues.ENTER), m.x, m.y + 1, m.z, DOME_VOLUME);
+                        DomainSounds.loopAt(
+                            SoundCues.DOME,
+                            m.x,
+                            m.y + 1,
+                            m.z,
+                            DOME_VOLUME,
+                            () -> inside == null && domes.get(dome.session) == dome);
+                    }
                 }
                 break;
             }
@@ -128,6 +149,11 @@ public final class ClientDomain {
                 releaseIn = -1;
                 keep.begin(m.keepChunkX, m.keepChunkZ, m.keepRadius);
                 flash(0xFFFFFF);
+                DomainSounds.play(m.type, SoundCues.ENTER, 0.7F, 1F);
+                DomainType type = m.type;
+                int entered = m.session;
+                DomainSounds
+                    .loop(SoundCues.of(type.id, SoundCues.AMBIENT), 0.6F, () -> inside == type && session == entered);
                 break;
             case DomainWire.EXIT:
                 if (inside != null && session == m.session) {
@@ -136,6 +162,7 @@ public final class ClientDomain {
                     inside = null;
                     releaseIn = RELEASE_AFTER;
                     CameraShake.INSTANCE.kick(2.5F);
+                    DomainSounds.play(SoundCues.EXIT, 0.8F, 1F);
                 }
                 break;
             case DomainWire.DOME_END:
@@ -186,12 +213,21 @@ public final class ClientDomain {
             if (inside == DomainType.MALEVOLENT_SHRINE && SlashField.startsAt(age)
                 && age % (SlashField.PERIOD * 2) == 0) {
                 CameraShake.INSTANCE.kick(0.9F);
+                // The pitch varies with the cut, the same on every client.
+                DomainSounds.play(inside, SoundCues.SLASH, 0.45F, 0.85F + (age / SlashField.PERIOD * 7 % 5) * 0.075F);
             }
         } else {
             sky.restore();
         }
         if (cutIn != null && (cutIn.windup <= 0 || !domes.containsValue(cutIn))) {
             cutIn = null;
+        }
+        if (cutIn != null) {
+            // One hit on each camera cut of the cut-in.
+            int signAge = cutIn.windupTotal - cutIn.windup;
+            if (signAge == (int) CutIn.CUT_ONE || signAge == (int) CutIn.CUT_TWO) {
+                DomainSounds.play(SoundCues.BAND_CUT, 0.6F, signAge == (int) CutIn.CUT_ONE ? 1F : 1.2F);
+            }
         }
         for (Iterator<Dome> it = domes.values()
             .iterator(); it.hasNext();) {

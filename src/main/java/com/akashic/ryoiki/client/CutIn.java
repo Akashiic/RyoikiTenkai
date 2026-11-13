@@ -214,8 +214,8 @@ final class CutIn {
     private static final float SHRINE_LOW = Float.parseFloat(System.getProperty("ryoiki.shrineLow", "-58"));
 
     /** When a cut-in cuts from one shot to the next, in ticks. */
-    private static final float CUT_ONE = 6;
-    private static final float CUT_TWO = 12;
+    static final float CUT_ONE = 6;
+    static final float CUT_TWO = 12;
 
     /**
      * The camera on the caster's figure, this many ticks into the hand sign: {yaw, pitch, roll, zoom, how much it

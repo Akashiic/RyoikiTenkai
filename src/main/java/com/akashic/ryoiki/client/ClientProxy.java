@@ -15,6 +15,11 @@ import cpw.mods.fml.common.FMLCommonHandler;
 public final class ClientProxy extends CommonProxy {
 
     @Override
+    public void preInit() {
+        OwnerSounds.install();
+    }
+
+    @Override
     public void init() {
         FMLCommonHandler.instance()
             .bus()

@@ -1,0 +1,16 @@
+# nome | origem | início | duração      (python converter.py --lista mostra os nomes)
+# Tire o # e troque a origem pelo seu arquivo ou link.
+
+# sinal              | audios/carga.wav
+# faixa_corte        | audios/batida.wav
+# saida              | audios/vidro.wav
+# domo               | audios/zumbido.wav      | 0    | 4
+
+# vazio_voz          | audios/fala-vazio.mp3   | 0:03 | 2.5
+# vazio_entrada      | audios/impacto.wav
+# vazio_ambiente     | audios/tema-vazio.mp3   | 0:42 | 14
+
+# santuario_voz      | audios/fala-santuario.mp3
+# santuario_entrada  | audios/impacto2.wav
+# santuario_ambiente | audios/tema-santuario.mp3 | 1:10 | 18
+# santuario_corte    | audios/lamina.wav       | 0    | 0.4
