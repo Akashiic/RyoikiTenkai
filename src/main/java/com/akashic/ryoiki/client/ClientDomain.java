@@ -9,6 +9,7 @@ import java.util.Map;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityLivingBase;
 
 import com.akashic.ryoiki.DomainType;
 import com.akashic.ryoiki.arena.ShrineCore;
@@ -36,6 +37,8 @@ public final class ClientDomain {
     private static final float SIGN_VOLUME = 3F;
     private static final float DOME_VOLUME = 4F;
     private static final float FRONT_FOLLOW = 0.14F;
+    /** Ticks the one struck is drawn red for. */
+    private static final int HURT_FLASH = 7;
 
     /** A blow of a caster in a clash, as it is drawn: the pose of the body comes from {@link BlowPose}. */
     public static final class Blow {
@@ -346,6 +349,22 @@ public final class ClientDomain {
                     if (blow != null && blow.blow == m.blow) {
                         blow.victim = other;
                         blow.landedAt = blow.age;
+                    }
+                    // The game's hit is not used (it knocks back and jolts the view): what tells the blow is ours.
+                    // The one struck flashes red for those who see it, and sounds hurt.
+                    if (victim instanceof EntityLivingBase && victim != mc.thePlayer) {
+                        ((EntityLivingBase) victim).maxHurtTime = HURT_FLASH;
+                        ((EntityLivingBase) victim).hurtTime = HURT_FLASH;
+                    }
+                    if (victim != null && mc.theWorld != null) {
+                        mc.theWorld.playSound(
+                            victim.posX,
+                            victim.posY,
+                            victim.posZ,
+                            "game.player.hurt",
+                            0.8F,
+                            0.9F + (m.blow % 3) * 0.08F,
+                            false);
                     }
                     // Who takes it is thrown by it: from its left when the other strikes with the right hand.
                     Struck struck = new Struck();

@@ -172,6 +172,26 @@ A reação é **somada à pose em que o corpo estiver** (a guarda ou um golpe pr
 bate (golpes ímpares vêm da esquerda de quem leva). Por enquanto é só visual: levar um golpe não interrompe a
 cadeia de quem leva.
 
+**As regras dos dois combatentes** (`ClashInput`, só para os dois conjuradores e só durante o choque; ver
+[`PLANO-COMBATE.md`](PLANO-COMBATE.md), fase A):
+
+* **Um clique é um golpe, e mais nada.** O clique é tomado antes de o jogo vê-lo e respondido com um balanço de
+  braço, que é o que o servidor lê como golpe. O clique do Minecraft faria três coisas que quebram um combo: bater
+  no outro do jeito dele (e, correndo, dar recuo no alvo, cortar 40 % da velocidade de quem bate e **desligar a
+  corrida de quem bate**, no próprio cliente, antes de o servidor poder dizer não), começar a quebrar o bloco na
+  mira, e balançar o braço sem parar enquanto o botão fica apertado num bloco.
+* **Sem recuo nem tranco de dano do Minecraft.** Quem leva o golpe não é empurrado nem tem a câmera sacudida pelo
+  jogo: medido com três golpes acertando, o alvo não saiu do lugar. O que conta o golpe é nosso: a reação do corpo,
+  o clarão, um vermelho curto em quem leva (para quem vê) e o som de dano. Só o quarto golpe move o outro, e esse
+  arremesso é nosso.
+* **Os dois correm o tempo todo, para qualquer lado.** O jogo encerra a corrida que não é para a frente; a cada
+  tick, depois que ele decide e antes de mover o jogador, a corrida é recolocada (`EntityPlayerRunMixin`). Medido
+  em sobrevivência: fora do choque, andar para trás dá 0,22 bloco por tick; no choque, 0,28 para trás, de lado e
+  para a frente.
+* **Não quebram bloco.** No cliente o clique nem chega ao bloco; no servidor, clicar e quebrar são recusados.
+* **Os outros no domínio ficam como no Minecraft:** andam, e levam dano e recuo normais entre si. Ninguém fere
+  os dois combatentes de fora.
+
 **No jogo:** a pose entra em 1,5 tick e o lutador fica na guarda enquanto a cadeia pode continuar (16 ticks), saindo
 em 4; um golpe emenda no seguinte em 2 ticks, de onde o corpo estiver. O acerto é decidido **quando o punho chega**
 (3 ticks depois do clique), não no clique: é aí que vêm o clarão no peito de quem leva, o tranco, o tremor e o

@@ -167,6 +167,9 @@ Regras da seção 5.4 do `ESTUDO.md`, decididas pelo agente (carta branca) em 20
   o outro**. Agora, 5 ticks depois de cada ida e de cada volta, cada um é tirado e recolocado entre os que os outros
   veem (`DomainManager#tickResyncs`).
 
+**O plano do combate e dos efeitos do choque está em [`PLANO-COMBATE.md`](PLANO-COMBATE.md)**: fases A (regras,
+feita), B (efeitos de assinatura de cada domínio), C (golpes, um por vez) e D (acabamento). Siga a ordem de lá.
+
 ### 4.4 Próximos passos sugeridos
 
 1. ~~Ver no servidor real~~ **Feito** (ver `TRANSPORTE.md`). Sobra o que precisa de placa de vídeo: a volta à cidade

@@ -30,6 +30,7 @@ public final class ClientProxy extends CommonProxy {
         DomainRenderer renderer = new DomainRenderer();
         MinecraftForge.EVENT_BUS.register(renderer);
         MinecraftForge.EVENT_BUS.register(MusicHush.INSTANCE);
+        MinecraftForge.EVENT_BUS.register(ClashInput.INSTANCE);
         // Development only, never in the release jar: -Dryoiki.devHarness=true and a "ryoiki-harness" file.
         if (Boolean.getBoolean("ryoiki.devHarness")
             && new File(Minecraft.getMinecraft().mcDataDir, "ryoiki-harness").isFile()) {

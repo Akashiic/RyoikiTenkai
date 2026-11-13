@@ -41,6 +41,10 @@ atrapalhando, converse com ele.
   "meticuloso, trabalhado, detalhado, matemático" (jogo de pernas, quadril, braços, inclinação de cada parte, simetria,
   nada que cause estranheza) e que fazer tudo de uma vez "é um erro": os melhores trabalhos se formam de pequenas
   coisas bem feitas. Faça um golpe (ou uma parte) por vez, meça, mostre, e só então passe ao seguinte.
+* **Sem pressa, acima da expectativa.** No mesmo dia ele recusou uma primeira versão da fusão do choque como "pobre e
+  medíocre" e pediu: não priorizar pressa nem tempo de resposta, usar imaginação e técnicas melhores de design e de
+  efeitos, mecânica fluida junto com visual agradável, e um plano com cronologia, "como um dev sênior e um engenheiro
+  fariam". O plano é [`docs/PLANO-COMBATE.md`](docs/PLANO-COMBATE.md).
 
 ## Regras
 

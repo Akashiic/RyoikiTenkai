@@ -504,6 +504,10 @@ public final class TransportHarness {
      */
     private int hitsLeft;
     private int filmLeft;
+    private int[] digAt;
+    private int digIn;
+    private float walkStrafe;
+    private float walkForward;
     private int heldBlow;
     private boolean turnaround;
     private float[] turnPose;
@@ -545,6 +549,19 @@ public final class TransportHarness {
             held.age = 2;
             ClientDomain.INSTANCE.blows.put(mc.thePlayer.getEntityId(), held);
         }
+        if (digIn > 0 && --digIn == 0) {
+            report(
+                "dig: the block under the feet is " + mc.theWorld.getBlock(digAt[0], digAt[1], digAt[2])
+                    .getUnlocalizedName());
+        }
+        net.minecraft.client.settings.KeyBinding
+            .setKeyBindState(mc.gameSettings.keyBindForward.getKeyCode(), walkForward > 0);
+        net.minecraft.client.settings.KeyBinding
+            .setKeyBindState(mc.gameSettings.keyBindBack.getKeyCode(), walkForward < 0);
+        net.minecraft.client.settings.KeyBinding
+            .setKeyBindState(mc.gameSettings.keyBindLeft.getKeyCode(), walkStrafe > 0);
+        net.minecraft.client.settings.KeyBinding
+            .setKeyBindState(mc.gameSettings.keyBindRight.getKeyCode(), walkStrafe < 0);
         if (filmLeft > 0) {
             // A screenshot every other tick: what a blow looks like from one tick to the next.
             if (filmLeft % 2 == 0) {
@@ -563,8 +580,13 @@ public final class TransportHarness {
                 }
             }
             if (target != null) {
-                mc.thePlayer.swingItem();
-                mc.playerController.attackEntity(mc.thePlayer, target);
+                // In a clash, as the mouse would: one swing. Out of one, the game's own click.
+                if (com.akashic.ryoiki.client.ClashInput.fighting()) {
+                    com.akashic.ryoiki.client.ClashInput.blow();
+                } else {
+                    mc.thePlayer.swingItem();
+                    mc.playerController.attackEntity(mc.thePlayer, target);
+                }
                 hitsLeft--;
             }
         }
@@ -606,6 +628,22 @@ public final class TransportHarness {
                 break;
             case "blow":
                 heldBlow = Integer.parseInt(rest);
+                break;
+            case "dig": {
+                // The game's own click on the block under the feet, and whether it is still there a moment later.
+                int bx = net.minecraft.util.MathHelper.floor_double(mc.thePlayer.posX);
+                int by = net.minecraft.util.MathHelper.floor_double(mc.thePlayer.boundingBox.minY) - 1;
+                int bz = net.minecraft.util.MathHelper.floor_double(mc.thePlayer.posZ);
+                mc.playerController.clickBlock(bx, by, bz, 1);
+                digAt = new int[] { bx, by, bz };
+                digIn = 12;
+                break;
+            }
+            case "walk":
+                // "walk 0 -1": hold the keys for strafe and forward (here: backward), until "walk 0 0".
+                String[] way = rest.split(" ");
+                walkStrafe = Float.parseFloat(way[0]);
+                walkForward = Float.parseFloat(way[1]);
                 break;
             case "fly":
                 mc.thePlayer.capabilities.isFlying = true;
@@ -665,6 +703,8 @@ public final class TransportHarness {
         for (Object o : mc.theWorld.playerEntities) {
             net.minecraft.entity.player.EntityPlayer p = (net.minecraft.entity.player.EntityPlayer) o;
             out.append(p.getCommandSenderName())
+                .append(p.isSprinting() ? "(runs)" : "(walks)")
+                .append(String.format("v=%.2f", Math.hypot(p.posX - p.prevPosX, p.posZ - p.prevPosZ)))
                 .append('#')
                 .append(p.getEntityId())
                 .append('@')

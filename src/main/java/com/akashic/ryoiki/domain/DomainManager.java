@@ -25,6 +25,8 @@ import net.minecraftforge.event.entity.living.EnderTeleportEvent;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.player.AttackEntityEvent;
+import net.minecraftforge.event.entity.player.PlayerInteractEvent;
+import net.minecraftforge.event.world.BlockEvent;
 
 import com.akashic.ryoiki.Config;
 import com.akashic.ryoiki.DomainType;
@@ -290,8 +292,8 @@ public final class DomainManager {
         if (!inReach || !s.score.hit(side)) {
             return;
         }
-        // The other flinches and sounds hurt, as in a hit; the finisher throws it back.
-        victim.worldObj.setEntityState(victim, (byte) 2);
+        // Nothing of the game's own hit: no knock back and no jolt of the view, which would break the other's own
+        // chain. The clients draw the blow taken. Only the finisher moves the other, and that is ours.
         if (blow == ComboChain.BLOWS) {
             victim.addVelocity(lookX * THROW, THROW_UP, lookZ * THROW);
             victim.velocityChanged = true;
@@ -342,6 +344,25 @@ public final class DomainManager {
     @SubscribeEvent
     public void onAttack(AttackEntityEvent event) {
         if (event.target instanceof EntityPlayerMP && clashOf(event.target.getUniqueID()) != null) {
+            event.setCanceled(true);
+        }
+    }
+
+    /** In a clash the two fight with their hands: a click is a blow, never a block struck or broken. */
+    @SubscribeEvent
+    public void onClickBlock(PlayerInteractEvent event) {
+        if (event.action == PlayerInteractEvent.Action.LEFT_CLICK_BLOCK && event.entityPlayer instanceof EntityPlayerMP
+            && clashOf(event.entityPlayer.getUniqueID()) != null) {
+            event.setCanceled(true);
+        }
+    }
+
+    @SubscribeEvent
+    public void onBreak(BlockEvent.BreakEvent event) {
+        if (event.getPlayer() != null && clashOf(
+            event.getPlayer()
+                .getUniqueID())
+            != null) {
             event.setCanceled(true);
         }
     }
