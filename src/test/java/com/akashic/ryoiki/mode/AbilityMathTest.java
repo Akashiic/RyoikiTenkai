@@ -175,6 +175,21 @@ class AbilityMathTest {
     }
 
     @Test
+    void theBarrageReachesWhoIsBeforeItsCaster() {
+        // Looking toward +Z: ahead and near, yes; behind, beside, or too far, no.
+        assertTrue(AbilityMath.before(0, 1, 0, 0, 6));
+        assertTrue(AbilityMath.before(0, 1, 3, 1, 5));
+        assertTrue(!AbilityMath.before(0, 1, 0, 0, -6));
+        assertTrue(!AbilityMath.before(0, 1, 6, 0, 0.5));
+        assertTrue(!AbilityMath.before(0, 1, 0, 0, AbilityMath.BARRAGE_RANGE + 0.1));
+        // Right on top of the caster, whichever way it looks; and looking straight down.
+        assertTrue(AbilityMath.before(0, 1, 0.3, 0, -0.5));
+        assertTrue(AbilityMath.before(0, 0, 0, 0, 5));
+        // Ten slashes are seven tenths of a cut.
+        assertEquals(0.7F, AbilityMath.BARRAGE_SLASHES * AbilityMath.BARRAGE_PART, 1e-6);
+    }
+
+    @Test
     void aFlyingCutCoversItsRangeAtItsSpeed() {
         assertEquals(0, AbilityMath.cutGone(0, 12), 0);
         assertEquals(AbilityMath.CUT_SPEED * 3, AbilityMath.cutGone(3, 12), 1e-9);

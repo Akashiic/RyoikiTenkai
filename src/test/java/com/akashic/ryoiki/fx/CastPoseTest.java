@@ -167,6 +167,50 @@ class CastPoseTest {
     }
 
     @Test
+    void theBarrageWindsUpPointsAndFlicksOncePerSlash() {
+        float ticks = 31;
+        assertTrue(x(CastPose.sample(CastPose.BARRAGE, 2.5F, ticks), "RightArm") < -120);
+        // Down on who is before it, along the eyes: level, and lower when they look down.
+        float[] level = CastPose.sample(CastPose.BARRAGE, 9, ticks, 0);
+        assertTrue(x(level, "RightArm") > -100 && x(level, "RightArm") < -60);
+        assertTrue(x(CastPose.sample(CastPose.BARRAGE, 9, ticks, 40), "RightArm") > x(level, "RightArm") + 25);
+        // One way for one slash, the other for the next.
+        float one = CastPose.angle(CastPose.sample(CastPose.BARRAGE, 8, ticks), "RightArm", 2);
+        float other = CastPose.angle(CastPose.sample(CastPose.BARRAGE, 10, ticks), "RightArm", 2);
+        assertTrue(Math.abs(one - other) > 20);
+        float[] last = CastPose.sample(CastPose.BARRAGE, 0, ticks);
+        for (float age = 0.05F; age < ticks; age += 0.05F) {
+            float[] now = CastPose.sample(CastPose.BARRAGE, age, ticks);
+            for (int i = 0; i < now.length; i++) {
+                assertTrue(Math.abs(now[i] - last[i]) < 7, CastPose.BONES[i / 3] + " jumps at " + age);
+            }
+            last = now;
+        }
+    }
+
+    @Test
+    void theFlipIsOneWholeTurnAndThenTheStroke() {
+        float ticks = CastPose.FLIP_TICKS + 10;
+        assertEquals(0, x(CastPose.sample(CastPose.FLIP, 0, ticks), "AllBody"), 1e-3);
+        assertEquals(180, x(CastPose.sample(CastPose.FLIP, CastPose.FLIP_TICKS / 2, ticks), "AllBody"), 1e-3);
+        // Tucked in the middle of it.
+        assertTrue(x(CastPose.sample(CastPose.FLIP, CastPose.FLIP_TICKS / 2, ticks), "RightLowerLeg") > 70);
+        // Made: upright, and the stroke of the cut has come down.
+        float[] after = CastPose.sample(CastPose.FLIP, CastPose.FLIP_TICKS + 3, ticks);
+        assertEquals(0, x(after, "AllBody"), 1e-3);
+        assertTrue(x(after, "RightArm") > -35 && CastPose.angle(after, "RightArm", 2) > 25);
+        // Through the turn itself nothing jumps.
+        float[] last = CastPose.sample(CastPose.FLIP, 0, ticks);
+        for (float age = 0.05F; age < CastPose.FLIP_TICKS - 0.05F; age += 0.05F) {
+            float[] now = CastPose.sample(CastPose.FLIP, age, ticks);
+            for (int i = 0; i < now.length; i++) {
+                assertTrue(Math.abs(now[i] - last[i]) < 7, CastPose.BONES[i / 3] + " jumps at " + age);
+            }
+            last = now;
+        }
+    }
+
+    @Test
     void theCutGoesFromTheFarShoulderDownAndAcross() {
         float[] wound = CastPose.sample(CastPose.CUT, 2.5F, CastPose.CUT_TICKS);
         float[] struck = CastPose.sample(CastPose.CUT, 6, CastPose.CUT_TICKS);

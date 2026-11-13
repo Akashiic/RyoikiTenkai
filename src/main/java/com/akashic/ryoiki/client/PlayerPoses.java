@@ -67,7 +67,8 @@ final class PlayerPoses {
             Gait.State state = track.at(partial);
             // With the hands and the fingers, at rest: not as the model's own animation would leave them.
             pose = Arrays.copyOf(Gait.sample(state), ALL.length * 3);
-            moving = state.moving;
+            // (Off the ground nothing is running: a gesture made in the air has the whole body.)
+            moving = state.moving * (1 - state.air);
             // Standing still, out of a fight, the model keeps its own resting animation (the owner's rule): the
             // mode's pose shows as the body moves or leaves the ground, and for the two of a clash.
             float active = fighter ? 1 : Math.max(smooth(state.moving), state.air);

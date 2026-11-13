@@ -449,11 +449,28 @@ O dono aprovou as seis habilidades propostas (`PLANO-COMBATE.md`) e mandou fazer
     arrancados para cima; quando é levada depressa deixa rastro; no fim fecha-se e solta um anel. Para quem está dentro, a
     luz é atenuada (senão a tela ficava branca). Quem conjura **mantém a mão estendida** enquanto guia o orbe e a
     recolhe no fim.
-* **Talho (Santuário Carmesim).** Uma lâmina sai da frente do peito e voa reto por até 12 blocos, a 1,5 bloco por
-  tick (dá para sair da frente), e corta o primeiro que encontrar, jogando-o um pouco para trás. Recarga 5 s.
-  **O que se vê:** um crescente inclinado, de sombra preta, gume vermelho e fio branco, com três rastros atrás; a
-  **cicatriz em brasa no chão** por baixo do caminho, que esfria em 2,5 s; onde acerta, um clarão e três riscos
-  cruzados. Quem conjura **leva a mão ao ombro oposto e a desce em diagonal**.
+* **Talho (Santuário Carmesim).** Refeito em 2026-11-13 pela página do personagem do Santuário na wiki que o dono
+  usa de guia (a habilidade tem dois modos, no chão e no ar). Recarga 13 s.
+  * **No chão: a rajada.** Um quarto de segundo depois do gesto, dez cortes em um segundo (um a cada 2 ticks) caem
+    **direto sobre todo jogador do modo que estiver à frente**, a até 8 blocos (cone de uns 75° para cada lado); o
+    alvo fica preso no lugar enquanto é cortado e o último corte o joga 3 blocos para trás. Sem ninguém à frente,
+    os cortes rasgam o ar a 3,5 blocos. **O que se vê:** cada corte é um **crescente preto grande, de borda
+    branca**, que aparece de uma vez atravessando o corpo, cada um num ângulo, branco no primeiro instante,
+    fechando em um quarto de segundo; um clarão branco no corpo, respingos vermelhos e uma **marca vermelha no
+    chão** por 2 s. Quem conjura **arma o braço sobre o ombro oposto, desce apontando para o alvo com o corpo
+    lançado à frente, e a mão dá um golpe curto para cada corte**, alternando o lado.
+  * **No ar: o corte longo.** Quem conjura **fica suspenso e dá uma cambalhota inteira para a frente** (0,45 s,
+    joelhos recolhidos, girando no quadril) e, ao sair dela, lança **um corte só** para onde olha: voa reto por até
+    20 blocos a 1,5 bloco por tick, corta o primeiro que encontrar e deixa a **cicatriz em brasa no chão**. É o
+    crescente de sombra preta, gume vermelho e fio branco, com três rastros.
+  * A vítima da rajada sente um tremor por corte, mas a câmera **não tomba** dez vezes e os respingos não cobrem a
+    visão dela.
+
+  ![A rajada, vista por quem conjura](img/talho-rajada.png)
+
+  ![O gesto da rajada, visto pelo alvo](img/talho-rajada-gesto.png)
+
+  ![No ar: a cambalhota e o corte longo](img/talho-aereo.png)
 * **Quem é atingido:** só **outros jogadores que também estão no modo**. Decisão do dono em 2026-11-13: o modo
   **ignora o WorldGuard e qualquer sistema de proteção**, porque só entra nele quem tem a permissão (abaixo). Por
   isso o efeito é aplicado direto (a vida é tirada e o corpo é movido), sem passar pelo dano do jogo, que é o que
@@ -463,7 +480,8 @@ O dono aprovou as seis habilidades propostas (`PLANO-COMBATE.md`) e mandou fazer
   vazio libera para todos). Operadores têm por padrão. O comando `/ryoiki modo [jogador]`, da staff, põe qualquer
   um no modo. Num servidor sem Bukkit não há nodes e todos entram.
 * **Dano:** pequeno e **igual com qualquer armadura**: Atração meio coração a cada meio segundo em quem está
-  preso, Talho dois corações e meio (`dano.atracao` e `dano.talho` no config, em meios corações).
+  preso; Talho: o corte longo tira dois corações e meio e a rajada inteira 70% disso, em dez partes
+  (`dano.atracao` e `dano.talho` no config, em meios corações).
 * **Código:** `mode/AbilityMath` (os números, o puxão e o encontro da lâmina com um corpo: lógica pura com teste),
   `mode/Abilities` (servidor), `client/AbilityFx` (o desenho), `fx/CastPose` (os gestos, com teste).
   O gesto só mexe peito, cabeça e braços: as pernas continuam o que estavam fazendo.
@@ -614,6 +632,9 @@ puro, sem plugin):
 | Tecla 4 durante a recarga (aos 30 s) | nada; a contagem segue |
 | Tecla 4 depois dos 60 s | o domínio abre de novo |
 | Tecla 4 sem técnica | nada |
+| Rajada do Talho num alvo a 5 blocos, vista dos dois clientes | dez crescentes pretos sobre o alvo, marcas no chão; vida de 20 para 16,5; alvo jogado 3,3 blocos; o gesto aparece no modelo de quem conjura |
+| Talho no ar (depois de um pulo), mirado num alvo a 9 blocos | quem conjura fica suspenso, dá a cambalhota e lança o corte; o alvo é atingido e a cicatriz fica no chão |
+| A verificar na rajada | alvo no limite dos 8 blocos e fora do cone; vários alvos de uma vez; GPU real |
 | Talho a 9 blocos, e a 6 (com dano pelo jogo, antes da regra nova) | vida de 20 para 15, jogado 3 a 4 blocos para trás; a cicatriz fica no chão |
 | O orbe no chão, no spawn de teste (WorldGuard: sem PvP e `invincible`) | o outro jogador foi preso e carregado com o giro da câmera; vida de 20 para 17 e para 11 |
 | O orbe usado no ar, mirado para o céu | quem conjurou ficou parado a 0,8 bloco do chão até o fim; o outro foi levado para cima e perdeu vida |

@@ -40,6 +40,15 @@ final class Abilities {
     private final List<Red> reds = new ArrayList<>();
 
     private final List<Purple> purples = new ArrayList<>();
+    private final List<Barrage> barrages = new ArrayList<>();
+
+    private static final class Barrage {
+
+        EntityPlayerMP caster;
+        /** Begun in the air: no barrage, but a flip and one long cut. */
+        boolean air;
+        int age;
+    }
 
     private static final class Purple {
 
@@ -114,6 +123,7 @@ final class Abilities {
         cuts.clear();
         reds.clear();
         purples.clear();
+        barrages.clear();
     }
 
     /**
@@ -157,16 +167,105 @@ final class Abilities {
                 mode);
             return AbilityMath.ORB_RECHARGE;
         }
-        // Talho: the blade leaves from before the caster's chest and flies until something solid.
+        // Talho. From the ground: a barrage of slashes on whoever is before the caster. From the air: the caster
+        // hangs, turns over, and throws one long cut where it looks.
+        Barrage barrage = new Barrage();
+        barrage.caster = caster;
+        barrage.air = !caster.onGround;
+        barrages.add(barrage);
+        tell(
+            caster.worldObj,
+            ex,
+            ey,
+            ez,
+            ModeWire.effect(
+                AbilityMath.SLASH_START,
+                caster.getEntityId(),
+                ex,
+                ey,
+                ez,
+                barrage.air ? 1 : 0,
+                0,
+                0,
+                0,
+                barrage.air ? AbilityMath.FLIP_TICKS
+                    : AbilityMath.BARRAGE_WIND + AbilityMath.BARRAGE_SLASHES * AbilityMath.BARRAGE_STEP),
+            mode);
+        return AbilityMath.BARRAGE_RECHARGE;
+    }
+
+    /** One tick of the shrine's first technique. False when it is over. */
+    private boolean barrage(Barrage b, SorcererMode mode) {
+        EntityPlayerMP caster = b.caster;
+        if (!caster.isEntityAlive() || !mode.isOn(caster) || DomainManager.INSTANCE.frozen(caster)) {
+            return false;
+        }
+        b.age++;
+        Vec3 look = caster.getLookVec();
+        if (b.air) {
+            hang(caster);
+            if (b.age < AbilityMath.FLIP_TICKS) {
+                return true;
+            }
+            launch(caster, look, AbilityMath.AIR_CUT_RANGE, mode);
+            return false;
+        }
+        int since = b.age - AbilityMath.BARRAGE_WIND;
+        if (since < 0 || since % AbilityMath.BARRAGE_STEP != 0) {
+            return true;
+        }
+        int index = since / AbilityMath.BARRAGE_STEP;
+        boolean last = index >= AbilityMath.BARRAGE_SLASHES - 1;
+        boolean any = false;
+        for (EntityPlayerMP target : targets(caster, mode)) {
+            double dx = target.posX - caster.posX;
+            double dy = target.posY - caster.posY;
+            double dz = target.posZ - caster.posZ;
+            if (!AbilityMath.before(look.xCoord, look.zCoord, dx, dy, dz)) {
+                continue;
+            }
+            any = true;
+            strike(caster, target, Config.cutDamage * AbilityMath.BARRAGE_PART, "ryoiki.talho");
+            // Held where it is while it is cut; the last slash throws it off.
+            double flat = Math.sqrt(dx * dx + dz * dz) + 1e-6;
+            move(target, last ? new double[] { dx / flat * 0.7, 0.32, dz / flat * 0.7 } : new double[] { 0, 0, 0 });
+            slash(caster, target.posX, target.posY + target.height / 2, target.posZ, index, target.getEntityId(), mode);
+        }
+        if (!any) {
+            // Nobody there: it cuts the air before the caster.
+            slash(
+                caster,
+                caster.posX + look.xCoord * 3.5,
+                caster.posY + caster.getEyeHeight() - 0.3 + look.yCoord * 3.5,
+                caster.posZ + look.zCoord * 3.5,
+                index,
+                0,
+                mode);
+        }
+        return !last;
+    }
+
+    private void slash(EntityPlayerMP caster, double x, double y, double z, int index, int victim, SorcererMode mode) {
+        tell(
+            caster.worldObj,
+            x,
+            y,
+            z,
+            ModeWire.effect(AbilityMath.SLASH, caster.getEntityId(), x, y, z, victim, 0, 0, index, 0),
+            mode);
+    }
+
+    /** A cut that flies: from before the caster's chest, the way it looks, until something solid. */
+    private void launch(EntityPlayerMP caster, Vec3 look, double reach, SorcererMode mode) {
         Cut cut = new Cut();
         cut.caster = caster;
         cut.dx = look.xCoord;
         cut.dy = look.yCoord;
         cut.dz = look.zCoord;
-        cut.x = ex + look.xCoord * AbilityMath.CUT_AHEAD;
-        cut.y = ey - AbilityMath.CUT_BELOW + look.yCoord * AbilityMath.CUT_AHEAD;
-        cut.z = ez + look.zCoord * AbilityMath.CUT_AHEAD;
-        cut.range = clear(caster.worldObj, cut.x, cut.y, cut.z, look, AbilityMath.CUT_RANGE);
+        cut.x = caster.posX + look.xCoord * AbilityMath.CUT_AHEAD;
+        cut.y = caster.posY + caster.getEyeHeight() - AbilityMath.CUT_BELOW + look.yCoord * AbilityMath.CUT_AHEAD;
+        cut.z = caster.posZ + look.zCoord * AbilityMath.CUT_AHEAD;
+        cut.range = clear(caster.worldObj, cut.x, cut.y, cut.z, look, reach);
         cuts.add(cut);
         tell(
             caster.worldObj,
@@ -185,7 +284,6 @@ final class Abilities {
                 cut.range,
                 AbilityMath.cutTicks(cut.range)),
             mode);
-        return AbilityMath.CUT_RECHARGE;
     }
 
     /**
@@ -574,6 +672,11 @@ final class Abilities {
         for (Iterator<Cut> i = cuts.iterator(); i.hasNext();) {
             Cut cut = i.next();
             if (!cut(cut, mode)) {
+                i.remove();
+            }
+        }
+        for (Iterator<Barrage> i = barrages.iterator(); i.hasNext();) {
+            if (!barrage(i.next(), mode)) {
                 i.remove();
             }
         }

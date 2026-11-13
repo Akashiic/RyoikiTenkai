@@ -20,6 +20,12 @@ public final class CastPose {
     public static final int READY = 4;
     /** The black blow. */
     public static final int BLACK = 5;
+    /** Turning over in the air, and then the cut. */
+    public static final int FLIP = 6;
+    /** The arm brought down at who is before the caster, and kept on them while the slashes fall. */
+    public static final int BARRAGE = 7;
+    /** Ticks the turn takes. */
+    public static final float FLIP_TICKS = 9;
 
     /** Ticks the cut's gesture lasts, and the least the pull's does. */
     public static final float PULL_TICKS = 16;
@@ -93,6 +99,27 @@ public final class CastPose {
             case BLACK:
                 p = black(age, pitch);
                 break;
+            case BARRAGE:
+                p = barrage(age, pitch);
+                break;
+            case FLIP: {
+                // The body turns right over about the hips, forward, tucked; and comes out of it into the stroke.
+                float turn = clamp(age / FLIP_TICKS);
+                p = solve(cut(Math.max(0, age - FLIP_TICKS + 2.5F)));
+                float tuck = bump(turn);
+                p[L_LEG + X] += -55 * tuck;
+                p[L_SHIN + X] += 80 * tuck;
+                p[R_LEG + X] += -45 * tuck;
+                p[R_SHIN + X] += 90 * tuck;
+                p[L_FOOT + X] = lerp(p[L_FOOT + X], 25, tuck);
+                p[R_FOOT + X] = lerp(p[R_FOOT + X], 25, tuck);
+                p[R_ARM + X] = lerp(p[R_ARM + X], -150, tuck);
+                p[L_ARM + X] = lerp(p[L_ARM + X], -40, tuck);
+                p[HEAD + X] = lerp(p[HEAD + X], 18, tuck);
+                // A whole turn is no turn: once it is made, the body is simply upright again.
+                p[ALL + X] = turn < 1 ? 360 * smooth(turn) : 0;
+                return p;
+            }
             default:
                 p = pull(age, ticks, pitch);
         }
@@ -272,6 +299,36 @@ public final class CastPose {
         p[L_SHIN + X] = lerp(4 * wound, 18, stroke);
         p[R_LEG + X] = lerp(5 * wound, 14, stroke);
         p[R_SHIN + X] = lerp(6 * wound, 5, stroke);
+        return p;
+    }
+
+    /**
+     * The barrage. The arm is wound up over the far shoulder and brought down to point at who is before the caster,
+     * the body lunging in behind it; and there, for every slash, the hand flicks: across one way, then the other.
+     */
+    private static float[] barrage(float age, float pitch) {
+        float[] p = new float[BONES.length * 3];
+        float wound = smooth(age / 2.5F);
+        float stroke = smooth((age - 2.5F) / 2.5F);
+        // A slash every two ticks from the fifth: the flick goes one way for one and back for the next.
+        float held = smooth((age - 4.5F) / 1.5F);
+        float flick = held * (float) Math.sin(Math.PI * (age - 5) / 2);
+        float snap = held * Math.abs((float) Math.cos(Math.PI * (age - 5) / 2));
+        p[CHEST + Y] = lerp(lerp(0, -24, wound), 17, stroke) + 5 * flick;
+        p[CHEST + X] = lerp(0, 10, stroke);
+        float aim = -80 + 0.85F * clampPitch(pitch) - p[CHEST + X];
+        p[R_ARM + X] = lerp(lerp(0, -138, wound), aim, stroke) + 6 * snap;
+        p[R_ARM + Z] = lerp(lerp(0, -32, wound), 8, stroke) + 13 * flick;
+        p[R_FORE + X] = lerp(lerp(0, -58, wound), -5, stroke) - 12 * snap;
+        p[R_THUMB + Z] = 24 * stroke;
+        // The other arm thrown back, for the lunge.
+        p[L_ARM + X] = lerp(lerp(0, -8, wound), 30, stroke) - 4 * flick;
+        p[L_ARM + Z] = lerp(-5 * wound, -15, stroke);
+        p[L_FORE + X] = lerp(lerp(0, -12, wound), -16, stroke);
+        p[L_LEG + X] = lerp(-6 * wound, -20, stroke);
+        p[L_SHIN + X] = lerp(4 * wound, 22, stroke);
+        p[R_LEG + X] = lerp(5 * wound, 17, stroke);
+        p[R_SHIN + X] = lerp(6 * wound, 6, stroke);
         return p;
     }
 

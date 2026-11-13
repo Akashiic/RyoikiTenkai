@@ -50,6 +50,27 @@ public final class AbilityMath {
     /** A red orb met an idle blue one: the two are one, purple, and it will burst. Then it does. */
     public static final int PURPLE = 13;
     public static final int PURPLE_BLAST = 14;
+    /** One slash of the shrine's barrage, at a place: on someone, or on the air when there is nobody. */
+    public static final int SLASH = 15;
+    /**
+     * The shrine's first technique begins: the barrage from the ground, or the flip before the long cut from the air.
+     */
+    public static final int SLASH_START = 16;
+
+    /** The barrage: how far it reaches, ticks before its first slash, how many slashes and ticks between two. */
+    public static final double BARRAGE_RANGE = 8;
+    public static final int BARRAGE_WIND = 5;
+    public static final int BARRAGE_SLASHES = 10;
+    public static final int BARRAGE_STEP = 2;
+    /** How squarely before the caster someone must be: the cosine of the angle off its line of sight. */
+    public static final double BARRAGE_FRONT = 0.25;
+    /** The part of the cut's harm each slash of the barrage does: ten of them, seven tenths of it. */
+    public static final float BARRAGE_PART = 0.07F;
+    /** From the air: ticks the caster hangs and turns over before the long cut, and how far that one flies. */
+    public static final int FLIP_TICKS = 9;
+    public static final double AIR_CUT_RANGE = 20;
+    /** 13 s. */
+    public static final int BARRAGE_RECHARGE = 260;
 
     /** Ticks a blue orb that killed stays: 5 s. */
     public static final int ORB_LINGER = 100;
@@ -283,6 +304,25 @@ public final class AbilityMath {
         double y = oy + dy * along - py;
         double z = oz + dz * along - pz;
         return x * x + y * y + z * z <= near * near ? along : -1;
+    }
+
+    /**
+     * Whether someone is before a caster for the barrage: within its range, and no farther off the way the caster
+     * looks (on the level) than {@link #BARRAGE_FRONT} allows. Someone right on top of the caster always is.
+     *
+     * @param dx from the caster to that someone
+     */
+    public static boolean before(double lookX, double lookZ, double dx, double dy, double dz) {
+        double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (distance > BARRAGE_RANGE) {
+            return false;
+        }
+        double flat = Math.sqrt(dx * dx + dz * dz);
+        double look = Math.sqrt(lookX * lookX + lookZ * lookZ);
+        if (flat < 1 || look < 1e-6) {
+            return true;
+        }
+        return (dx * lookX + dz * lookZ) / (flat * look) >= BARRAGE_FRONT;
     }
 
     /** How far a flying cut has gone, this many ticks after it left, in a flight of {@code range} blocks. */

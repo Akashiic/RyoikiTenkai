@@ -64,6 +64,26 @@ public final class AbilityFx {
     /** The orbs of the star void, each by the entity that guides it. */
     private final Map<Integer, Orb> orbs = new HashMap<>();
     private final List<Cut> cuts = new ArrayList<>();
+    /** The slashes of a barrage, each for a few ticks; and who hangs in the air turning over, and for how long yet. */
+    private final List<Slash> slashes = new ArrayList<>();
+    private final Map<Integer, Integer> flips = new HashMap<>();
+    /** Ticks yet that this client's own player is under a barrage: its view is not thrown over for every slash. */
+    private int ownCut;
+    private static final int SLASH_TICKS = 5;
+    private static final int SLASH_MARK = 40;
+
+    private static final class Slash {
+
+        double x;
+        double y;
+        double z;
+        boolean hit;
+        /** The height of the ground under it, for its mark; NaN for none. */
+        float ground = Float.NaN;
+        long seed;
+        int age;
+    }
+
     /** The red orbs of the star void, each by the entity that gathers it. */
     private final Map<Integer, Red> reds = new HashMap<>();
     /** Who is making the gesture of a technique: its kind, how long ago it began and how long it lasts, by entity. */
@@ -172,6 +192,8 @@ public final class AbilityFx {
 
     void clear() {
         reds.clear();
+        slashes.clear();
+        flips.clear();
         BlackFlashFx.INSTANCE.clear();
         PurpleFx.INSTANCE.clear();
         orbs.clear();
@@ -333,6 +355,50 @@ public final class AbilityFx {
                     }
                 }
             }
+        } else if (m.kind == AbilityMath.SLASH_START) {
+            if (m.dx > 0.5F) {
+                flips.put(m.entity, m.ticks);
+                gesture(mc, m.entity, CastPose.FLIP, m.ticks + 11, false);
+            } else {
+                // The arm comes down and stays out while the slashes fall.
+                gesture(mc, m.entity, CastPose.BARRAGE, m.ticks + 6, true);
+            }
+        } else if (m.kind == AbilityMath.SLASH) {
+            Slash sl = new Slash();
+            sl.x = m.x;
+            sl.y = m.y;
+            sl.z = m.z;
+            sl.hit = m.dx != 0;
+            sl.seed = m.entity * 7919L + (long) m.size * 104729L + Double.doubleToLongBits(m.x);
+            slashes.add(sl);
+            boolean own = mc.thePlayer != null && mc.thePlayer.getEntityId() == Math.round(m.dx);
+            if (sl.hit && mc.theWorld != null) {
+                int bx = MathHelper.floor_double(m.x);
+                int bz = MathHelper.floor_double(m.z);
+                for (int by = MathHelper.floor_double(m.y); by > m.y - 4; by--) {
+                    if (mc.theWorld.getBlock(bx, by, bz)
+                        .getMaterial()
+                        .isSolid()) {
+                        sl.ground = by + 1;
+                        break;
+                    }
+                }
+                // What it draws from who it cuts: not into its own eyes.
+                for (int k = 0; k < 5 && !(own && mc.gameSettings.thirdPersonView == 0); k++) {
+                    mc.theWorld.spawnParticle(
+                        "reddust",
+                        m.x + (mc.theWorld.rand.nextDouble() - 0.5) * 1.2,
+                        m.y + (mc.theWorld.rand.nextDouble() - 0.5) * 1.6,
+                        m.z + (mc.theWorld.rand.nextDouble() - 0.5) * 1.2,
+                        0,
+                        0,
+                        0);
+                }
+                if (own) {
+                    ownCut = 4;
+                    CameraShake.INSTANCE.kick(1);
+                }
+            }
         } else if (m.kind == AbilityMath.CUT) {
             Cut c = new Cut();
             c.caster = m.entity;
@@ -344,7 +410,10 @@ public final class AbilityFx {
             c.dz = m.dz;
             c.range = m.size;
             cuts.add(c);
-            gesture(mc, m.entity, CastPose.CUT, (int) CastPose.CUT_TICKS);
+            int[] made = gestures.get(m.entity);
+            if (made == null || made[0] != CastPose.FLIP) {
+                gesture(mc, m.entity, CastPose.CUT, (int) CastPose.CUT_TICKS);
+            }
         } else if (m.kind == AbilityMath.CUT_HIT) {
             for (int i = cuts.size() - 1; i >= 0; i--) {
                 Cut c = cuts.get(i);
@@ -396,7 +465,8 @@ public final class AbilityFx {
     public boolean hangs(int entity) {
         Orb o = orbs.get(entity);
         Red r = reds.get(entity);
-        return o != null && o.air && !o.idle && o.closing < 0 || r != null && r.air && r.flown < 0 && r.age <= r.charge;
+        return flips.containsKey(entity) || o != null && o.air && !o.idle && o.closing < 0
+            || r != null && r.air && r.flown < 0 && r.age <= r.charge;
     }
 
     @SubscribeEvent
@@ -483,6 +553,24 @@ public final class AbilityFx {
                 i.remove();
             }
         }
+        if (ownCut > 0 && mc.thePlayer != null) {
+            // Ten wounds in a second would roll the view ten times: the shake of each is enough.
+            ownCut--;
+            mc.thePlayer.hurtTime = 0;
+        }
+        for (Iterator<Slash> i = slashes.iterator(); i.hasNext();) {
+            if (++i.next().age > SLASH_MARK) {
+                i.remove();
+            }
+        }
+        for (Iterator<Map.Entry<Integer, Integer>> i = flips.entrySet()
+            .iterator(); i.hasNext();) {
+            Map.Entry<Integer, Integer> e = i.next();
+            e.setValue(e.getValue() - 1);
+            if (e.getValue() <= 0) {
+                i.remove();
+            }
+        }
         BlackFlashFx.INSTANCE.tick();
         PurpleFx.INSTANCE.tick();
         for (Iterator<Cut> i = cuts.iterator(); i.hasNext();) {
@@ -508,6 +596,7 @@ public final class AbilityFx {
     public void onRenderWorldLast(RenderWorldLastEvent event) {
         if (orbs.isEmpty() && cuts.isEmpty()
             && reds.isEmpty()
+            && slashes.isEmpty()
             && !BlackFlashFx.INSTANCE.active()
             && !PurpleFx.INSTANCE.active()) {
             return;
@@ -546,6 +635,9 @@ public final class AbilityFx {
         }
         for (Red r : reds.values()) {
             red(t, mc, r, camX, camY, camZ, event.partialTicks);
+        }
+        for (Slash sl : slashes) {
+            slash(t, sl, (float) (sl.x - camX), (float) (sl.y - camY), (float) (sl.z - camZ), event.partialTicks);
         }
         BlackFlashFx.INSTANCE.world(t, mc, camX, camY, camZ, event.partialTicks);
         PurpleFx.INSTANCE.world(t, camX, camY, camZ, event.partialTicks);
@@ -1348,6 +1440,129 @@ public final class AbilityFx {
     }
 
     // Talho.
+
+    /**
+     * One slash of the barrage: a great black crescent edged in white, there all at once across whoever it cuts and
+     * turned to whoever looks, each at its own angle; white for its first instant; it closes to nothing in a quarter
+     * of a second, and leaves a red mark on the ground under it for two seconds.
+     */
+    private static void slash(Tessellator t, Slash sl, float x, float y, float z, float partialTicks) {
+        float age = sl.age + partialTicks;
+        Random random = new Random(sl.seed);
+        float turn = random.nextFloat() * 6.2832F;
+        float tilt = (random.nextFloat() * 2 - 1) * 0.35F;
+        float size = (sl.hit ? 2.2F : 1.7F) * (0.8F + 0.4F * random.nextFloat());
+        float markTurn = random.nextFloat() * 3.1416F;
+
+        if (!Float.isNaN(sl.ground) && age < SLASH_MARK) {
+            float warm = 1 - age / SLASH_MARK;
+            float gy = sl.ground - (float) RenderManager.renderPosY + 0.02F;
+            float mx = MathHelper.cos(markTurn) * 1.3F;
+            float mz = MathHelper.sin(markTurn) * 1.3F;
+            float[] across = { -MathHelper.sin(markTurn), 0, MathHelper.cos(markTurn) };
+            Draw.translucent();
+            // Thick in the middle, nothing at the ends.
+            t.startDrawing(GL11.GL_TRIANGLES);
+            float w = 0.1F;
+            Draw.color(t, DEEP_RED, 0.85F * warm);
+            t.addVertex(x - mx, gy, z - mz);
+            t.addVertex(x + across[0] * w, gy, z + across[2] * w);
+            t.addVertex(x - across[0] * w, gy, z - across[2] * w);
+            t.addVertex(x + mx, gy, z + mz);
+            t.addVertex(x - across[0] * w, gy, z - across[2] * w);
+            t.addVertex(x + across[0] * w, gy, z + across[2] * w);
+            t.draw();
+        }
+        if (age >= SLASH_TICKS) {
+            return;
+        }
+
+        // Turned to the eye: across and up, as the eye sees the place.
+        float[] view = { x, y, z };
+        float far = length(view);
+        if (far < 0.4F) {
+            return;
+        }
+        normalize(view);
+        float[] right = cross(view, new float[] { 0, 1, 0 });
+        if (length(right) < 1e-3F) {
+            right = new float[] { 1, 0, 0 };
+        }
+        normalize(right);
+        float[] up = cross(right, view);
+        float ct = MathHelper.cos(turn);
+        float st = MathHelper.sin(turn);
+        float[] d = { right[0] * ct + up[0] * st, right[1] * ct + up[1] * st, right[2] * ct + up[2] * st };
+        float[] axis = { -right[0] * st + up[0] * ct + view[0] * tilt, -right[1] * st + up[1] * ct + view[1] * tilt,
+            -right[2] * st + up[2] * ct + view[2] * tilt };
+        normalize(axis);
+
+        // It is swept in within a tick, holds, and closes.
+        float swept = Draw.clamp01(age / 0.9F);
+        float open = 1 - Draw.clamp01((age - 2.2F) / (SLASH_TICKS - 2.2F));
+        open = open * open * (3 - 2 * open);
+        // One across the eye of who is cut is not a black screen.
+        float near = 0.35F + 0.65F * Draw.clamp01((far - 1.2F) / 2.5F);
+        int body = Draw.mix(WHITE, 0x050003, Draw.clamp01(age / 1.3F));
+        float span = 1.05F;
+        int steps = 18;
+        float[][] outer = new float[steps + 1][3];
+        float[][] inner = new float[steps + 1][3];
+        float[][] over = new float[steps + 1][3];
+        float[][] under = new float[steps + 1][3];
+        for (int i = 0; i <= steps; i++) {
+            float along = (float) i / steps;
+            float angle = (along * 2 - 1) * span;
+            float thick = 0.34F * size * open * (float) Math.pow(Math.cos(angle / span * Math.PI / 2), 0.8);
+            float feather = 0.05F * size + thick * 0.45F;
+            float ca = MathHelper.cos(angle);
+            float sa = MathHelper.sin(angle);
+            for (int k = 0; k < 3; k++) {
+                float dir = d[k] * ca + axis[k] * sa;
+                // Its middle is on the body: the arc's centre is back from it by its radius.
+                float base = (k == 0 ? x : k == 1 ? y : z) - d[k] * size * 0.9F;
+                outer[i][k] = base + dir * size;
+                inner[i][k] = base + dir * (size - thick);
+                over[i][k] = base + dir * (size + feather);
+                under[i][k] = base + dir * (size - thick - feather);
+            }
+        }
+        int shown = Math.round(steps * swept);
+        Draw.translucent();
+        t.startDrawingQuads();
+        for (int i = 0; i < shown; i++) {
+            // The white around it, fading out both ways.
+            Draw.color(t, WHITE, 0);
+            vertex(t, over[i]);
+            vertex(t, over[i + 1]);
+            Draw.color(t, WHITE, 0.95F * near);
+            vertex(t, outer[i + 1]);
+            vertex(t, outer[i]);
+            vertex(t, inner[i]);
+            vertex(t, inner[i + 1]);
+            Draw.color(t, WHITE, 0);
+            vertex(t, under[i + 1]);
+            vertex(t, under[i]);
+            // The blade itself.
+            Draw.color(t, body, near);
+            vertex(t, outer[i]);
+            vertex(t, outer[i + 1]);
+            vertex(t, inner[i + 1]);
+            vertex(t, inner[i]);
+        }
+        t.draw();
+        Draw.additive();
+        t.startDrawing(GL11.GL_TRIANGLES);
+        if (sl.hit) {
+            Draw.glow(t, x, y, z, 1.6F, WHITE, 0.9F * (1 - Draw.clamp01(age / 2.5F)) * near);
+        }
+        Draw.glow(t, x, y, z, 2.4F, RED, 0.3F * open * near);
+        t.draw();
+    }
+
+    private static void vertex(Tessellator t, float[] at) {
+        t.addVertex(at[0], at[1], at[2]);
+    }
 
     /** The height of the ground under each step of a cut's way, as far down as a blade's scar would still show. */
     private static float[] ground(World world, Cut c) {
