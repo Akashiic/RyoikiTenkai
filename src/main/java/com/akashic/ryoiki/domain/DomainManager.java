@@ -8,6 +8,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import net.minecraft.entity.EntityTracker;
+import net.minecraft.entity.EntityTrackerEntry;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.nbt.NBTTagCompound;
@@ -16,9 +18,13 @@ import net.minecraft.network.play.server.S3FPacketCustomPayload;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.ChatComponentTranslation;
 import net.minecraft.util.EnumChatFormatting;
+import net.minecraft.util.IntHashMap;
 import net.minecraft.world.WorldServer;
+import net.minecraft.world.chunk.Chunk;
 import net.minecraftforge.event.entity.living.EnderTeleportEvent;
+import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
+import net.minecraftforge.event.entity.player.AttackEntityEvent;
 
 import com.akashic.ryoiki.Config;
 import com.akashic.ryoiki.DomainType;
@@ -34,6 +40,7 @@ import com.akashic.ryoiki.net.DomainWire;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.PlayerEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
+import cpw.mods.fml.relauncher.ReflectionHelper;
 
 /**
  * The server's side of the domains. A cast is a hand sign of {@link DomainType#WINDUP_TICKS}; during it the arena's
@@ -73,6 +80,11 @@ public final class DomainManager {
 
     /** Starts a domain's hand sign. Returns the translation key of what stopped it, or null. */
     public String cast(EntityPlayerMP caster, DomainType type) {
+        DomainSession host = clashHost(caster);
+        if (host != null) {
+            answer(host, caster, type);
+            return null;
+        }
         if (sessionOf(caster.getUniqueID()) != null) {
             return "ryoikitenkai.erro.dentro";
         }
@@ -114,7 +126,7 @@ public final class DomainManager {
         ArenaManager.INSTANCE.setCore(world, slot, type == DomainType.MALEVOLENT_SHRINE ? s.yaw : Float.NaN);
         byte[] windup = DomainWire
             .windup(s.id, type, caster.getEntityId(), s.x, s.y, s.z, s.radius, DomainType.WINDUP_TICKS);
-        S26PacketMapChunkBulk arena = new S26PacketMapChunkBulk(ArenaManager.INSTANCE.chunks(world, slot));
+        List<Chunk> arena = ArenaManager.INSTANCE.chunks(world, slot);
         for (EntityPlayerMP p : players(world)) {
             double d = distanceSq(p, s.x, s.y, s.z);
             if (d <= square(NOTICE_RANGE)) {
@@ -122,10 +134,255 @@ public final class DomainManager {
                 s.told.add(p.getUniqueID());
             }
             if (d <= square(s.radius + PRESEND_MARGIN)) {
-                p.playerNetServerHandler.sendPacket(arena);
+                // A packet of its own for each player: one object written to two connections at the same time
+                // reached one of them corrupted, and that client was dropped.
+                p.playerNetServerHandler.sendPacket(new S26PacketMapChunkBulk(arena));
             }
         }
         return null;
+    }
+
+    /**
+     * The domain a cast by this player would answer, and so clash with: one whose hand sign it stands in, or one
+     * that caught it and opened a moment ago. A domain clashes once, with one rival.
+     */
+    private DomainSession clashHost(EntityPlayerMP caster) {
+        UUID id = caster.getUniqueID();
+        for (DomainSession s : sessions) {
+            if (s.rival != null || s.clashed || s.caster.equals(id) || !caster.isEntityAlive()) {
+                continue;
+            }
+            if (s.phase == Phase.WINDUP && s.dimension == caster.dimension
+                && distanceSq(caster, s.x, s.y, s.z) <= square(s.radius)) {
+                return s;
+            }
+            if (s.phase == Phase.ACTIVE && s.holds(id) && s.age <= Config.clashWindow) {
+                return s;
+            }
+        }
+        return null;
+    }
+
+    /** The rival's hand sign begins. The clash starts when it is done and both are in the arena. */
+    private void answer(DomainSession s, EntityPlayerMP rival, DomainType type) {
+        s.rival = rival.getUniqueID();
+        s.rivalType = type;
+        s.rivalSign = DomainType.WINDUP_TICKS;
+        sendAll(
+            s,
+            DomainWire.rival(
+                s.id,
+                type,
+                rival.getEntityId(),
+                rival.posX,
+                rival.boundingBox.minY,
+                rival.posZ,
+                s.radius,
+                DomainType.WINDUP_TICKS));
+    }
+
+    private void beginClash(DomainSession s, WorldServer world) {
+        EntityPlayerMP host = player(world, s.caster);
+        EntityPlayerMP rival = player(world, s.rival);
+        if (host == null || rival == null || !rival.isEntityAlive() || !s.holds(s.rival)) {
+            // The rival walked out of the domain before it closed, or left: no clash.
+            s.rival = null;
+            return;
+        }
+        RyoikiTenkai.LOG.info(
+            "Clash in domain {}: {} ({}) against {} ({})",
+            s.id,
+            host.getCommandSenderName(),
+            s.type.id,
+            rival.getCommandSenderName(),
+            s.rivalType.id);
+        s.clashed = true;
+        s.clash = ClashScore.TICKS;
+        s.score = new ClashScore();
+        sendAll(
+            s,
+            DomainWire.clash(s.id, ClashScore.TICKS, host.getEntityId(), s.type, rival.getEntityId(), s.rivalType));
+    }
+
+    /** One tick of a clash: it ends by a full bar, by the time, or by one of the two being gone. */
+    private void tickClash(DomainSession s, WorldServer world) {
+        EntityPlayerMP host = player(world, s.caster);
+        EntityPlayerMP rival = player(world, s.rival);
+        boolean hostHere = host != null && host.isEntityAlive() && s.holds(s.caster);
+        boolean rivalHere = rival != null && rival.isEntityAlive() && s.holds(s.rival);
+        s.clash--;
+        if (!hostHere && !rivalHere) {
+            resolve(s, world, ClashScore.TIE);
+        } else if (!hostHere) {
+            resolve(s, world, ClashScore.RIVAL);
+        } else if (!rivalHere) {
+            resolve(s, world, ClashScore.HOST);
+        } else if (s.score.full() != ClashScore.NONE) {
+            resolve(s, world, s.score.full());
+        } else if (s.clash <= 0) {
+            resolve(s, world, s.score.atTimeUp());
+        }
+    }
+
+    /** The winner keeps the arena, with its own domain from the start; a tie breaks both. */
+    private void resolve(DomainSession s, WorldServer world, int result) {
+        s.clash = 0;
+        DomainType was = s.type;
+        if (result == ClashScore.RIVAL) {
+            s.caster = s.rival;
+            s.type = s.rivalType;
+        }
+        s.rival = null;
+        EntityPlayerMP winner = player(world, s.caster);
+        RyoikiTenkai.LOG.info(
+            "Clash in domain {} over: {} ({} hits to {})",
+            s.id,
+            result == ClashScore.TIE || winner == null ? "a tie, both break"
+                : winner.getCommandSenderName() + " wins with " + s.type.id,
+            s.score.hits(ClashScore.HOST),
+            s.score.hits(ClashScore.RIVAL));
+        sendAll(s, DomainWire.clashEnd(s.id, result, s.type, winner == null ? 0 : winner.getEntityId()));
+        if (result == ClashScore.TIE || winner == null) {
+            end(s, world);
+            return;
+        }
+        s.age = 0;
+        if (was == DomainType.MALEVOLENT_SHRINE && s.type != was) {
+            // The hall of the shrine that lost goes. One that won is drawn but not built: there are people where
+            // its walls would be.
+            ArenaManager.INSTANCE.setCore(world, s.slot, Float.NaN);
+        }
+    }
+
+    /** In a clash nothing hurts the two casters, and nothing pushes them. */
+    @SubscribeEvent
+    public void onAttacked(LivingAttackEvent event) {
+        if (event.entityLiving instanceof EntityPlayerMP && clashOf(event.entityLiving.getUniqueID()) != null) {
+            event.setCanceled(true);
+        }
+    }
+
+    /** A hit of one caster on the other fills its bar: the blow itself is dropped, so it does no harm. */
+    @SubscribeEvent
+    public void onAttack(AttackEntityEvent event) {
+        if (!(event.entityPlayer instanceof EntityPlayerMP) || !(event.target instanceof EntityPlayerMP)) {
+            return;
+        }
+        UUID attacker = event.entityPlayer.getUniqueID();
+        UUID victim = event.target.getUniqueID();
+        DomainSession s = clashOf(victim);
+        if (s == null) {
+            return;
+        }
+        event.setCanceled(true);
+        int side = attacker.equals(s.caster) && victim.equals(s.rival) ? ClashScore.HOST
+            : attacker.equals(s.rival) && victim.equals(s.caster) ? ClashScore.RIVAL : ClashScore.NONE;
+        long tick = MinecraftServer.getServer()
+            .getTickCounter();
+        if (side != ClashScore.NONE && s.score.hit(side, tick)) {
+            // The victim flinches and sounds hurt, as in a hit, for everyone who sees it.
+            event.target.worldObj.setEntityState(event.target, (byte) 2);
+            sendAll(s, DomainWire.clashScore(s.id, s.score.hits(ClashScore.HOST), s.score.hits(ClashScore.RIVAL)));
+        }
+    }
+
+    /** The clash this player is one of the two casters of, or null. */
+    private DomainSession clashOf(UUID player) {
+        for (DomainSession s : sessions) {
+            if (s.clash > 0 && (player.equals(s.caster) || player.equals(s.rival))) {
+                return s;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Players who were teleported far in the same tick, and must see each other where they land. The entity tracker
+     * decides who sees whom as each one moves, and with two of them moving at once it can leave one without the
+     * other: each is taken out of the others' watchers and put back, once the chunks around them are being watched.
+     */
+    private static final class Resync {
+
+        final Set<UUID> who;
+        final int dimension;
+        int age;
+
+        Resync(Set<UUID> who, int dimension) {
+            this.who = who;
+            this.dimension = dimension;
+        }
+    }
+
+    private static final int RESYNC_DROP = 5;
+    private static final int RESYNC_ADD = 8;
+    private static final int RESYNC_AGAIN = 30;
+
+    private final List<Resync> resyncs = new ArrayList<>();
+
+    private void resyncLater(Set<UUID> who, int dimension) {
+        if (who.size() > 1) {
+            resyncs.add(new Resync(new HashSet<>(who), dimension));
+        }
+    }
+
+    private void tickResyncs(MinecraftServer server) {
+        for (Iterator<Resync> it = resyncs.iterator(); it.hasNext();) {
+            Resync r = it.next();
+            r.age++;
+            if (r.age != RESYNC_DROP && r.age != RESYNC_ADD && r.age != RESYNC_AGAIN) {
+                continue;
+            }
+            WorldServer world = server.worldServerForDimension(r.dimension);
+            List<EntityPlayerMP> players = new ArrayList<>();
+            for (UUID id : r.who) {
+                EntityPlayerMP p = player(world, id);
+                if (p != null) {
+                    players.add(p);
+                }
+            }
+            IntHashMap entries = null;
+            try {
+                entries = ReflectionHelper.getPrivateValue(
+                    EntityTracker.class,
+                    world.getEntityTracker(),
+                    "trackedEntityIDs",
+                    "field_72794_c");
+            } catch (RuntimeException e) {
+                // Without the entries, only those the tracker itself knows to be missing can be put back.
+            }
+            for (EntityPlayerMP watcher : players) {
+                for (EntityPlayerMP seen : players) {
+                    if (watcher == seen) {
+                        continue;
+                    }
+                    EntityTrackerEntry entry = entries == null ? null
+                        : (EntityTrackerEntry) entries.lookup(seen.getEntityId());
+                    if (entry == null) {
+                        world.getEntityTracker()
+                            .func_85172_a(watcher, world.getChunkFromChunkCoords(seen.chunkCoordX, seen.chunkCoordZ));
+                    } else if (r.age == RESYNC_DROP) {
+                        entry.removePlayerFromTracker(watcher);
+                    } else {
+                        entry.tryStartWachingThis(watcher);
+                    }
+                }
+            }
+            if (r.age >= RESYNC_AGAIN) {
+                it.remove();
+            }
+        }
+    }
+
+    /** To those in the arena and those who see the dome. */
+    private void sendAll(DomainSession s, byte[] data) {
+        Set<UUID> all = new HashSet<>(s.told);
+        all.addAll(s.inside.keySet());
+        for (UUID id : all) {
+            EntityPlayerMP p = anywhere(id);
+            if (p != null) {
+                send(p, data);
+            }
+        }
     }
 
     @SubscribeEvent
@@ -137,9 +394,25 @@ public final class DomainManager {
         for (WorldServer world : server.worldServers) {
             ArenaManager.INSTANCE.tick(world);
         }
+        tickResyncs(server);
         for (DomainSession s : new ArrayList<>(sessions)) {
             WorldServer world = server.worldServerForDimension(s.dimension);
             EntityPlayerMP caster = player(world, s.caster);
+            if (s.rival != null && s.clash == 0 && !s.clashed) {
+                // The rival's hand sign runs through the host's and, if need be, on into the arena.
+                if (s.rivalSign > 0) {
+                    s.rivalSign--;
+                }
+                if (s.rivalSign == 0 && s.phase == Phase.ACTIVE) {
+                    beginClash(s, world);
+                }
+            }
+            if (s.clash > 0) {
+                // The domain's own time stands still while the two fight for it.
+                dropThoseWhoLeft(s, world);
+                tickClash(s, world);
+                continue;
+            }
             s.age++;
             if (s.phase == Phase.WINDUP) {
                 if (caster == null || !caster.isEntityAlive()) {
@@ -148,11 +421,6 @@ public final class DomainManager {
                     open(s, world, caster);
                 }
             } else if (s.phase == Phase.ACTIVE) {
-                if (s.clash == 1) {
-                    clash(s, false);
-                } else if (s.clash > 1) {
-                    s.clash--;
-                }
                 dropThoseWhoLeft(s, world);
                 if (caster == null || !caster.isEntityAlive() || !s.holds(s.caster) || s.age >= s.type.durationTicks) {
                     end(s, world);
@@ -243,6 +511,7 @@ public final class DomainManager {
         }
         s.phase = Phase.ACTIVE;
         s.age = 0;
+        resyncLater(s.inside.keySet(), s.dimension);
     }
 
     /** Players another teleport, a death or a logout took out of the arena are no longer in the domain. */
@@ -282,30 +551,6 @@ public final class DomainManager {
         }
     }
 
-    /** The longest a clash is announced for: 15 s, as in the study. */
-    public static final int CLASH_TICKS = 15 * 20;
-
-    /**
-     * Starts or ends the clash of an open domain, for those inside and those who see its dome. The clash itself (two
-     * casters in one arena) is not built yet: this is the signal it will send, and what the clients hear by it.
-     */
-    public boolean clash(DomainSession s, boolean on) {
-        if (s.phase != Phase.ACTIVE || on == (s.clash > 0)) {
-            return false;
-        }
-        s.clash = on ? CLASH_TICKS : 0;
-        byte[] data = on ? DomainWire.clash(s.id, CLASH_TICKS) : DomainWire.clashEnd(s.id);
-        Set<UUID> all = new HashSet<>(s.told);
-        all.addAll(s.inside.keySet());
-        for (UUID id : all) {
-            EntityPlayerMP p = anywhere(id);
-            if (p != null) {
-                send(p, data);
-            }
-        }
-        return true;
-    }
-
     /** Ends a domain in any phase: everyone inside goes back to where it was caught. */
     public void end(DomainSession s, WorldServer world) {
         if (s.phase == Phase.ENDED) {
@@ -313,6 +558,7 @@ public final class DomainManager {
         }
         s.phase = Phase.ENDED;
         sessions.remove(s);
+        resyncLater(s.inside.keySet(), s.dimension);
         for (Map.Entry<UUID, ReturnPoint> e : s.inside.entrySet()) {
             EntityPlayerMP p = player(world, e.getKey());
             if (p == null) {

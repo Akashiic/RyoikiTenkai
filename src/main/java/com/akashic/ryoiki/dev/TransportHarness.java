@@ -495,9 +495,12 @@ public final class TransportHarness {
      * On a server the test is driven from outside: lines appended to a {@code ryoiki-harness-cmd} file in the run
      * directory, one command at a time. {@code chat <text>} sends a chat line or a command; {@code cast <domain>}
      * casts and records the trip; {@code view <0|1|2>} sets the camera; {@code look <yaw> <pitch>};
-     * {@code shot <name>}; {@code watch <seconds>} takes a screenshot every second and a half; {@code where} writes
+     * {@code shot <name>}; {@code hit <n>} gives n blows to the nearest other player; {@code watch <seconds>} takes a
+     * screenshot every second and a half; {@code where} writes
      * the position; {@code quit}.
      */
+    private int hitsLeft;
+
     private void command(Minecraft mc) {
         File file = new File(mc.mcDataDir, "ryoiki-harness-cmd");
         if (ticks % 10 == 0 && file.isFile()) {
@@ -511,6 +514,22 @@ public final class TransportHarness {
                 Files.delete(file.toPath());
             } catch (IOException e) {
                 return;
+            }
+        }
+        if (hitsLeft > 0 && ticks % 7 == 0) {
+            // One blow at the nearest other player, as a click would give.
+            net.minecraft.entity.player.EntityPlayer target = null;
+            for (Object o : mc.theWorld.playerEntities) {
+                net.minecraft.entity.player.EntityPlayer p = (net.minecraft.entity.player.EntityPlayer) o;
+                if (p != mc.thePlayer && (target == null
+                    || p.getDistanceSqToEntity(mc.thePlayer) < target.getDistanceSqToEntity(mc.thePlayer))) {
+                    target = p;
+                }
+            }
+            if (target != null) {
+                mc.thePlayer.swingItem();
+                mc.playerController.attackEntity(mc.thePlayer, target);
+                hitsLeft--;
             }
         }
         if (commandWait > 0) {
@@ -532,6 +551,9 @@ public final class TransportHarness {
             case "cast":
                 castType = DomainType.byId(rest);
                 next(Step.CAST);
+                break;
+            case "hit":
+                hitsLeft = Integer.parseInt(rest);
                 break;
             case "view":
                 view = Integer.parseInt(rest);
@@ -556,13 +578,14 @@ public final class TransportHarness {
             case "where":
                 report(
                     String.format(
-                        "at %.1f %.1f %.1f in dimension %d, inside %s, domes %d, chat: %s",
+                        "at %.1f %.1f %.1f in dimension %d, inside %s, domes %d, players seen %s, chat: %s",
                         mc.thePlayer.posX,
                         mc.thePlayer.boundingBox.minY,
                         mc.thePlayer.posZ,
                         mc.thePlayer.dimension,
                         ClientDomain.INSTANCE.inside,
                         ClientDomain.INSTANCE.domes.size(),
+                        seen(mc),
                         lastChat(mc)));
                 break;
             case "quit":
@@ -572,6 +595,28 @@ public final class TransportHarness {
                 report("unknown command");
                 break;
         }
+    }
+
+    /** The players this client has in its world, with how far each is. */
+    private static String seen(Minecraft mc) {
+        StringBuilder out = new StringBuilder();
+        for (Object o : mc.theWorld.playerEntities) {
+            net.minecraft.entity.player.EntityPlayer p = (net.minecraft.entity.player.EntityPlayer) o;
+            out.append(p.getCommandSenderName())
+                .append('#')
+                .append(p.getEntityId())
+                .append('@')
+                .append((int) p.getDistanceToEntity(mc.thePlayer))
+                .append(' ');
+        }
+        ClientDomain d = ClientDomain.INSTANCE;
+        out.append("clash ")
+            .append(d.clash)
+            .append(" of #")
+            .append(d.clashEntities[0])
+            .append(" and #")
+            .append(d.clashEntities[1]);
+        return out.toString();
     }
 
     /** The last lines of chat, where the server's refusal is. */

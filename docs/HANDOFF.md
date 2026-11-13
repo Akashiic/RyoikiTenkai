@@ -94,7 +94,7 @@ Shenanigans** (JJS), para o servidor Minecraft **1.7.10** da Rede Akashic.
 | Santuário e GIFs | O dono pediu o santuário da referência "100%" (com as bocas na porta), no meio da arena, e duas cenas do anime na faixa. Feito: o santuário **no meio, quadrado, menor e sólido**, de desenho próprio; e um **espaço na faixa** para quadros que o próprio modpack fornece (`config/ryoikitenkai/faixa/`). Não feito, por limite do agente: copiar o desenho da referência e embutir as cenas |
 | Quem testa | O dono prefere que **o agente faça os testes**: em 2026-11-12 ele mandou o modpack do cliente e os arquivos do servidor para isso (seção 5) |
 | Plugin ou mod | **Mod**, confirmado pelo dono em 2026-11-12 ("pode ficar à vontade" para a divisão proposta) |
-| Domínios ao mesmo tempo | **No máximo 2.** Decida e documente se um choque (2 domínios numa arena só) ocupa uma vaga ou duas |
+| Domínios ao mesmo tempo | **No máximo 2.** Um choque (2 domínios numa arena só) ocupa **uma vaga**: o domínio do rival não ganha arena própria |
 
 ## 4. O caminho escolhido (e o que mudou do plano original)
 
@@ -127,6 +127,37 @@ O detalhe técnico e as medições estão em [`TRANSPORTE.md`](TRANSPORTE.md). E
 | **Arena no céu, em cima do lugar da conjuração** | Não troca chunk nenhum, mas exige pôr e tirar milhares de blocos no mundo real a cada conjuração (com religamento de luz), esbarra no limite de altura e deixa lixo no mundo se o servidor cair. Fica como plano B se o teleporte longe der problema no servidor real |
 | **Teleporte simples sem pré-envio** | O jogador fica parado até o chunk chegar. Com o pré-envio ele tem chão no primeiro quadro |
 
+### 4.3b Choque de Domínios (como ficou)
+
+Regras da seção 5.4 do `ESTUDO.md`, decididas pelo agente (carta branca) em 2026-11-13:
+
+* **Gatilho:** conjurar **dentro do sinal de mão de outro domínio** (no raio dele) ou **até `choque.janela` ticks
+  depois de ser pego** (60 por padrão, no config). Quem responde é o **rival**; o sinal de mão dele dura os mesmos 25
+  ticks, com faixa e voz, e continua dentro da arena se o domínio abrir no meio. Um domínio choca uma vez, com um
+  rival só (dois participantes).
+* **Durante (15 s):** o tempo do domínio fica parado. Nada fere nem empurra os dois conjuradores. Cada golpe de um
+  conjurador **no outro** vale **+6,25 %** (16 golpes), no máximo um a cada 6 ticks; o golpe em si é descartado (sem
+  dano), e o atingido dá o tranco de quem levou dano.
+* **Fim:** barra cheia vence na hora; no fim do tempo vence a barra maior; **barras iguais quebram tudo** (todos
+  voltam). Se um dos dois morre, sai ou desconecta, o outro vence.
+* **Depois:** o vencedor fica com a arena e o domínio **dele recomeça do zero** (14 s ou 18 s); o perdedor fica
+  dentro, como qualquer um que foi pego.
+* **Limite conhecido:** o salão do Santuário é sólido e é erguido na conjuração. Se o Santuário entra como rival, o
+  salão é só desenhado (recuado, com os conjuradores diante da porta), não construído: há gente onde as paredes
+  ficariam. Se o Santuário anfitrião perde, o salão é removido.
+* **Código:** `domain/ClashScore` (regras puras, com teste), `DomainManager` (`clashHost`, `answer`, `beginClash`,
+  `tickClash`, `resolve`, e os eventos de ataque), `DomainWire` (`RIVAL`, `CLASH`, `CLASH_SCORE`, `CLASH_END`),
+  `ClientDomain#shown` e `client/ClashHud`.
+
+**Dois defeitos antigos achados no teste com dois jogadores** (valem para qualquer domínio, não só o choque):
+
+* O pacote dos chunks da arena era **um objeto só para todos** os jogadores próximos; escrito em duas conexões ao
+  mesmo tempo, chegou corrompido a um cliente ("Bad compressed data format") e o derrubou. Agora cada jogador recebe
+  o seu.
+* Com dois jogadores teleportados no mesmo tick, o rastreador de entidades do servidor às vezes deixava um **sem ver
+  o outro**. Agora, 5 ticks depois de cada ida e de cada volta, cada um é tirado e recolocado entre os que os outros
+  veem (`DomainManager#tickResyncs`).
+
 ### 4.4 Próximos passos sugeridos
 
 1. ~~Ver no servidor real~~ **Feito** (ver `TRANSPORTE.md`). Sobra o que precisa de placa de vídeo: a volta à cidade
@@ -134,13 +165,13 @@ O detalhe técnico e as medições estão em [`TRANSPORTE.md`](TRANSPORTE.md). E
 2. ~~O visual de verdade~~ **Feito** numa primeira versão ([`VISUAL.md`](VISUAL.md)). Falta ver com placa de vídeo e
    com shaderpack, e ouvir o dono sobre o resultado.
 3. **Efeitos garantidos**: congelar quem está no Vazio (14 s), cortes no Santuário (2 de dano por corte, bloqueio reduz).
-4. **Choque de domínios** (seção 4 do `ESTUDO.md`): dois conjuradores na mesma arena, contador de 15 s, barras.
+4. ~~Choque de domínios~~ **Feito** numa primeira versão (seção "Choque de Domínios" abaixo e em `VISUAL.md`). Falta
+   ver com jogadores de verdade e com alguém assistindo de fora.
 5. **Como se conjura**: tecla, item ou habilidade de outro sistema (Overkill?), recarga, permissões, mundos permitidos.
 6. **Som**: o mod não traz som (decisão do dono: nada sintetizado, nenhum áudio no jar). Trilha de cada expansão,
    voz no sinal de mão, trilha do choque (`clash_trilha`) e sons por momento são `.ogg` do dono em
    `config/ryoikitenkai/sons/`; a música do jogo é calada enquanto uma trilha toca (ver "Som" em `docs/VISUAL.md` e
-   `tools/sons/`). O sinal do choque (`DomainWire.CLASH`, `DomainManager#clash`) já existe para o som, ligado só
-   pelo comando `/ryoiki choque`: a mecânica do choque (item 4) deve chamá-lo. Falta: ouvir num PC de verdade.
+   `tools/sons/`). A trilha do choque é ligada pelo próprio choque. Falta: ouvir num PC de verdade.
 7. **Voz** (AkashicVoiceChat): decidir se o domínio isola ou se vale uma ponte (seção 5).
 
 ### 4.5 O que ainda pode ir para o Kunftig

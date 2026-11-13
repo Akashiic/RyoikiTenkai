@@ -1,5 +1,5 @@
 tile.ryoikitenkai.veu.name=Véu do Domínio
-ryoikitenkai.comando.uso=/ryoiki expandir <vazio|santuario> [jogador] | /ryoiki encerrar | /ryoiki preparar | /ryoiki choque <iniciar|encerrar>
+ryoikitenkai.comando.uso=/ryoiki expandir <vazio|santuario> [jogador] | /ryoiki encerrar | /ryoiki preparar
 ryoikitenkai.comando.preparando=Arenas prontas. Chunks em volta ainda por esvaziar: %s
 ryoikitenkai.erro.dentro=Você já está em um domínio.
 ryoikitenkai.erro.no_ar=Não dá para expandir o domínio no ar.
@@ -10,3 +10,4 @@ ryoikitenkai.erro.bloqueado=O servidor bloqueou o teleporte para a arena (borda 
 ryoikitenkai.expansao=EXPANSÃO DE DOMÍNIO
 ryoikitenkai.dominio.vazio=VAZIO ESTELAR
 ryoikitenkai.dominio.santuario=SANTUÁRIO CARMESIM
+ryoikitenkai.choque=CHOQUE DE DOMÍNIOS

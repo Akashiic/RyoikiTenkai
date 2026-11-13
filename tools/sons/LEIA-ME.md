@@ -29,9 +29,6 @@ fecha em 1,25 s; termina em 15,25 s (Vazio) ou 19,25 s (Santuário), quando come
 Se `clash_trilha.ogg` for mais curto que o choque (15 s no máximo), ele simplesmente acaba; se for mais longo, é
 cortado no fim do choque. A trilha do domínio não volta depois do choque.
 
-O choque ainda não existe como mecânica: por enquanto um operador o liga e desliga no domínio em que está, com
-`/ryoiki choque iniciar` e `/ryoiki choque encerrar`.
-
 **A música do jogo** é calada enquanto uma trilha sua (de domínio ou de choque) está tocando: a que estava tocando
 para, e nenhuma começa. Depois, o jogo volta a tocar música no tempo dele (uma faixa nova, não a mesma de onde parou).
 

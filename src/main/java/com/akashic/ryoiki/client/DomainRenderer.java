@@ -17,6 +17,7 @@ import org.lwjgl.opengl.GL11;
 
 import com.akashic.ryoiki.DomainType;
 import com.akashic.ryoiki.RyoikiTenkai;
+import com.akashic.ryoiki.arena.ShrineCore;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 
@@ -27,6 +28,9 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
  * the screen: the cut-in, the flash going in and the shatter coming out.
  */
 public final class DomainRenderer {
+
+    /** The dome of a clash is black whichever domains fight in it. */
+    private static final int CLASH_BORDER = 0x050505;
 
     /** Ticks into the domain the caster still holds the sign, the last twelve letting it go. */
     private static final int HOLD_SIGN_TICKS = 34;
@@ -61,7 +65,7 @@ public final class DomainRenderer {
         GL11.glDepthMask(true);
         GL11.glShadeModel(GL11.GL_SMOOTH);
         if (domain.inside != null) {
-            DomainLook look = look(domain.inside);
+            DomainLook look = look(domain.shown());
             float time = domain.age + event.partialTicks;
             float far = DomainSky.far(mc) * 0.9F;
             GL11.glPushMatrix();
@@ -79,6 +83,9 @@ public final class DomainRenderer {
             GL11.glDepthMask(false);
             look.floor(far, domain.radius, time);
             GL11.glDepthMask(true);
+            // A shrine that is not built stands back, so that the middle of the arena is the place before its door.
+            float back = domain.shrineUnbuilt() ? ShrineCore.CASTER_DISTANCE : 0;
+            GL11.glTranslatef(0, 0, -back);
             look.props(
                 far,
                 domain.radius,
@@ -86,7 +93,7 @@ public final class DomainRenderer {
                 domain.session,
                 camX * Math.cos(a) + camZ * Math.sin(a),
                 RenderManager.renderPosY - domain.arenaY,
-                -camX * Math.sin(a) + camZ * Math.cos(a));
+                -camX * Math.sin(a) + camZ * Math.cos(a) + back);
             GL11.glPopMatrix();
         }
         for (ClientDomain.Dome dome : domain.domes.values()) {
@@ -103,12 +110,12 @@ public final class DomainRenderer {
                 float size = dome.radius * t * t * t * t;
                 if (size > 0.05F) {
                     GL11.glDisable(GL11.GL_BLEND);
-                    int c = dome.type.borderColor;
+                    int c = dome.clashing ? CLASH_BORDER : dome.type.borderColor;
                     Draw.sphere(size, c, c, c, 1);
                 }
             } else {
                 GL11.glDisable(GL11.GL_BLEND);
-                int c = dome.type.borderColor;
+                int c = dome.clashing ? CLASH_BORDER : dome.type.borderColor;
                 Draw.sphere(dome.radius, c, Draw.mix(c, look.bandTrim(), 0.12F), c, 2);
                 // Where it meets the ground, a line of light.
                 Draw.additive();
@@ -177,7 +184,7 @@ public final class DomainRenderer {
     public void onFogColors(EntityViewRenderEvent.FogColors event) {
         ClientDomain domain = ClientDomain.INSTANCE;
         if (domain.inside != null) {
-            int c = look(domain.inside).fogColor();
+            int c = look(domain.shown()).fogColor();
             event.red = (c >> 16 & 255) / 255F;
             event.green = (c >> 8 & 255) / 255F;
             event.blue = (c & 255) / 255F;
@@ -204,6 +211,9 @@ public final class DomainRenderer {
                 d.windupTotal,
                 res.getScaledWidth(),
                 res.getScaledHeight());
+        }
+        if (domain.clash >= 0 && mc.theWorld != null) {
+            ClashHud.draw(mc, domain, res.getScaledWidth(), res.getScaledHeight());
         }
         if (domain.shatter > 0 && domain.shatterType != null) {
             Shatter.draw(
@@ -239,6 +249,14 @@ public final class DomainRenderer {
                 FuturaBridge.INSTANCE.pose(event.entityPlayer, dome.type, CutIn.sign(age));
                 return;
             }
+        }
+        if (domain.rivalSign != null && domain.rivalSign.casterEntity == id) {
+            ClientDomain.Dome r = domain.rivalSign;
+            FuturaBridge.INSTANCE.pose(
+                event.entityPlayer,
+                r.type,
+                Draw.clamp01((r.windupTotal - r.windup + event.partialRenderTick) / 9F));
+            return;
         }
         if (domain.inside != null && domain.casterEntity == id && domain.age < HOLD_SIGN_TICKS) {
             float left = HOLD_SIGN_TICKS - domain.age - event.partialRenderTick;

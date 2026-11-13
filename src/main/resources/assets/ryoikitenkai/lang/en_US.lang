@@ -1,5 +1,5 @@
 tile.ryoikitenkai.veu.name=Domain Veil
-ryoikitenkai.comando.uso=/ryoiki expandir <vazio|santuario> [player] | /ryoiki encerrar | /ryoiki preparar | /ryoiki choque <iniciar|encerrar>
+ryoikitenkai.comando.uso=/ryoiki expandir <vazio|santuario> [player] | /ryoiki encerrar | /ryoiki preparar
 ryoikitenkai.comando.preparando=Arenas ready. Chunks around them still to empty: %s
 ryoikitenkai.erro.dentro=You are already in a domain.
 ryoikitenkai.erro.no_ar=You cannot expand a domain in the air.
@@ -10,3 +10,4 @@ ryoikitenkai.erro.bloqueado=The server blocked the teleport into the arena (worl
 ryoikitenkai.expansao=DOMAIN EXPANSION
 ryoikitenkai.dominio.vazio=STAR VOID
 ryoikitenkai.dominio.santuario=CRIMSON SHRINE
+ryoikitenkai.choque=DOMAIN CLASH

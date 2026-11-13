@@ -29,6 +29,8 @@ public final class ClientDomain {
     /** A sound in the world is heard up to 16 blocks times its volume. */
     private static final float SIGN_VOLUME = 3F;
     private static final float DOME_VOLUME = 4F;
+    /** Ticks each domain is shown for while two clash. */
+    private static final int CLASH_FLICKER = 3;
 
     /** A domain seen from outside: the hand sign, then the dome. */
     public static final class Dome {
@@ -48,6 +50,8 @@ public final class ClientDomain {
         int left;
         /** Whether this client has started the dome's sounds. */
         boolean heard;
+        /** Whether the domain is in a clash: its dome is black whichever domains fight in it. */
+        public boolean clashing;
     }
 
     public final ChunkKeep keep = new ChunkKeep();
@@ -55,6 +59,8 @@ public final class ClientDomain {
 
     /** The domain this player is in, or null. */
     public DomainType inside;
+    /** The domain the arena opened as: a clash may change {@link #inside}, not what was built. */
+    public DomainType openedAs;
     public int session;
     public double arenaX;
     public double arenaY;
@@ -79,6 +85,15 @@ public final class ClientDomain {
 
     /** The session whose clash this player is in or watching from close by, or -1. */
     public int clash = -1;
+    /** Ticks of the clash left, and since it began. */
+    public int clashTime;
+    public int clashAge;
+    /** The two domains, the two casters and their hits: the host's first. */
+    public final DomainType[] clashTypes = new DomainType[2];
+    public final int[] clashEntities = new int[2];
+    public final int[] clashHits = new int[2];
+    /** The hand sign of a rival, which is not a domain of its own. */
+    public Dome rivalSign;
     private int clashLeft;
     private int clashRun;
 
@@ -150,6 +165,7 @@ public final class ClientDomain {
             case DomainWire.ENTER:
                 domes.remove(m.session);
                 inside = m.type;
+                openedAs = m.type;
                 session = m.session;
                 arenaX = m.x;
                 arenaY = m.y;
@@ -168,18 +184,81 @@ public final class ClientDomain {
                 DomainSounds
                     .loop(SoundCues.of(type.id, SoundCues.AMBIENT), 0.6F, () -> inside == type && session == entered);
                 break;
-            case DomainWire.CLASH:
-                // For those in the domain and those close enough to its dome to have seen its cut-in.
+            case DomainWire.RIVAL: {
+                // Someone answers a domain with its own: its hand sign and its cut-in, for those close to it.
+                Minecraft mc = Minecraft.getMinecraft();
+                if (mc.thePlayer != null && (mc.thePlayer.getEntityId() == m.casterEntity
+                    || mc.thePlayer.getDistanceSq(m.x, m.y, m.z) <= (m.radius + 12.0) * (m.radius + 12.0))) {
+                    Dome r = new Dome();
+                    r.session = m.session;
+                    r.type = m.type;
+                    r.casterEntity = m.casterEntity;
+                    r.x = m.x;
+                    r.y = m.y;
+                    r.z = m.z;
+                    r.radius = m.radius;
+                    r.windup = m.ticks;
+                    r.windupTotal = m.ticks;
+                    rivalSign = r;
+                    cutIn = r;
+                    DomainSounds.play(m.type, SoundCues.VOICE, 1F, 1F);
+                }
+                break;
+            }
+            case DomainWire.CLASH: {
+                Dome d = domes.get(m.session);
+                if (d != null) {
+                    d.clashing = true;
+                }
+                // For those in the domain and those close enough to its dome.
                 if (clash != m.session && (inside != null && session == m.session || nearDome(m.session))) {
                     clash = m.session;
-                    clashLeft = m.ticks + 20;
+                    clashTime = m.ticks;
+                    clashLeft = m.ticks + 40;
+                    clashAge = 0;
+                    clashTypes[0] = m.type;
+                    clashTypes[1] = m.rivalType;
+                    clashEntities[0] = m.casterEntity;
+                    clashEntities[1] = m.rivalEntity;
+                    clashHits[0] = 0;
+                    clashHits[1] = 0;
                     int run = ++clashRun;
                     DomainSounds.track(SoundCues.CLASH_TRACK, 1F, () -> clash >= 0 && clashRun == run);
                 }
                 break;
-            case DomainWire.CLASH_END:
-                endClash(m.session);
+            }
+            case DomainWire.CLASH_SCORE:
+                if (clash == m.session) {
+                    clashHits[0] = m.hostHits;
+                    clashHits[1] = m.rivalHits;
+                }
                 break;
+            case DomainWire.CLASH_END: {
+                endClash(m.session);
+                Dome d = domes.get(m.session);
+                if (d != null) {
+                    d.clashing = false;
+                    d.type = m.type;
+                }
+                if (inside != null && session == m.session && m.result != 2) {
+                    // The winner's domain, from its start. A tie is followed by the end of the domain.
+                    DomainType was = inside;
+                    inside = m.type;
+                    casterEntity = m.casterEntity;
+                    age = 0;
+                    flash(
+                        DomainRenderer.look(m.type)
+                            .bandTrim());
+                    CameraShake.INSTANCE.kick(2.5F);
+                    if (was != m.type) {
+                        DomainType won = m.type;
+                        int in = m.session;
+                        DomainSounds
+                            .loop(SoundCues.of(won.id, SoundCues.AMBIENT), 0.6F, () -> inside == won && session == in);
+                    }
+                }
+                break;
+            }
             case DomainWire.EXIT:
                 endClash(m.session);
                 if (inside != null && session == m.session) {
@@ -198,6 +277,22 @@ public final class ClientDomain {
             default:
                 break;
         }
+    }
+
+    /**
+     * Whether the crimson shrine is shown in an arena that did not open as one. Its hall is then not built, and the
+     * casters stand in the middle, where it would be: the scene is drawn further back, the hall before them.
+     */
+    public boolean shrineUnbuilt() {
+        return shown() == DomainType.MALEVOLENT_SHRINE && openedAs != DomainType.MALEVOLENT_SHRINE;
+    }
+
+    /** The domain to draw: the one this player is in or, in a clash, the two of them taking turns. */
+    public DomainType shown() {
+        if (inside != null && clash == session && clashTypes[0] != null) {
+            return clashTypes[clashAge / CLASH_FLICKER % 2];
+        }
+        return inside;
     }
 
     private boolean nearDome(int id) {
@@ -232,6 +327,7 @@ public final class ClientDomain {
             sky.restore();
             inside = null;
             cutIn = null;
+            rivalSign = null;
             clash = -1;
             flash = 0;
             shatter = 0;
@@ -249,6 +345,19 @@ public final class ClientDomain {
         if (clash >= 0 && (--clashLeft <= 0 || !(inside != null && session == clash) && !nearDome(clash))) {
             clash = -1;
         }
+        if (clash >= 0) {
+            clashAge++;
+            if (clashTime > 0) {
+                clashTime--;
+            }
+            // The arena jolts each time the other domain shows through.
+            if (inside != null && clashAge % (CLASH_FLICKER * 2) == 0) {
+                CameraShake.INSTANCE.kick(0.5F);
+            }
+        }
+        if (rivalSign != null && --rivalSign.windup <= 0) {
+            rivalSign = null;
+        }
         if (shatter > 0) {
             shatter--;
         }
@@ -265,7 +374,7 @@ public final class ClientDomain {
         } else {
             sky.restore();
         }
-        if (cutIn != null && (cutIn.windup <= 0 || !domes.containsValue(cutIn))) {
+        if (cutIn != null && (cutIn.windup <= 0 || cutIn != rivalSign && !domes.containsValue(cutIn))) {
             cutIn = null;
         }
         if (cutIn != null) {

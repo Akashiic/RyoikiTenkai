@@ -53,6 +53,25 @@ modelo, textura nem som no mod (os sons são arquivos do dono, ver "Som"). A are
   (`fx/SlashField`). A posição de cada corte sai do número do domínio e do tempo, então **todos os clientes veem os
   mesmos cortes sem nenhuma mensagem**. Cada corte dá um tranco na câmera. Por enquanto é só visual: não causa dano.
 
+## Choque de Domínios (`ClashHud`, `ClientDomain#shown`)
+
+![Choque](img/choque.png)
+
+* **Sinal do rival:** quem responde a um domínio ganha a própria faixa e a própria voz, por cima do que estiver na
+  tela (o sinal dele pode terminar já dentro da arena).
+* **Durante:** os dois cenários **se alternam a cada 3 ticks** (céu, chão, estruturas e névoa), com um tremor a cada
+  troca. Numa arena que não abriu como Santuário, o Santuário é desenhado recuado, com o meio da arena diante da
+  porta. Para quem está fora, **o domo fica preto**.
+* **Na tela, no topo:** "CHOQUE DE DOMÍNIOS", o **contador** grande de 15 a 0 (vermelho e pulsando nos últimos 5 s) e,
+  dos lados, a **barra de cada conjurador** com nome e porcentagem, na cor do domínio dele, enchendo em direção ao
+  meio. Fica no topo porque embaixo estão a vida, a armadura e a barra de itens.
+* **Resolução:** clarão na cor do vencedor e tremor; o domínio do vencedor recomeça. No empate, a quebra de sempre.
+
+Verificado com dois clientes no servidor de teste: rival vencendo por tempo e por barra cheia, anfitrião vencendo por
+barra cheia, empate, resposta durante o sinal de mão e depois de o domínio abrir. **A verificar:** a alternância de
+cenários vista ao vivo (as capturas pegam um quadro só), quem assiste de fora perto do domo, mais de um jogador pego
+além dos dois conjuradores, e o choque em sobrevivência com armas e habilidades de outros mods.
+
 ## Som (`DomainSounds`, `SoundCues`, `OwnerSounds`)
 
 **O mod não traz som nenhum** (decisão do dono: só a trilha dele). Cada som é um `<nome>.ogg` em
@@ -64,11 +83,9 @@ modelo, textura nem som no mod (os sons são arquivos do dono, ver "Som"). A are
   se o jogador não for pego.
 * **A voz:** `vazio_voz` e `santuario_voz` tocam uma vez, em estéreo, no primeiro tick do sinal de mão, por cima da
   trilha, para os mesmos jogadores.
-* **O choque:** `clash_trilha`. Quando o servidor avisa que o domínio entrou em choque (`DomainWire.CLASH`), a trilha
-  do domínio some em 0,5 s e a do choque começa, para quem está no domínio e quem está a até raio + 12 blocos do
-  domo; no fim do choque (`CLASH_END`, o fim do domínio, 15 s, ou o jogador de fora se afastar) ela some em 0,5 s.
-  **O choque ainda não existe como mecânica**: o sinal é dado por `DomainManager#clash`, hoje só pelo comando de
-  operador `/ryoiki choque <iniciar|encerrar>`.
+* **O choque:** `clash_trilha`. Quando o choque começa (`DomainWire.CLASH`), a trilha do domínio some em 0,5 s e a
+  do choque começa, para quem está no domínio e quem está a até raio + 12 blocos do domo; no fim do choque
+  (`CLASH_END`, o fim do domínio, ou o jogador de fora se afastar) ela some em 0,5 s.
 * **A música do jogo** (`MusicHush`): enquanto uma trilha do dono toca, a música que estava tocando é parada e
   nenhuma começa (categoria "música"). Depois o jogo volta a tocar no tempo dele, uma faixa nova.
 * **Por momento, opcionais:** `sinal` (no conjurador, mono), `faixa_corte`, `<domínio>_entrada` (mono; do domo para

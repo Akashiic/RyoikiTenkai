@@ -13,6 +13,8 @@ public final class Config {
     public static int radius = 30;
     /** Domains at the same time, per dimension. */
     public static int maxDomains = 2;
+    /** Ticks after a domain opens in which someone caught may still answer it with a domain, and clash. */
+    public static int clashWindow = 60;
     public static int arenaX = 200000;
     public static int arenaZ = 200000;
     public static int arenaY = 120;
@@ -29,6 +31,14 @@ public final class Config {
             ArenaShape.MAX_RADIUS,
             "Raio do dominio em blocos: quem esta a essa distancia do conjurador e pego.");
         maxDomains = cfg.getInt("maximo", "dominio", maxDomains, 1, 8, "Dominios ao mesmo tempo, por dimensao.");
+        clashWindow = cfg.getInt(
+            "janela",
+            "choque",
+            clashWindow,
+            0,
+            400,
+            "Ticks depois de um dominio abrir em que quem foi pego ainda pode responder com um dominio e chocar. "
+                + "Durante o sinal de mao do primeiro sempre pode.");
         arenaX = cfg.getInt(
             "x",
             "arena",

@@ -40,8 +40,9 @@ public final class DomainSession {
     }
 
     public final int id;
-    public final DomainType type;
-    public final UUID caster;
+    /** The domain in the arena: the caster's, or the one that won a clash. */
+    public DomainType type;
+    public UUID caster;
     public final int dimension;
     /** Where it was cast: the caster's feet. */
     public final double x;
@@ -55,8 +56,15 @@ public final class DomainSession {
     Phase phase = Phase.WINDUP;
     /** Ticks in the current phase. */
     int age;
-    /** Ticks of clash left; 0 when there is none. */
+    /** Who answered this domain with one of its own, and which; null when nobody did. */
+    UUID rival;
+    DomainType rivalType;
+    /** Ticks of the rival's hand sign left. */
+    int rivalSign;
+    /** Ticks of clash left; 0 when there is none. A domain clashes once. */
     int clash;
+    boolean clashed;
+    ClashScore score;
     /** Who is in the arena, and where each goes back to. */
     final Map<UUID, ReturnPoint> inside = new LinkedHashMap<>();
     /** Who was told about this domain (the hand sign or the dome) and must be told when it ends. */
