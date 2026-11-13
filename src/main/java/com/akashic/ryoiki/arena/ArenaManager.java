@@ -143,6 +143,14 @@ public final class ArenaManager {
             && world.getBlock(cx + Config.radius + 3, slots.floorY - 1, cz) != RyoikiTenkai.veil;
     }
 
+    /** How far inside the arena's radius a hall's blocks stay: clear of the dome's wall, which is never touched. */
+    public static final int SHELL_CLEAR = 3;
+
+    /** Whether a block (from the arena's centre, on its floor) is that far inside the dome. */
+    private static boolean within(int dx, int dy, int dz, double limit) {
+        return (dx + 0.5) * (dx + 0.5) + (dy + 0.5) * (dy + 0.5) + (dz + 0.5) * (dz + 0.5) <= limit * limit;
+    }
+
     /**
      * Puts the crimson shrine's solid hall in the middle of a slot's arena, turned by {@code yaw}, or takes away
      * whatever hall is there ({@code yaw} NaN). A few hundred blocks, in chunks that are always loaded.
@@ -153,15 +161,53 @@ public final class ArenaManager {
         int cy = slots.floorY;
         int cz = slots.centerZ(slot);
         boolean on = !Float.isNaN(yaw);
-        for (int dx = -ShrineCore.REACH; dx < ShrineCore.REACH; dx++) {
-            for (int dz = -ShrineCore.REACH; dz < ShrineCore.REACH; dz++) {
+        // The whole inside of the arena is gone over, not only where this hall stands: a hall left anywhere by a
+        // server that stopped in the middle of a clash goes too.
+        int inside = Config.radius - SHELL_CLEAR;
+        for (int dx = -inside; dx < inside; dx++) {
+            for (int dz = -inside; dz < inside; dz++) {
                 for (int dy = 0; dy <= ShrineCore.HEIGHT; dy++) {
+                    if (!within(dx, dy, dz, inside)) {
+                        continue;
+                    }
                     boolean want = on && ShrineCore.solid(dx, dy, dz, yaw);
                     boolean has = world.getBlock(cx + dx, cy + dy, cz + dz) == RyoikiTenkai.veil;
                     if (want && !has) {
                         world.setBlock(cx + dx, cy + dy, cz + dz, RyoikiTenkai.veil, BlockVeil.SHELL, 2);
                     } else if (!want && has) {
                         world.setBlockToAir(cx + dx, cy + dy, cz + dz);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Builds, or takes away, the hall of a shrine that stands away from the middle of the arena: the one of a rival
+     * in a clash ({@link ShrineCore#rival}). It is solid all through, and only as far as {@code limit} blocks from
+     * the centre, so that the arena's own wall is never touched.
+     *
+     * @param hall {x, z} of its middle from the arena's centre, and its yaw
+     */
+    public void setHall(WorldServer world, int slot, double[] hall, double limit, boolean on) {
+        ArenaSlots slots = dimension(world).slots;
+        int cx = slots.centerX(slot);
+        int cy = slots.floorY;
+        int cz = slots.centerZ(slot);
+        int midX = (int) Math.floor(hall[0]);
+        int midZ = (int) Math.floor(hall[1]);
+        for (int bx = midX - ShrineCore.REACH; bx <= midX + ShrineCore.REACH; bx++) {
+            for (int bz = midZ - ShrineCore.REACH; bz <= midZ + ShrineCore.REACH; bz++) {
+                for (int dy = 0; dy <= ShrineCore.HEIGHT; dy++) {
+                    if (!within(bx, dy, bz, limit)
+                        || !ShrineCore.solid(bx + 0.5 - hall[0], dy, bz + 0.5 - hall[1], (float) hall[2], true)) {
+                        continue;
+                    }
+                    boolean has = world.getBlock(cx + bx, cy + dy, cz + bz) == RyoikiTenkai.veil;
+                    if (on && !has) {
+                        world.setBlock(cx + bx, cy + dy, cz + bz, RyoikiTenkai.veil, BlockVeil.SHELL, 2);
+                    } else if (!on && has) {
+                        world.setBlockToAir(cx + bx, cy + dy, cz + bz);
                     }
                 }
             }

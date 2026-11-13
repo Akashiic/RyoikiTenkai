@@ -62,6 +62,8 @@ public final class DomainSession {
     DomainType rivalType;
     /** Ticks of the rival's hand sign left. */
     int rivalSign;
+    /** The hall of a rival's shrine, built for the clash away from the middle ({@code ShrineCore#rival}), or null. */
+    double[] rivalHall;
     /** Ticks of clash left; 0 when there is none. A domain clashes once. */
     int clash;
     boolean clashed;

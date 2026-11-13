@@ -101,7 +101,15 @@ os que foram pegos, menos o conjurador, ficam congelados**, sem poder fazer nada
   de beirais virados para cima e uma agulha com três anéis de luz; uma corda grossa com tiras de papel na frente,
   um estandarte de cada lado e lanternas de pedra. A lua fica atrás dele.
   * **É sólido.** No sinal de mão o servidor ergue o salão em blocos invisíveis (`arena/ShrineCore`, paredes e teto,
-    girado para onde o conjurador olhava) e o desfaz quando o domínio acaba. Ninguém cai dentro dele.
+    girado para onde o conjurador olhava) e o desfaz quando o domínio acaba. Ninguém cai dentro dele. O sólido vai
+    **até o pé da escada** (`ShrineCore.BASE`, 8 blocos do centro), não só até a parede do salão: a base de pedra
+    desenhada é mais larga que o salão, e quem chegava à parede ficava com a câmera dentro da pedra (medido em
+    2026-11-13: agora se para a 8,3 blocos do centro, com os pés fora do primeiro degrau).
+  * **O de um rival também**, desde 2026-11-13: num choque o salão do Santuário que responde é erguido onde é
+    desenhado (`ShrineCore#rival`, além da costura e de frente para ela), maciço, e quem estiver onde ele sobe é
+    posto diante da porta. Antes era só desenho, e um lutador arremessado para trás entrava nele. Se esse
+    Santuário vence, o salão fica; se perde, sai. O salão de um anfitrião que perde para outro Santuário também
+    sai (antes ficava sólido e invisível no meio).
   * É um desenho próprio. O dono pediu o santuário da referência (bocas na porta, chifres, caveiras) "100%": isso o
     agente não reproduz.
 * **Em volta:** doze **portais** em anel, fora da parede, cada um com duas lanternas que tremulam;
@@ -417,5 +425,5 @@ agente não as embutiu no mod nem as usou nas amostras (as capturas mostram uma 
 * **Som:** ouvir a trilha do dono num PC de verdade e com dois jogadores; o choque de domínios ainda não tem som.
 * **Efeitos de jogo:** os cortes do santuário e a paralisia do vazio são só imagem.
 * **O sinal de mão no mundo sem o Futura3D:** com a skin comum o jogador fica parado (o gesto só aparece na faixa).
-* **No choque, com um Santuário rival:** o salão dele é só desenho (não é construído, porque há gente onde as
-  paredes ficariam); um lutador arremessado para trás entra nele e vê o cenário por dentro.
+* **Santuário contra Santuário:** o salão do rival fica a 26 blocos do centro numa arena de 30, e a parte dele que
+  passaria da parede não é construída nem cabe no desenho. A verificar com dois jogadores.

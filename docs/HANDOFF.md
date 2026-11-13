@@ -148,9 +148,11 @@ Regras da seção 5.4 do `ESTUDO.md`, decididas pelo agente (carta branca) em 20
   recusou como "pobre e medíocre": o choque tem de ter os dois domínios se misturando e se repelindo, sem linha, e
   sem pressa. Refeito como uma frente viva (`fx/Frontier`, `client/Scene`, `client/ClashFront`, ver `VISUAL.md`).
   **O dono espera este nível de acabamento em tudo o que é visual.**
-* **Limite conhecido:** o salão do Santuário é sólido e é erguido na conjuração. Se o Santuário entra como rival, o
-  salão é só desenhado (na parte dele, de frente para a costura), não construído: há gente onde as paredes
-  ficariam. Se o Santuário anfitrião perde, o salão é removido.
+* **O salão no choque** (2026-11-13): o salão do Santuário é sólido até o pé da escada e é erguido na conjuração.
+  Se o Santuário entra como rival, o salão dele é erguido no começo do choque, onde é desenhado
+  (`ShrineCore#rival`, `ArenaManager#setHall`), e quem estiver ali é posto diante da porta; fica se ele vence e
+  sai se perde. O salão do anfitrião sai se ele perde. `ArenaManager#setCore` varre o interior inteiro da arena,
+  então um salão deixado por um servidor que caiu no meio de um choque some na conjuração seguinte.
 * **Código:** `domain/ClashScore` (regras puras, com teste), `domain/ComboChain` (idem), `fx/BlowPose` (o corpo em cada golpe: só a guarda e o golpe 1 estão
   trabalhados, mais a reação a levar golpe; o resto é provisório. O dono quer **um kit por domínio, com golpes de
   perna**, e animações de **levar golpe e cair**: a ordem das peças e a proposta dos kits estão em `VISUAL.md`,

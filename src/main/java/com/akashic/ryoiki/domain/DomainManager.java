@@ -201,9 +201,37 @@ public final class DomainManager {
         s.clashed = true;
         s.clash = ClashScore.TICKS;
         s.score = new ClashScore();
+        if (s.rivalType == DomainType.MALEVOLENT_SHRINE) {
+            raiseRivalHall(s, world);
+        }
         sendAll(
             s,
             DomainWire.clash(s.id, ClashScore.TICKS, host.getEntityId(), s.type, rival.getEntityId(), s.rivalType));
+    }
+
+    /**
+     * The hall of a shrine that answers a domain is solid like any other: without it, someone thrown back in the
+     * clash would end up inside what is drawn there. Whoever stands where it goes up is put out by its door.
+     */
+    private void raiseRivalHall(DomainSession s, WorldServer world) {
+        double[] hall = ShrineCore.rival(s.type == DomainType.MALEVOLENT_SHRINE, s.yaw);
+        ArenaSlots slots = ArenaManager.INSTANCE.slots(world);
+        double cx = slots.centerX(s.slot);
+        double cz = slots.centerZ(s.slot);
+        for (UUID id : s.inside.keySet()) {
+            EntityPlayerMP p = player(world, id);
+            if (p == null) {
+                continue;
+            }
+            double x = p.posX - cx - hall[0];
+            double z = p.posZ - cz - hall[1];
+            double[] out = ShrineCore.clear(x, z, (float) hall[2]);
+            if (out[0] != x || out[1] != z) {
+                teleport(p, cx + hall[0] + out[0], slots.floorY, cz + hall[1] + out[1], p.rotationYaw, p.rotationPitch);
+            }
+        }
+        s.rivalHall = hall;
+        ArenaManager.INSTANCE.setHall(world, s.slot, hall, s.radius - ArenaManager.SHELL_CLEAR, true);
     }
 
     /** One tick of a clash: it ends by a full bar, by the time, or by one of the two being gone. */
@@ -325,10 +353,17 @@ public final class DomainManager {
             return;
         }
         s.age = 0;
-        if (was == DomainType.MALEVOLENT_SHRINE && s.type != was) {
-            // The hall of the shrine that lost goes. One that won is drawn but not built: there are people where
-            // its walls would be.
+        // The hall of a shrine that lost goes; the one of a shrine that won stays where it stood in the clash.
+        if (result == ClashScore.RIVAL && was == DomainType.MALEVOLENT_SHRINE) {
+            // That empties the arena of halls: the winner's goes back up in the same tick.
             ArenaManager.INSTANCE.setCore(world, s.slot, Float.NaN);
+            if (s.rivalHall != null) {
+                ArenaManager.INSTANCE.setHall(world, s.slot, s.rivalHall, s.radius - ArenaManager.SHELL_CLEAR, true);
+            }
+        }
+        if (result == ClashScore.HOST && s.rivalHall != null) {
+            ArenaManager.INSTANCE.setHall(world, s.slot, s.rivalHall, s.radius - ArenaManager.SHELL_CLEAR, false);
+            s.rivalHall = null;
         }
     }
 
@@ -709,6 +744,10 @@ public final class DomainManager {
             }
         }
         ArenaManager.INSTANCE.setCore(world, s.slot, Float.NaN);
+        if (s.rivalHall != null) {
+            ArenaManager.INSTANCE.setHall(world, s.slot, s.rivalHall, s.radius - ArenaManager.SHELL_CLEAR, false);
+            s.rivalHall = null;
+        }
         ArenaManager.INSTANCE.slots(world)
             .release(s.slot);
     }
