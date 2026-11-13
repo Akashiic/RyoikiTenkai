@@ -114,6 +114,12 @@ public final class ClientDomain {
                     if (mc.thePlayer != null && (mc.thePlayer.getEntityId() == m.casterEntity
                         || mc.thePlayer.getDistanceSq(m.x, m.y, m.z) <= (m.radius + 12.0) * (m.radius + 12.0))) {
                         cutIn = d;
+                        // The owner's track of the whole expansion: from the hand sign to the end of the shatter.
+                        Dome dome = d;
+                        DomainSounds.track(
+                            SoundCues.of(m.type.id, SoundCues.TRACK),
+                            1F,
+                            () -> cutIn == dome || session == dome.session && (inside != null || shatter > 0));
                     }
                 } else {
                     d.windup = 0;

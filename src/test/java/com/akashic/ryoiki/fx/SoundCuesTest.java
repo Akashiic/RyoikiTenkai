@@ -2,13 +2,10 @@ package com.akashic.ryoiki.fx;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -25,31 +22,23 @@ class SoundCuesTest {
         return SoundCues.all(ids, new String[] { DomainType.MALEVOLENT_SHRINE.id });
     }
 
-    private static byte[] read(String path) throws Exception {
-        try (InputStream in = SoundCuesTest.class.getResourceAsStream(path)) {
-            assertNotNull(in, path);
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            byte[] buf = new byte[4096];
-            for (int n; (n = in.read(buf)) > 0;) {
-                out.write(buf, 0, n);
-            }
-            return out.toByteArray();
-        }
+    @Test
+    void everyDomainHasItsSounds() {
+        List<String> all = all();
+        assertEquals(13, all.size());
+        assertTrue(all.contains("vazio_trilha"));
+        assertTrue(all.contains("santuario_trilha"));
+        assertTrue(all.contains("santuario_corte"));
+        assertFalse(all.contains("vazio_corte"));
     }
 
     @Test
-    void everySoundHasAnEventAndAFileOfTheRightChannels() throws Exception {
-        String json = new String(read("/assets/ryoikitenkai/sounds.json"), StandardCharsets.UTF_8);
-        List<String> all = all();
-        assertEquals(11, all.size());
-        for (String name : all) {
-            assertTrue(json.contains("\"" + name + "\": {"), name + " is not in sounds.json");
-            byte[] ogg = read("/assets/ryoikitenkai/sounds/" + name + ".ogg");
-            assertEquals("OggS", new String(ogg, 0, 4, StandardCharsets.US_ASCII), name);
-            // The Vorbis identification header: "\1vorbis", the version, then the channel count.
-            assertEquals("vorbis", new String(ogg, 29, 6, StandardCharsets.US_ASCII), name);
-            assertEquals(SoundCues.mono(name) ? 1 : 2, ogg[39], name + " channels");
-        }
+    void theSoundsJsonHasOnlyWhatIsThere() {
+        assertEquals("{}", SoundCues.soundsJson(Arrays.asList()));
+        assertEquals(
+            "{\"vazio_trilha\":{\"category\":\"master\",\"sounds\":[{\"name\":\"vazio_trilha\",\"stream\":true}]},"
+                + "\"saida\":{\"category\":\"player\",\"sounds\":[{\"name\":\"saida\",\"stream\":false}]}}",
+            SoundCues.soundsJson(Arrays.asList("vazio_trilha", "saida")));
     }
 
     @Test
@@ -60,6 +49,9 @@ class SoundCuesTest {
         assertTrue(SoundCues.mono(SoundCues.of("santuario", SoundCues.ENTER)));
         assertFalse(SoundCues.mono(SoundCues.of("vazio", SoundCues.AMBIENT)));
         assertFalse(SoundCues.mono(SoundCues.EXIT));
+        assertFalse(SoundCues.mono(SoundCues.of("vazio", SoundCues.TRACK)));
+        assertTrue(SoundCues.streamed(SoundCues.of("vazio", SoundCues.TRACK)));
+        assertFalse(SoundCues.streamed(SoundCues.SIGN));
     }
 
     @Test

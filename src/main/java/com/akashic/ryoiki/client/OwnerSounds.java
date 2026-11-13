@@ -1,12 +1,17 @@
 package com.akashic.ryoiki.client;
 
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -22,10 +27,15 @@ import com.akashic.ryoiki.fx.SoundCues;
 import cpw.mods.fml.relauncher.ReflectionHelper;
 
 /**
- * The owner's sounds: a resource pack over {@code config/ryoikitenkai/sons/}, placed after the mod's own so a file
- * there replaces the one in the jar. Read when resources load (at start and on F3+T).
+ * The owner's sounds: a resource pack over {@code config/ryoikitenkai/sons/}. The mod has no sound of its own, so
+ * this pack also writes the {@code sounds.json}, with an event for each file that is there. Read when resources load
+ * (at start and on F3+T).
  */
 public final class OwnerSounds implements IResourcePack {
+
+    private static final String SOUNDS_JSON = "sounds.json";
+    /** The sounds found at the last resource load. */
+    private static volatile Set<String> present = Collections.emptySet();
 
     private final File folder;
 
@@ -40,11 +50,29 @@ public final class OwnerSounds implements IResourcePack {
             List<IResourcePack> packs = ReflectionHelper
                 .getPrivateValue(Minecraft.class, Minecraft.getMinecraft(), "defaultResourcePacks", "field_110449_ao");
             packs.add(new OwnerSounds(folder));
-            String[] found = folder.list((dir, name) -> name.endsWith(".ogg"));
-            RyoikiTenkai.LOG.info("Sounds of the owner in {}: {}", folder, found == null ? 0 : found.length);
+            RyoikiTenkai.LOG.info("Sounds of the owner are read from {}", folder);
         } catch (RuntimeException e) {
             RyoikiTenkai.LOG.warn("The owner's sounds will not be read", e);
         }
+    }
+
+    /** Whether the owner gave this sound: nothing is played, and nothing logged, for one that is missing. */
+    static boolean has(String name) {
+        return present.contains(name);
+    }
+
+    private List<String> scan() {
+        List<String> found = new ArrayList<>();
+        String[] files = folder.list();
+        if (files != null) {
+            Arrays.sort(files);
+            for (String f : files) {
+                if (f.equals(SoundCues.externalFile("sounds/" + f))) {
+                    found.add(f.substring(0, f.length() - 4));
+                }
+            }
+        }
+        return found;
     }
 
     private File file(ResourceLocation location) {
@@ -61,6 +89,14 @@ public final class OwnerSounds implements IResourcePack {
 
     @Override
     public InputStream getInputStream(ResourceLocation location) throws IOException {
+        if (RyoikiTenkai.MODID.equals(location.getResourceDomain()) && SOUNDS_JSON.equals(location.getResourcePath())) {
+            List<String> found = scan();
+            present = new HashSet<>(found);
+            RyoikiTenkai.LOG.info("Sounds of the owner: {}", found);
+            return new ByteArrayInputStream(
+                SoundCues.soundsJson(found)
+                    .getBytes(StandardCharsets.UTF_8));
+        }
         File f = file(location);
         if (f == null) {
             throw new FileNotFoundException(location.toString());
@@ -70,6 +106,9 @@ public final class OwnerSounds implements IResourcePack {
 
     @Override
     public boolean resourceExists(ResourceLocation location) {
+        if (RyoikiTenkai.MODID.equals(location.getResourceDomain()) && SOUNDS_JSON.equals(location.getResourcePath())) {
+            return true;
+        }
         return file(location) != null;
     }
 

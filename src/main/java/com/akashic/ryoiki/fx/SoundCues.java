@@ -4,8 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The sounds of a domain, by name. Each name is a sound event in {@code assets/ryoikitenkai/sounds.json} and a file
- * {@code <name>.ogg}: the one in the jar, or the owner's in {@code config/ryoikitenkai/sons/}, which wins.
+ * The sounds of a domain, by name. The mod ships none: each name is a file {@code <name>.ogg} the owner may put in
+ * {@code config/ryoikitenkai/sons/}, and a sound event of the same name exists only when its file does.
  *
  * <p>
  * A sound heard from a place in the world must be mono (OpenAL does not attenuate stereo); the others are stereo.
@@ -21,7 +21,12 @@ public final class SoundCues {
     /** The hum of a dome, for those outside. */
     public static final String DOME = "domo";
 
-    /** Per domain, as {@code <domain id>_<name>}: the caster's voice line, at the caster. Silent in the jar. */
+    /**
+     * Per domain, as {@code <domain id>_<name>}: the track of the whole expansion, from the hand sign to the end of
+     * the shatter, for the caster and those caught.
+     */
+    public static final String TRACK = "trilha";
+    /** Per domain: the caster's voice line, at the caster. */
     public static final String VOICE = "voz";
     /** Per domain: the domain closing, for those inside and, at the dome, for those outside. */
     public static final String ENTER = "entrada";
@@ -31,7 +36,7 @@ public final class SoundCues {
     public static final String SLASH = "corte";
 
     private static final String[] SHARED = { SIGN, BAND_CUT, EXIT, DOME };
-    private static final String[] PER_DOMAIN = { VOICE, ENTER, AMBIENT };
+    private static final String[] PER_DOMAIN = { TRACK, VOICE, ENTER, AMBIENT };
     private static final String PREFIX = "sounds/";
     private static final String SUFFIX = ".ogg";
 
@@ -61,6 +66,32 @@ public final class SoundCues {
     /** Whether a sound is heard from a place in the world, and so must be mono. */
     public static boolean mono(String name) {
         return name.equals(SIGN) || name.equals(DOME) || name.endsWith("_" + VOICE) || name.endsWith("_" + ENTER);
+    }
+
+    /** Whether a sound is long, and so read from the file as it plays. */
+    public static boolean streamed(String name) {
+        return name.endsWith("_" + TRACK) || name.endsWith("_" + AMBIENT);
+    }
+
+    /** The {@code sounds.json} for the sounds whose files are there. */
+    public static String soundsJson(List<String> present) {
+        StringBuilder out = new StringBuilder("{");
+        for (String name : present) {
+            if (out.length() > 1) {
+                out.append(',');
+            }
+            out.append('"')
+                .append(name)
+                .append("\":{\"category\":\"")
+                .append(streamed(name) ? "master" : "player")
+                .append("\",\"sounds\":[{\"name\":\"")
+                .append(name)
+                .append("\",\"stream\":")
+                .append(streamed(name))
+                .append("}]}");
+        }
+        return out.append('}')
+            .toString();
     }
 
     /**

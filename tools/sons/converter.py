@@ -21,8 +21,8 @@ sons.txt tem uma linha por som, com os campos separados por "|":
 "origem" é um arquivo do seu PC ou um link que o yt-dlp saiba baixar. "início" e "duração" são opcionais, em
 segundos ou m:ss. Linhas vazias e as que começam com # são ignoradas.
 
-Por padrão grava em <pasta>/config/ryoikitenkai/sons/, que o mod lê ao abrir o jogo (e no F3+T) e que vale mais que
-os sons do jar. Com --saida grava onde você mandar (um resource pack, por exemplo).
+Por padrão grava em <pasta>/config/ryoikitenkai/sons/, que o mod lê ao abrir o jogo (e no F3+T). O mod não traz som
+nenhum: o que não tiver arquivo fica em silêncio. Com --saida grava em outra pasta.
 """
 import argparse
 import os
@@ -33,6 +33,8 @@ import tempfile
 
 # nome: (canais, laço, descrição). Mono é obrigatório para o que toca de um lugar do mundo: o jogo não atenua estéreo.
 SONS = {
+    "vazio_trilha": (2, False, "a trilha da expansão inteira do Vazio: do sinal de mão ao fim da quebra (16,45 s)"),
+    "santuario_trilha": (2, False, "a trilha da expansão inteira do Santuário (20,45 s)"),
     "sinal": (1, False, "o sinal de mão carregando, no conjurador (1,25 s)"),
     "faixa_corte": (2, False, "a batida em cada corte de câmera da faixa (curto)"),
     "saida": (2, False, "o domínio se quebrando, para quem está dentro"),
@@ -144,7 +146,7 @@ def main():
             print(f"{nome}: {saida}")
     faltam = [n for n in SONS if not os.path.isfile(os.path.join(destino, n + ".ogg"))]
     if faltam:
-        print("Sem arquivo seu (toca o som do mod):", ", ".join(faltam))
+        print("Sem arquivo (ficam em silêncio):", ", ".join(faltam))
 
 
 if __name__ == "__main__":

@@ -58,7 +58,7 @@ Foi assim que o mod foi testado no Crucible da rede com o modpack TEOF 5.4:
   30 à mão se o arquivo já existia.
 * A faixa de entrada aceita uma imagem ou animação por domínio, que o modpack fornece: ver "A arte do dono na
   faixa" em [`docs/VISUAL.md`](docs/VISUAL.md).
-* Os sons do mod são sintetizados. Para usar os seus, ponha `<nome>.ogg` em `config/ryoikitenkai/sons/` do cliente
+* O mod não traz som. A trilha de cada expansão é um `.ogg` seu em `config/ryoikitenkai/sons/` do cliente
   (do modpack): ver [`tools/sons/LEIA-ME.md`](tools/sons/LEIA-ME.md).
 * Opcional, para as arenas ficarem sempre carregadas, em `config/forgeChunkLoading.cfg`:
 

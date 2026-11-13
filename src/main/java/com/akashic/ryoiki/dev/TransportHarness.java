@@ -20,6 +20,7 @@ import net.minecraft.util.ScreenShotHelper;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.WorldSettings;
 import net.minecraft.world.WorldType;
+import net.minecraftforge.common.MinecraftForge;
 
 import com.akashic.ryoiki.DomainType;
 import com.akashic.ryoiki.RyoikiTenkai;
@@ -95,11 +96,21 @@ public final class TransportHarness {
     private int firstGround = -1;
     private final List<String> lines = new ArrayList<>();
 
+    /** Every sound the game plays, in the log: what is heard in a domain besides the owner's files. */
+    @SubscribeEvent
+    public void onPlaySound(net.minecraftforge.client.event.sound.PlaySoundEvent17 event) {
+        RyoikiTenkai.LOG.info(
+            "harness sound: {} (inside: {})",
+            event.sound.getPositionedSoundLocation(),
+            ClientDomain.INSTANCE.inside);
+    }
+
     public static void install() {
         TransportHarness h = new TransportHarness();
         FMLCommonHandler.instance()
             .bus()
             .register(h);
+        MinecraftForge.EVENT_BUS.register(h);
         RyoikiTenkai.LOG.warn("RyoikiTenkai DEV HARNESS enabled: this client will run the transport test and quit");
     }
 
