@@ -137,6 +137,15 @@ public final class StreakField {
      */
     public static boolean at(int seed, int laneA, int laneB, int moment, float time, int arenaRadius, float eyeX,
         float eyeY, float eyeZ, Streak out) {
+        return at(seed, laneA, laneB, moment, time, arenaRadius, eyeX, eyeY, eyeZ, 0, out);
+    }
+
+    /**
+     * As {@link #at}, with the rush never less than {@code least}: a void that is fought over does not settle, and
+     * its rush goes on for as long as the clash does.
+     */
+    public static boolean at(int seed, int laneA, int laneB, int moment, float time, int arenaRadius, float eyeX,
+        float eyeY, float eyeZ, float least, Streak out) {
         if (moment < 0) {
             return false;
         }
@@ -148,7 +157,7 @@ public final class StreakField {
             return false;
         }
         long h = mix(lane + moment * 0x632BE59BD9B4E019L);
-        float rush = rush(born);
+        float rush = Math.max(least, rush(born));
         if (unit(h) >= CHANCE * rush) {
             return false;
         }

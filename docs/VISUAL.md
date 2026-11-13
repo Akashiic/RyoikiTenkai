@@ -172,6 +172,22 @@ os que foram pegos, menos o conjurador, ficam congelados**, sem poder fazer nada
   * **Misturando-se:** a luz de cada domínio fica **derramada no chão do outro** por uns 4 blocos além da
     frente, respirando; **partículas** de cada um atravessam devagar e vão tomando a cor do outro, menores, até
     sumir; colunas tênues de brilho sobem da frente até a faixa onde os céus se misturam.
+  * **Os efeitos de assinatura atravessam** (peça B3, 2026-11-13; `DomainLook#effects`, `Scene#ground`,
+    `Frontier#crossing`): os cortes e os riscos do Santuário e os feixes do Vazio não são cortados na frente como
+    o cenário. Cada um é desenhado **na arena inteira**, inteiro no próprio chão e **rareando por 14 blocos** chão
+    do outro adentro, de modo que no meio da arena os dois estão no ar ao mesmo tempo.
+
+    ![Os dois misturados](img/choque-misturado.png)
+
+    * **O Vazio não para de iniciar:** fora de um choque a rajada dura 2,5 s e o domínio fica imóvel; num choque
+      ele é contestado e não se completa, então a rajada segue o tempo todo a pouco mais da metade da força
+      (`StreakField#at` com um mínimo de 0,55). Ninguém é congelado num choque.
+    * **Um feixe que entra no chão do Santuário chega cortado:** é desenhado em três pedaços, com um brilho
+      vermelho em cada talho, e mais fraco quanto mais fundo.
+    * **Um corte que entra no chão do Vazio perde a brasa:** a cicatriz que deixa no chão é azul-gelo, não
+      vermelha, e some antes.
+    * As **colunas de brilho** da frente apagam-se perto do olho: vistas de cima, de dentro delas, somavam-se numa
+      lavagem de cor por cima de tudo.
   * **Um golpe que acerta** abre um anel no chão a partir de onde empurrou a frente, e esquenta a frente ali.
   * A luz da frente é quase apagada **bem onde a câmera está** (os conjuradores começam o choque em cima dela, e
     luz somada a um palmo do olho é tela branca). Perto da frente a névoa mistura as cores dos dois. Para quem está
@@ -401,4 +417,5 @@ agente não as embutiu no mod nem as usou nas amostras (as capturas mostram uma 
 * **Som:** ouvir a trilha do dono num PC de verdade e com dois jogadores; o choque de domínios ainda não tem som.
 * **Efeitos de jogo:** os cortes do santuário e a paralisia do vazio são só imagem.
 * **O sinal de mão no mundo sem o Futura3D:** com a skin comum o jogador fica parado (o gesto só aparece na faixa).
-* **Choque de domínios.**
+* **No choque, com um Santuário rival:** o salão dele é só desenho (não é construído, porque há gente onde as
+  paredes ficariam); um lutador arremessado para trás entra nele e vê o cenário por dentro.

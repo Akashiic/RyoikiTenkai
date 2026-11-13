@@ -31,6 +31,8 @@ final class VoidLook implements DomainLook {
     private static final float CARRY = 0.011F;
     /** How long a star's trail is at the height of the rush, across the sky, in radians. */
     private static final float TRAIL = 0.085F;
+    /** How much of a rush the void keeps up while another domain fights it for the arena. */
+    private static final float CONTESTED = 0.55F;
 
     VoidLook() {
         Random random = new Random(0x52594F494B49L);
@@ -286,7 +288,13 @@ final class VoidLook implements DomainLook {
         }
         t.draw();
         GL11.glDepthMask(true);
-        StreakFx.draw(t, radius, time, seed, EYE_X, EYE_Y, EYE_Z, camX, camY, camZ);
+    }
+
+    @Override
+    public void effects(int radius, float time, int seed, double camX, double camY, double camZ) {
+        // Fought over, the void does not settle: its rush goes on through the clash.
+        float least = ClientDomain.INSTANCE.fused() ? CONTESTED : 0;
+        StreakFx.draw(Tessellator.instance, radius, time, seed, EYE_X, EYE_Y, EYE_Z, least, camX, camY, camZ);
     }
 
     @Override

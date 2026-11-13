@@ -84,4 +84,20 @@ class FrontierTest {
         assertTrue(Frontier.before(line, 0, 20) > 0 && Frontier.before(line, 0, -20) < 0);
         assertTrue(Frontier.before(line, -90, 20) > 0 && Frontier.before(line, 90, -20) < 0);
     }
+
+    @Test
+    public void effectsThinOutOverTheOthersGround() {
+        // Whole on a domain's own ground and on the front, gone a reach into the other's, and never rising on the way.
+        assertEquals(1, Frontier.crossing(-30, 14), 0);
+        assertEquals(1, Frontier.crossing(0, 14), 0);
+        assertEquals(0.5F, Frontier.crossing(7, 14), 1e-6F);
+        assertEquals(0, Frontier.crossing(14, 14), 0);
+        assertEquals(0, Frontier.crossing(40, 14), 0);
+        float last = 1;
+        for (float depth = -5; depth < 20; depth += 0.25F) {
+            float now = Frontier.crossing(depth, 14);
+            assertTrue(now <= last && now >= 0);
+            last = now;
+        }
+    }
 }

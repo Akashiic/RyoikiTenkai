@@ -31,6 +31,13 @@ interface DomainLook {
      */
     void props(float far, int radius, float time, int seed, double camX, double camY, double camZ);
 
+    /**
+     * What the domain throws through its air (its cuts, its rush), with the origin at the arena's centre. Apart from
+     * {@link #props} because in a clash these do not stop at the front between the two domains: they are drawn
+     * past it, into the other's ground ({@link Scene#strength}).
+     */
+    void effects(int radius, float time, int seed, double camX, double camY, double camZ);
+
     /** The colour the distance fades to. */
     int fogColor();
 

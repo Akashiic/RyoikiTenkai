@@ -114,6 +114,10 @@ public final class DomainRenderer {
                 };
                 if (line == null) {
                     draw.run();
+                    GL11.glPushMatrix();
+                    Scene.enter(domain, part0);
+                    look.effects(domain.radius, time, domain.session, cam[0], camY, cam[1]);
+                    GL11.glPopMatrix();
                     continue;
                 }
                 // The scene is put together once and drawn again for each piece of its ground.
@@ -136,6 +140,25 @@ public final class DomainRenderer {
                 Scene.leave();
             }
             if (line != null) {
+                // What each domain throws through the air does not stop at the front: it goes on into the other's
+                // ground, weaker the further in.
+                for (int part = 0; part < 2; part++) {
+                    double[] cam = Scene.local(domain, part, sceneX, sceneZ);
+                    GL11.glPushMatrix();
+                    Scene.enter(domain, part);
+                    Draw.camera(domain.yaw + (Scene.turned(domain, part) ? 180 : 0));
+                    Scene.ground(domain, part, line);
+                    Scene.look(domain, part)
+                        .effects(
+                            domain.radius,
+                            time,
+                            domain.session,
+                            cam[0],
+                            RenderManager.renderPosY - domain.arenaY,
+                            cam[1]);
+                    Scene.plain();
+                    GL11.glPopMatrix();
+                }
                 ClashFront.draw(domain, line, domain.clashAge + event.partialTicks, event.partialTicks);
             }
             GL11.glPopMatrix();

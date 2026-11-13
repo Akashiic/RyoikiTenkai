@@ -23,6 +23,7 @@ final class SlashFx {
     private static final int HOT = 0xFFB890;
     private static final int RED = 0xFF2A1E;
     private static final int DEEP = 0x8A0010;
+    private static final int FROZEN = 0x8FC8FF;
 
     private static final int STEPS = 22;
     /** How thick the crescent is in its middle, for its radius. */
@@ -106,7 +107,9 @@ final class SlashFx {
             double dz = A[2] - camZ;
             nearest = Math.min(nearest, dx * dx + dy * dy + dz * dz);
         }
-        return 0.18F + 0.82F * Draw.clamp01(((float) Math.sqrt(nearest) - 1.2F) / 3.5F);
+        // And in a clash, one that falls in the other domain's ground is weaker the further in it is.
+        return (0.18F + 0.82F * Draw.clamp01(((float) Math.sqrt(nearest) - 1.2F) / 3.5F))
+            * Scene.strength(SLASH.midX, SLASH.midZ);
     }
 
     /** How thick the crescent is at a point of the arc, now: nothing at its ends, and thinning once the blade is by. */
@@ -262,7 +265,12 @@ final class SlashFx {
             if (d0 <= 0 && d1 <= 0) {
                 continue;
             }
-            flat(t, A, B, 0.26F, RED, 0.55F * glow * d0, 0.55F * glow * d1);
+            // On the void's floor the score does not glow red: it freezes, the pale blue of that ground.
+            int scar = Scene.depth((A[0] + B[0]) / 2, (A[2] + B[2]) / 2) > 0 ? FROZEN : RED;
+            float there = Scene.strength((A[0] + B[0]) / 2, (A[2] + B[2]) / 2);
+            d0 *= there;
+            d1 *= there;
+            flat(t, A, B, 0.26F, scar, 0.55F * glow * d0, 0.55F * glow * d1);
             flat(t, A, B, 0.07F, WHITE, 0.9F * glow * glow * d0, 0.9F * glow * glow * d1);
         }
     }

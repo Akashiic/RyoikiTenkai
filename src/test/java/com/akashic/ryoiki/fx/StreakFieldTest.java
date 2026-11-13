@@ -144,6 +144,20 @@ class StreakFieldTest {
         int starting = sent(0, 2);
         assertTrue(starting > 300, "sent as it starts: " + starting);
         assertEquals(0, sent(8, 12));
+        // A void that is fought over does not settle: with a least rush the streaks go on.
+        StreakField.Streak s = new StreakField.Streak();
+        int contested = 0;
+        int lanes = StreakField.lanes(R);
+        for (int la = -lanes; la <= lanes; la++) {
+            for (int lb = -lanes; lb <= lanes; lb++) {
+                if (StreakField
+                    .at(3, la, lb, 20, 21.05F * StreakField.PERIOD / StreakField.SLOTS, R, EX, EY, EZ, 0.55F, s)) {
+                    contested++;
+                    assertEquals(0.55F, s.rush);
+                }
+            }
+        }
+        assertTrue(contested > 100, "sent in a clash: " + contested);
         assertEquals(starting, sent(0, 2));
     }
 

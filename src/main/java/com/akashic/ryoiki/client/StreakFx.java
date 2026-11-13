@@ -23,6 +23,10 @@ final class StreakFx {
     private static final int[] TAIL = { 0x6070F0, 0x3050E8, 0x6030D0, 0xA01890 };
 
     private static final float WIDTH = 0.055F;
+    /** A streak cut through, along its length: the pieces that are left, and where the cuts are. */
+    private static final float[] PIECES = { 0, 0.27F, 0.38F, 0.62F, 0.74F, 1 };
+    private static final float[] CUTS = { 0.325F, 0.68F };
+    private static final int CUT_GLINT = 0xFF3A28;
     private static final StreakField.Streak STREAK = new StreakField.Streak();
 
     private StreakFx() {}
@@ -32,8 +36,8 @@ final class StreakFx {
      * @param eyeX the way the focus lies from the arena's centre (where the armillary hangs): a unit direction
      * @param camX the camera, relative to the arena's centre, in the void's scene
      */
-    static void draw(Tessellator t, int radius, float time, int seed, float eyeX, float eyeY, float eyeZ, double camX,
-        double camY, double camZ) {
+    static void draw(Tessellator t, int radius, float time, int seed, float eyeX, float eyeY, float eyeZ, float least,
+        double camX, double camY, double camZ) {
         int lanes = StreakField.lanes(radius);
         int latest = StreakField.moment(time);
         int oldest = latest - StreakField.momentsAlive(radius);
@@ -49,7 +53,7 @@ final class StreakFx {
             for (int a = -lanes; a <= lanes; a++) {
                 for (int b = -lanes; b <= lanes; b++) {
                     for (int moment = oldest; moment <= latest; moment++) {
-                        if (StreakField.at(seed, a, b, moment, time, radius, eyeX, eyeY, eyeZ, STREAK)) {
+                        if (StreakField.at(seed, a, b, moment, time, radius, eyeX, eyeY, eyeZ, least, STREAK)) {
                             streak(t, pass == 1, camX, camY, camZ);
                         }
                     }
@@ -89,9 +93,37 @@ final class StreakFx {
         wz *= width;
         int body = BODY[s.color];
         int tail = TAIL[s.color];
+        // In a clash: over the other domain's ground it is weaker the further in, and there it does not fly whole.
+        // The shrine's blades have been through it: it is in pieces, with a red glint at each cut.
+        double midX = (s.tailX + s.headX) / 2.0;
+        double midZ = (s.tailZ + s.headZ) / 2.0;
+        bright *= Scene.strength(midX, midZ);
+        if (bright <= 0.004F) {
+            return;
+        }
+        boolean severed = Scene.depth(midX, midZ) > 0.5F;
         if (head) {
             Draw.glow(t, s.headX, s.headY, s.headZ, 0.18F + 0.22F * s.rush, WHITE, bright);
             Draw.glow(t, s.headX, s.headY, s.headZ, 0.6F + 0.5F * s.rush, body, 0.4F * bright);
+            if (severed) {
+                for (float cut : CUTS) {
+                    Draw.glow(
+                        t,
+                        s.tailX + dx * cut,
+                        s.tailY + dy * cut,
+                        s.tailZ + dz * cut,
+                        0.34F,
+                        CUT_GLINT,
+                        0.9F * bright);
+                }
+            }
+            return;
+        }
+        if (severed) {
+            for (int piece = 0; piece < PIECES.length; piece += 2) {
+                piece(t, s, PIECES[piece], PIECES[piece + 1], wx * 3.4, wy * 3.4, wz * 3.4, tail, body, 0.2F * bright);
+                piece(t, s, PIECES[piece], PIECES[piece + 1], wx, wy, wz, body, WHITE, bright);
+            }
             return;
         }
         // Its glow, then itself: nothing at the tail, widening to the head.
@@ -122,6 +154,25 @@ final class StreakFx {
         Draw.color(t, head, alpha);
         t.addVertex(s.headX + wx, s.headY + wy, s.headZ + wz);
         t.addVertex(s.headX - wx, s.headY - wy, s.headZ - wz);
+    }
+
+    /** A length of a needle that has been cut through: blunt where the blade passed, wider toward the head. */
+    private static void piece(Tessellator t, StreakField.Streak s, float from, float to, double wx, double wy,
+        double wz, int tail, int head, float alpha) {
+        double ax = s.tailX + (s.headX - s.tailX) * from;
+        double ay = s.tailY + (s.headY - s.tailY) * from;
+        double az = s.tailZ + (s.headZ - s.tailZ) * from;
+        double bx = s.tailX + (s.headX - s.tailX) * to;
+        double by = s.tailY + (s.headY - s.tailY) * to;
+        double bz = s.tailZ + (s.headZ - s.tailZ) * to;
+        double wa = 0.25 + 0.75 * from;
+        double wb = 0.25 + 0.75 * to;
+        Draw.color(t, Draw.mix(tail, head, from), alpha * (0.3F + 0.7F * from));
+        t.addVertex(ax - wx * wa, ay - wy * wa, az - wz * wa);
+        t.addVertex(ax + wx * wa, ay + wy * wa, az + wz * wa);
+        Draw.color(t, Draw.mix(tail, head, to), alpha * (0.3F + 0.7F * to));
+        t.addVertex(bx + wx * wb, by + wy * wb, bz + wz * wb);
+        t.addVertex(bx - wx * wb, by - wy * wb, bz - wz * wb);
     }
 
     /** A thread of one colour beside the needle, over its leading half. */

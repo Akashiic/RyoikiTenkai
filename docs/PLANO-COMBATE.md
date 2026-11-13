@@ -31,7 +31,7 @@ documento é a ordem das peças. O estado de cada uma está em [`VISUAL.md`](VIS
 | B1 | **Santuário: o corte.** Feito em 2026-11-13: arcos de lâmina em rajadas cruzadas, com crescente, fio, estilhaços e cicatriz no chão (`VISUAL.md`). O dono decidiu manter o arremesso do quarto golpe |
 | B1b | **Santuário: riscos no ar.** Feito em 2026-11-13, a pedido do dono: marcas pretas e curtas de lâmina por toda parte, que aparecem e somem (`VISUAL.md`) |
 | B2 | **Vazio: a rajada e o congelamento.** Feito em 2026-11-13. O dono esclareceu os dois modos do Vazio: "iniciando" (a rajada de feixes que irradia do astrolábio, 2,5 s) e "completo" (o Vazio parado, com todos os pegos congelados até o fim). Ver `VISUAL.md` |
-| B3 | **No choque, os dois misturados:** cortes entrando no chão do Vazio e rajadas atravessando o do Santuário, e o que acontece onde um encontra o outro |
+| B3 | **No choque, os dois misturados.** Feito em 2026-11-13: cortes e riscos entram no chão do Vazio e os feixes atravessam o do Santuário, cada um rareando por 14 blocos; o feixe chega cortado ao Santuário e a cicatriz do corte esfria no Vazio; a rajada do Vazio não para enquanto ele é contestado (`VISUAL.md`). Filmado dos dois lados, em primeira e em terceira pessoa |
 
 ## Fase C: os golpes, um por vez
 

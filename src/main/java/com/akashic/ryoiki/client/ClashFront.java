@@ -116,7 +116,7 @@ final class ClashFront {
 
         t.startDrawing(GL11.GL_TRIANGLES);
         arcs(t, px, pz, nx, nz, heat, host, rival, time, seed, false);
-        pillars(t, px, pz, heat, host, rival, time, seed);
+        pillars(t, px, pz, heat, host, rival, time, seed, cam[0], RenderManager.renderPosY - domain.arenaY, cam[1]);
         sparks(t, px, pz, nx, nz, heat, host, rival, time, seed);
         motes(t, px, pz, nx, nz, heat, host, rival, time, seed);
         t.draw();
@@ -421,7 +421,7 @@ final class ClashFront {
      * as they rise: from no side do they show an edge.
      */
     private static void pillars(Tessellator t, float[] px, float[] pz, float[] heat, int host, int rival, float time,
-        int seed) {
+        int seed, double camX, double camY, double camZ) {
         for (int k = 0; k < PILLARS; k++) {
             float walk = (k + 0.5F) / PILLARS + 0.06F * (float) Math.sin(time * 0.013F + k * 2.1F);
             float where = Draw.clamp01(walk) * (px.length - 1);
@@ -435,6 +435,12 @@ final class ClashFront {
                 float up = (n + 0.5F) / PILLAR_LIGHTS;
                 // It sways a little as it rises, like heat.
                 float sway = (float) Math.sin(time * 0.05F + up * 5 + k) * 0.5F * up;
+                // A light the eye is in, or nearly, is not drawn: looking along a column would stack them all on
+                // the eye, a wash of colour over everything.
+                double ex = x + sway - camX;
+                double ey = 0.6F + up * up * PILLAR_HEIGHT - camY;
+                double ez = z + sway * 0.6F - camZ;
+                float clear = Draw.clamp01(((float) Math.sqrt(ex * ex + ey * ey + ez * ez) - 3) / 7);
                 Draw.glow(
                     t,
                     x + sway,
@@ -442,7 +448,7 @@ final class ClashFront {
                     z + sway * 0.6F,
                     1.4F + 3.2F * up,
                     color,
-                    0.13F * strength * (1 - up) * (1 - up));
+                    0.13F * strength * (1 - up) * (1 - up) * clear);
             }
         }
     }

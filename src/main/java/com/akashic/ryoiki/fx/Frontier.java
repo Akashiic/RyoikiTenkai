@@ -100,6 +100,16 @@ public final class Frontier {
         return out;
     }
 
+    /**
+     * How much of a domain's own effects shows at a place that is {@code depth} blocks into the other's ground
+     * (negative: on its own): whole on its own ground, and less and less over {@code reach} blocks of the other's.
+     * Both domains' effects cross the front this way, so that each ground has its own at full strength and the
+     * other's thinning out over it.
+     */
+    public static float crossing(float depth, float reach) {
+        return depth <= 0 ? 1 : depth >= reach ? 0 : 1 - depth / reach;
+    }
+
     /** How far before the drawn front a place is (negative: behind it, on the host's ground), by its line. */
     public static float before(float[] line, float x, float z) {
         int last = line.length / 2 - 1;

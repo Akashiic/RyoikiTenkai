@@ -114,6 +114,58 @@ final class Scene {
         }
     }
 
+    /** How far into the other's ground a domain's effects still show in a clash, in blocks. */
+    private static final float INVADE = 14;
+
+    private static boolean mixing;
+    private static float[] mixLine;
+    private static float mixSeam;
+    private static boolean mixTurned;
+    private static float mixTurnedAt;
+    private static int mixPart;
+
+    /**
+     * From now on, places given to {@link #depth} and {@link #strength} are in a part's own scene, and are judged by
+     * the front as it is: for drawing that part's effects over the whole arena. {@link #plain} ends it.
+     */
+    static void ground(ClientDomain domain, int part, float[] line) {
+        mixing = domain.fused() && line != null;
+        mixLine = line;
+        mixSeam = domain.sceneSeam();
+        mixTurned = turned(domain, part);
+        mixTurnedAt = turnedAt(domain, part);
+        mixPart = part;
+    }
+
+    static void plain() {
+        mixing = false;
+    }
+
+    /**
+     * How far a place is into the other domain's ground, in blocks: negative on the domain's own. Nothing is the
+     * other's when there is no clash.
+     */
+    static float depth(double x, double z) {
+        if (!mixing) {
+            return -1000;
+        }
+        if (mixTurned) {
+            x = -x;
+            z = mixTurnedAt - z;
+        }
+        float before = Frontier.before(mixLine, (float) x, (float) z - mixSeam);
+        // The host's ground is behind the front, the rival's before it.
+        return mixPart == 0 ? before : -before;
+    }
+
+    /**
+     * How strongly a domain's effect shows at a place: whole on its own ground, fading to nothing well into the
+     * other's.
+     */
+    static float strength(double x, double z) {
+        return Frontier.crossing(depth(x, z), INVADE);
+    }
+
     static void leave() {
         GL11.glDisable(GL11.GL_CLIP_PLANE0);
         GL11.glDisable(GL11.GL_CLIP_PLANE1);

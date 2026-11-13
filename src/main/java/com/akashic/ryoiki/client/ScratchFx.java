@@ -102,7 +102,10 @@ final class ScratchFx {
         wx *= width;
         wy *= width;
         wz *= width;
-        float fade = shown * Draw.clamp01((FAR - (float) distance) / 6F);
+        float fade = shown * Draw.clamp01((FAR - (float) distance) / 6F) * Scene.strength(mx, mz);
+        if (fade <= 0.01F) {
+            return;
+        }
         if (rim) {
             // The outline: the same sliver in white light, a little longer and a good deal wider, under the black;
             // and a wider, fainter one under that, its glow.

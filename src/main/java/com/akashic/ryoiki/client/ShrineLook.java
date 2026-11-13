@@ -179,6 +179,11 @@ final class ShrineLook implements DomainLook {
         lights(t, radius, time);
         mist(radius, time);
         embers(t, radius, time);
+    }
+
+    @Override
+    public void effects(int radius, float time, int seed, double camX, double camY, double camZ) {
+        Tessellator t = Tessellator.instance;
         ScratchFx.draw(t, radius, time, seed, camX, camY, camZ);
         SlashFx.draw(t, radius, time, seed, camX, camY, camZ);
     }
