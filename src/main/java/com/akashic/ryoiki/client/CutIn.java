@@ -208,6 +208,9 @@ final class CutIn {
 
     /** The crimson shrine's camera heights, in degrees of pitch: looking down on the caster, and up from the ground. */
     private static final float SHRINE_HIGH = Float.parseFloat(System.getProperty("ryoiki.shrineHigh", "30"));
+    private static final float SHRINE_TOP = Float.parseFloat(System.getProperty("ryoiki.shrineTop", "26"));
+    private static final float SHRINE_ZOOM = Float.parseFloat(System.getProperty("ryoiki.shrineZoom", "1.45"));
+    private static final float SHRINE_AIM = Float.parseFloat(System.getProperty("ryoiki.shrineAim", "0.5"));
     private static final float SHRINE_LOW = Float.parseFloat(System.getProperty("ryoiki.shrineLow", "-58"));
 
     /** When a cut-in cuts from one shot to the next, in ticks. */
@@ -233,10 +236,11 @@ final class CutIn {
                 float a = (age - CUT_ONE) / (CUT_TWO - CUT_ONE);
                 return new float[] { 16 - 10 * a, SHRINE_LOW, -9 + 5 * a, 1.75F + 0.4F * a, 0.8F, 0.24F };
             }
+            // The last shot is square on: no turn, no tilt, the camera above looking down at the raised hands and
+            // the face under them.
             float a = Draw.easeOut((age - CUT_TWO) / 7F);
             float drift = age - CUT_TWO;
-            return new float[] { -6 + 8 * a + drift * 0.3F, SHRINE_LOW * 0.4F * (1 - a) - 4, 6 - 8 * a,
-                1.7F + 0.5F * (1 - a) + drift * 0.012F, 0.5F, 0.21F };
+            return new float[] { 0, SHRINE_TOP, 0, SHRINE_ZOOM + 0.45F * (1 - a) + drift * 0.01F, SHRINE_AIM, 0.21F };
         }
         if (age < CUT_ONE) {
             float a = age / CUT_ONE;

@@ -75,16 +75,17 @@ final class FuturaBridge {
         signs.put(
             DomainType.MALEVOLENT_SHRINE,
             sign(
-                // Both hands brought together before the chest, fingers straight; the head bowed.
-                "RightArm -28 0 0",
-                "RightForeArm -100 -38 0",
-                "LeftArm -28 0 0",
-                "LeftForeArm -100 -38 0",
+                // Both hands raised and joined before the mouth, mirrored, fingers straight; the head bowed. The
+                // forearms turn inward by opposite angles: the same sign on both would leave one hand out of place.
+                "RightArm -78 0 0",
+                "RightForeArm -78 -18 0",
+                "LeftArm -78 0 0",
+                "LeftForeArm -78 18 0",
                 "right_fg 0 0 0",
                 "right_ffg 0 0 0",
                 "left_fg 0 0 0",
                 "left_ffg 0 0 0",
-                "Head 10 0 0"));
+                "Head 8 0 0"));
         signs.put(
             DomainType.INFINITE_VOID,
             sign(
