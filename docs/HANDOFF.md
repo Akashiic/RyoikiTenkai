@@ -144,8 +144,10 @@ Regras da seção 5.4 do `ESTUDO.md`, decididas pelo agente (carta branca) em 20
   voltam). Se um dos dois morre, sai ou desconecta, o outro vence.
 * **Depois:** o vencedor fica com a arena e o domínio **dele recomeça do zero** (14 s ou 18 s); o perdedor fica
   dentro, como qualquer um que foi pego.
+* **Visual: fusão, não alternância** (pedido do dono em 2026-11-13): a arena é dividida por uma costura, com o
+  domínio de cada conjurador numa parte (`client/Scene`, ver `VISUAL.md`).
 * **Limite conhecido:** o salão do Santuário é sólido e é erguido na conjuração. Se o Santuário entra como rival, o
-  salão é só desenhado (recuado, com os conjuradores diante da porta), não construído: há gente onde as paredes
+  salão é só desenhado (na parte dele, de frente para a costura), não construído: há gente onde as paredes
   ficariam. Se o Santuário anfitrião perde, o salão é removido.
 * **Código:** `domain/ClashScore` (regras puras, com teste), `domain/ComboChain` (idem), `fx/BlowPose` (o corpo em cada golpe: só a guarda e o golpe 1 estão
   trabalhados, mais a reação a levar golpe; o resto é provisório. O dono quer **um kit por domínio, com golpes de

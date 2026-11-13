@@ -2,6 +2,7 @@ package com.akashic.ryoiki.client;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
+import net.minecraft.entity.Entity;
 import net.minecraft.world.WorldProvider;
 import net.minecraftforge.client.IRenderHandler;
 
@@ -81,11 +82,25 @@ final class DomainSky extends IRenderHandler {
             GL11.glDisable(GL11.GL_DEPTH_TEST);
         }
         GL11.glShadeModel(GL11.GL_SMOOTH);
-        GL11.glPushMatrix();
-        GL11.glRotatef(-domain.yaw, 0, 1, 0);
-        DomainRenderer.look(domain.shown())
-            .sky(far(mc) * 0.92F, domain.age + partialTicks);
-        GL11.glPopMatrix();
+        // The line between the two domains of a clash is a place in the arena: the sky of each is cut by it too,
+        // so the sky changes where the floor does.
+        Entity view = mc.renderViewEntity;
+        double x = view.lastTickPosX + (view.posX - view.lastTickPosX) * partialTicks;
+        double y = view.lastTickPosY + (view.posY - view.lastTickPosY) * partialTicks;
+        double z = view.lastTickPosZ + (view.posZ - view.lastTickPosZ) * partialTicks;
+        for (int part = 0; part < Scene.parts(domain); part++) {
+            GL11.glPushMatrix();
+            GL11.glTranslated(domain.arenaX - x, domain.arenaY - y, domain.arenaZ - z);
+            GL11.glRotatef(-domain.yaw, 0, 1, 0);
+            Scene.clip(domain, part);
+            GL11.glPopMatrix();
+            GL11.glPushMatrix();
+            GL11.glRotatef(-domain.yaw + (Scene.turned(domain, part) ? 180 : 0), 0, 1, 0);
+            Scene.look(domain, part)
+                .sky(far(mc) * 0.92F, domain.age + partialTicks);
+            GL11.glPopMatrix();
+            Scene.leave();
+        }
         GL11.glShadeModel(GL11.GL_FLAT);
         GL11.glDepthMask(true);
         GL11.glPopAttrib();

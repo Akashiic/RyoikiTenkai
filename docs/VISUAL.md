@@ -59,14 +59,20 @@ modelo, textura nem som no mod (os sons são arquivos do dono, ver "Som"). A are
 
 * **Sinal do rival:** quem responde a um domínio ganha a própria faixa e a própria voz, por cima do que estiver na
   tela (o sinal dele pode terminar já dentro da arena).
-* **Durante:** os dois cenários **se alternam a cada 10 ticks** (meio segundo; mais rápido que isso vira um
-  pisca-pisca de tela inteira) (céu, chão, estruturas e névoa), com um tremor a cada
-  troca. Numa arena que não abriu como Santuário, o Santuário é desenhado recuado, com o meio da arena diante da
-  porta. Para quem está fora, **o domo fica preto**.
+* **Durante, a fusão** (`Scene`): os dois domínios **dividem a arena**. Uma linha a atravessa (a costura); atrás
+  dela fica o domínio do anfitrião e à frente o do rival, cada um com o seu céu, o seu chão, as suas estruturas e a
+  sua névoa, desenhados só na sua parte (um plano de corte). O cenário do rival é desenhado **virado de frente
+  para a linha**, para o que ele tem (o salão, o astrolábio) ficar na parte dele. A costura passa pelo meio da arena
+  num Vazio e, num Santuário, por onde os conjuradores ficam, diante da porta do salão. Nela há uma linha de luz no
+  chão e uma cortina tênue (tênue porque os conjuradores começam o choque em cima dela). Perto da costura a névoa
+  mistura as cores dos dois. Para quem está fora, **o domo fica preto**. O dono pediu a fusão em 2026-11-13, no
+  lugar da alternância de cenários que havia antes.
 * **Na tela, no topo:** "CHOQUE DE DOMÍNIOS", o **contador** grande de 15 a 0 (vermelho e pulsando nos últimos 5 s) e,
   dos lados, a **barra de cada conjurador** com nome e porcentagem, na cor do domínio dele, enchendo em direção ao
   meio. Fica no topo porque embaixo estão a vida, a armadura e a barra de itens.
-* **Resolução:** clarão na cor do vencedor e tremor; o domínio do vencedor recomeça. No empate, a quebra de sempre.
+* **Resolução:** clarão na cor do vencedor e tremor; o domínio do vencedor recomeça e toma a arena inteira. Se
+  quem venceu foi o rival, o cenário dele **fica onde estava** durante o choque (virado), sem pular de lugar. No
+  empate, a quebra de sempre.
 
 ### Os golpes do choque (`ComboChain`, `BlowPose`, `ClientDomain.Blow`)
 
@@ -160,8 +166,8 @@ Verificado com dois clientes no servidor de teste: rival vencendo por tempo e po
 barra cheia, empate, resposta durante o sinal de mão e depois de o domínio abrir. O golpe 1 e a reação a levar golpe foram vistos quadro a quadro no modelo de teste e rodaram num choque com dois
 clientes. **A verificar:** a
 sensação do combo com jogadores de verdade (ritmo, alcance, força do arremesso), os golpes em outros modelos (ossos
-com outros nomes ou outra pose de repouso), a alternância de
-cenários vista ao vivo (as capturas pegam um quadro só), quem assiste de fora perto do domo, mais de um jogador pego
+com outros nomes ou outra pose de repouso), a fusão com placa de vídeo de verdade e com shaderpack (o plano de corte é da
+pipeline fixa do OpenGL e um shaderpack pode ignorá-lo), quem assiste de fora perto do domo, mais de um jogador pego
 além dos dois conjuradores, e o choque em sobrevivência com armas e habilidades de outros mods.
 
 ## Som (`DomainSounds`, `SoundCues`, `OwnerSounds`)

@@ -9,6 +9,7 @@ import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.entity.Entity;
 
 import com.akashic.ryoiki.DomainType;
+import com.akashic.ryoiki.arena.ShrineCore;
 import com.akashic.ryoiki.fx.BlowPose;
 import com.akashic.ryoiki.fx.SlashField;
 import com.akashic.ryoiki.fx.SoundCues;
@@ -31,11 +32,6 @@ public final class ClientDomain {
     /** A sound in the world is heard up to 16 blocks times its volume. */
     private static final float SIGN_VOLUME = 3F;
     private static final float DOME_VOLUME = 4F;
-    /**
-     * Ticks each domain is shown for while two clash: half a second. Faster (the study has 2 to 4 ticks) is a
-     * full-screen flicker of two bright colours several times a second, which is hard on the eyes.
-     */
-    private static final int CLASH_FLICKER = 10;
 
     /** A blow of a caster in a clash, as it is drawn: the pose of the body comes from {@link BlowPose}. */
     public static final class Blow {
@@ -130,6 +126,12 @@ public final class ClientDomain {
     public DomainType inside;
     /** The domain the arena opened as: a clash may change {@link #inside}, not what was built. */
     public DomainType openedAs;
+    /**
+     * Whether the arena's scene is the one a rival brought: drawn turned about, its centre {@link #turnedAt} blocks
+     * before the arena's. A rival that wins a clash keeps its domain where it stood during it.
+     */
+    public boolean turned;
+    public float turnedAt;
     public int session;
     public double arenaX;
     public double arenaY;
@@ -239,6 +241,7 @@ public final class ClientDomain {
                 domes.remove(m.session);
                 inside = m.type;
                 openedAs = m.type;
+                turned = false;
                 session = m.session;
                 arenaX = m.x;
                 arenaY = m.y;
@@ -357,6 +360,11 @@ public final class ClientDomain {
                 if (inside != null && session == m.session && m.result != 2) {
                     // The winner's domain, from its start. A tie is followed by the end of the domain.
                     DomainType was = inside;
+                    if (m.result == 1) {
+                        // The rival's domain stays where it stood in the clash, and takes the other half too.
+                        turned = true;
+                        turnedAt = sceneSeam() + stage(m.type);
+                    }
                     inside = m.type;
                     casterEntity = m.casterEntity;
                     age = 0;
@@ -393,19 +401,27 @@ public final class ClientDomain {
         }
     }
 
-    /**
-     * Whether the crimson shrine is shown in an arena that did not open as one. Its hall is then not built, and the
-     * casters stand in the middle, where it would be: the scene is drawn further back, the hall before them.
-     */
-    public boolean shrineUnbuilt() {
-        return shown() == DomainType.MALEVOLENT_SHRINE && openedAs != DomainType.MALEVOLENT_SHRINE;
+    /** Whether two domains share the arena now: each is drawn in its half ({@link #sceneSeam}). */
+    public boolean fused() {
+        return inside != null && clash == session && clashTypes[0] != null;
     }
 
-    /** The domain to draw: the one this player is in or, in a clash, the two of them taking turns. */
+    /**
+     * Where the two domains of a clash meet: a line across the scene, this far before its centre. The host's domain
+     * lies behind the line, where its scene has what it has; the rival's before it, turned about to face it. In a
+     * shrine the line is where the casters stand, before the door of the hall; in a void, through the middle.
+     */
+    public float sceneSeam() {
+        return openedAs == DomainType.MALEVOLENT_SHRINE ? ShrineCore.CASTER_DISTANCE : 0;
+    }
+
+    /** How far before the seam the centre of a rival's scene is put: a shrine's hall stands back from it. */
+    public static float stage(DomainType type) {
+        return type == DomainType.MALEVOLENT_SHRINE ? ShrineCore.CASTER_DISTANCE : 0;
+    }
+
+    /** The one domain of the arena: the host's while two share it. */
     public DomainType shown() {
-        if (inside != null && clash == session && clashTypes[0] != null) {
-            return clashTypes[clashAge / CLASH_FLICKER % 2];
-        }
         return inside;
     }
 
@@ -465,10 +481,6 @@ public final class ClientDomain {
             clashAge++;
             if (clashTime > 0) {
                 clashTime--;
-            }
-            // The arena jolts each time the other domain shows through.
-            if (inside != null && clashAge % (CLASH_FLICKER * 2) == 0) {
-                CameraShake.INSTANCE.kick(0.5F);
             }
         }
         for (Iterator<Blow> it = blows.values()
