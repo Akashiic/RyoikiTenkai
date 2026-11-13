@@ -20,13 +20,17 @@ final class VoidLook implements DomainLook {
 
     /** Each star: direction (3), size, phase. */
     private final float[] stars = new float[STARS * 5];
-    /** Where the armillary hangs: a unit direction, north and a third of the way up. */
+    /**
+     * Where the armillary and its black hole hang: a unit direction, a third of the way up and before the caster
+     * (the scene is turned by where it looked), so whoever casts the void has it in front of it.
+     */
     private static final float EYE_X = 0;
     private static final float EYE_Y = 0.47F;
-    private static final float EYE_Z = -0.883F;
-    /** Degrees a tick the sky turns about the armillary, always; and more for each tick of full rush. */
-    private static final float DRIFT = 0.22F;
-    private static final float SWIRL = 1.7F;
+    private static final float EYE_Z = 0.883F;
+    /** How far across the sky a star is carried away from the armillary for each tick of full rush, in radians. */
+    private static final float CARRY = 0.011F;
+    /** How long a star's trail is at the height of the rush, across the sky, in radians. */
+    private static final float TRAIL = 0.085F;
 
     VoidLook() {
         Random random = new Random(0x52594F494B49L);
@@ -54,8 +58,8 @@ final class VoidLook implements DomainLook {
     }
 
     /**
-     * The sky is never still. While the domain starts it flares with the rush: the horizon lit violet, a wider band
-     * of it. Complete, it breathes: the horizon a little brighter and dimmer, slowly.
+     * While the domain starts the sky flares with the rush: the horizon lit violet, a wider band of it. Complete,
+     * it is steady, and only breathes: the horizon a little brighter and dimmer, slowly.
      */
     @Override
     public float[] backdrop(float time) {
@@ -64,14 +68,6 @@ final class VoidLook implements DomainLook {
         int horizon = Draw.mix(Draw.mix(0x141040, 0x211C62, breath), 0x5A3CD0, rush * 0.85F);
         int top = Draw.mix(0x010208, 0x0E0830, rush);
         return new float[] { top, horizon, 0x010208, 0.55F - 0.2F * rush };
-    }
-
-    /**
-     * How far the sky has turned about the armillary, in degrees: fast with the rush as the domain starts, and
-     * slowly for ever after.
-     */
-    private static float turned(float time) {
-        return time * DRIFT + StreakField.rushed(time) * SWIRL;
     }
 
     @Override
@@ -84,12 +80,8 @@ final class VoidLook implements DomainLook {
                 GL11.glScalef(1, -1, 1);
                 Draw.alpha = 0.4F;
             }
-            // The stars and the clouds turn about the armillary, which stays where it hangs.
-            GL11.glPushMatrix();
-            GL11.glRotatef(turned(time), EYE_X, EYE_Y, EYE_Z);
             nebulae(radius, time);
             stars(radius * 0.98F, time);
-            GL11.glPopMatrix();
             armillary(radius * 0.9F, time);
             GL11.glPopMatrix();
         }
@@ -126,13 +118,33 @@ final class VoidLook implements DomainLook {
 
     private void stars(float radius, float time) {
         Tessellator t = Tessellator.instance;
-        // How long a star's trail is, across the sky: what it turns through in a few ticks of the rush.
-        float trail = (float) Math.toRadians(SWIRL * 3.5F) * StreakField.rush(time);
+        // While the domain starts the stars go the way the rush goes: straight out from the armillary, each drawing
+        // a trail behind it. When it is complete they stay where that left them: the sky is still.
+        float trail = TRAIL * StreakField.rush(time);
+        float carried = CARRY * StreakField.rushed(time);
         t.startDrawingQuads();
         for (int i = 0; i < STARS; i++) {
             float x = stars[i * 5];
             float y = stars[i * 5 + 1];
             float z = stars[i * 5 + 2];
+            // Away from the armillary, across the sky: the way this star is carried.
+            float toward = x * EYE_X + y * EYE_Y + z * EYE_Z;
+            float ox = x - EYE_X * toward;
+            float oy = y - EYE_Y * toward;
+            float oz = z - EYE_Z * toward;
+            float out = (float) Math.sqrt(ox * ox + oy * oy + oz * oz);
+            if (out > 1.0e-3F) {
+                ox /= out;
+                oy /= out;
+                oz /= out;
+                x += ox * carried;
+                y += oy * carried;
+                z += oz * carried;
+                float unit = (float) Math.sqrt(x * x + y * y + z * z);
+                x /= unit;
+                y /= unit;
+                z /= unit;
+            }
             float size = stars[i * 5 + 3];
             float phase = stars[i * 5 + 4];
             float twinkle = 0.6F + 0.4F * (float) Math.sin(time * (0.08F + phase * 0.14F) + phase * 40);
@@ -146,22 +158,13 @@ final class VoidLook implements DomainLook {
             float vy = z * ux - x * uz;
             float vz = -y * ux;
             if (trail > 0.002F) {
-                // While the sky turns fast each star draws out behind it, along the way it came: round the
-                // armillary and a little outward from it.
-                float ax = EYE_Y * z - EYE_Z * y;
-                float ay = EYE_Z * x - EYE_X * z;
-                float az = EYE_X * y - EYE_Y * x;
-                float toward = x * EYE_X + y * EYE_Y + z * EYE_Z;
-                float bx = ax * trail + (x - EYE_X * toward) * trail * 0.5F;
-                float by = ay * trail + (y - EYE_Y * toward) * trail * 0.5F;
-                float bz = az * trail + (z - EYE_Z * toward) * trail * 0.5F;
                 float w = size * 0.8F;
                 Draw.color(t, tint, twinkle);
                 t.addVertex((x - vx * w) * radius, (y - vy * w) * radius, (z - vz * w) * radius);
                 t.addVertex((x + vx * w) * radius, (y + vy * w) * radius, (z + vz * w) * radius);
                 Draw.color(t, tint, 0);
-                t.addVertex((x - bx) * radius, (y - by) * radius, (z - bz) * radius);
-                t.addVertex((x - bx) * radius, (y - by) * radius, (z - bz) * radius);
+                t.addVertex((x - ox * trail) * radius, (y - oy * trail) * radius, (z - oz * trail) * radius);
+                t.addVertex((x - ox * trail) * radius, (y - oy * trail) * radius, (z - oz * trail) * radius);
                 Draw.color(t, tint, twinkle);
             }
             if (i < BRIGHT) {
@@ -188,7 +191,7 @@ final class VoidLook implements DomainLook {
     private static void armillary(float distance, float time) {
         float open = Draw.easeOut(time / 45F);
         float rush = StreakField.rush(time);
-        float size = distance * 0.2F * (0.35F + 0.65F * open);
+        float size = distance * 0.36F * (0.35F + 0.65F * open);
         // Its halo flares as everything pours out of it, and afterwards beats slowly.
         float beat = 0.85F + 0.15F * (float) Math.sin(time * 0.09F);
         Draw.skyDisc(

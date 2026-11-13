@@ -60,13 +60,16 @@ mais feixes**.
 * Histórico: a primeira versão tinha feixes paralelos de parede a parede, junto ao chão; a segunda os fazia irradiar
   do astrolábio, mas o domínio inteiro, com rajadas periódicas. O dono esclareceu que a rajada é só o início.
 
-**O céu nos dois modos** (`VoidLook`; o dono apontou em 2026-11-13 que o céu ficava estático): estrelas e nebulosas
-**giram em torno do astrolábio**, que fica onde está. *Iniciando*, giram rápido (1,7° por tick de rajada cheia, uns
-57° ao todo), cada estrela arrasta um **rastro** em espiral, as nebulosas acendem (até 2,3 vezes), o horizonte clareia
-em violeta e o halo do astrolábio abre num clarão, com os anéis acelerados. *Completo*, o céu segue vivo e devagar:
-gira 0,22° por tick (uns 60° no domínio inteiro), cada nebulosa respira no seu ritmo (tamanho e brilho), o horizonte
-pulsa e o halo do astrolábio bate. O quanto o céu já girou é a soma da rajada até ali (`StreakField#rushed`, com
-teste), então o giro desacelera junto com os feixes, sem tranco.
+**O céu nos dois modos** (`VoidLook`; ajustado com o dono em 2026-11-13). *Iniciando*: as estrelas vão **na mesma
+direção dos feixes**, para fora do buraco negro, cada uma arrastando um rastro reto; as nebulosas acendem (até 2,3
+vezes), o horizonte clareia em violeta e o halo do buraco negro abre num clarão, com os anéis acelerados. *Completo*:
+o céu é **estável**; as estrelas ficam onde a rajada as deixou e só cintilam, cada nebulosa respira no seu ritmo, o
+horizonte pulsa de leve e o halo bate. (Uma versão anterior fazia o céu girar em torno do astrolábio: os rastros
+saíam em espiral, contra os feixes, e no modo completo o céu parecia "cair para o lado". O dono pediu para tirar.)
+
+**O buraco negro** é o núcleo escuro do astrolábio, com o aro branco e os anéis girando. Fica **à frente do
+conjurador**, um terço acima do horizonte (a cena é virada por onde ele olhava ao conjurar), e ocupa uns 20° do
+céu. Antes ficava atrás do conjurador e tinha pouco mais da metade do tamanho: quem conjurava não o via.
 
 **2. Completo** (o resto dos 14 s): o Vazio **parado** (céu, astrolábio, poeira) e o seu efeito garantido: **todos
 os que foram pegos, menos o conjurador, ficam congelados**, sem poder fazer nada até o domínio acabar.
