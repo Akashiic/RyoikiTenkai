@@ -30,7 +30,7 @@ documento é a ordem das peças. O estado de cada uma está em [`VISUAL.md`](VIS
 |---|---|
 | B1 | **Santuário: o corte.** Feito em 2026-11-13: arcos de lâmina em rajadas cruzadas, com crescente, fio, estilhaços e cicatriz no chão (`VISUAL.md`). O dono decidiu manter o arremesso do quarto golpe |
 | B1b | **Santuário: riscos no ar.** Feito em 2026-11-13, a pedido do dono: marcas pretas e curtas de lâmina por toda parte, que aparecem e somem (`VISUAL.md`) |
-| B2 | **Vazio: a rajada linear.** Feito em 2026-11-13: feixes em linha reta no mesmo sentido, densos na abertura, fluxo ralo depois e rajadas periódicas (`VISUAL.md`) |
+| B2 | **Vazio: a rajada linear.** Feito em 2026-11-13 e refeito no mesmo dia depois de o dono mostrar o comportamento que queria (um vídeo do JJS): feixes que saem do astrolábio e irradiam pela arena inteira, densos e contínuos (`VISUAL.md`) |
 | B3 | **No choque, os dois misturados:** cortes entrando no chão do Vazio e rajadas atravessando o do Santuário, e o que acontece onde um encontra o outro |
 
 ## Fase C: os golpes, um por vez

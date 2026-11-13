@@ -39,23 +39,30 @@ modelo, textura nem som no mod (os sons são arquivos do dono, ver "Som"). A are
 
 ![Rajada](img/rajada.png)
 
-Agulhas de luz que **cruzam a arena em linha reta, todas no mesmo sentido**: saem do lado do astrolábio e vão até a
-parede oposta. É a assinatura do Vazio, como os cortes são a do Santuário.
+Agulhas de luz que **saem todas de um ponto, o astrolábio no céu do Vazio, e irradiam para fora dele por toda a
+arena**, retas e rápidas, em direção a quem olha e para além. Muitas a qualquer instante, **do começo ao fim do
+domínio**. É a assinatura do Vazio, como os cortes são a do Santuário.
 
-* **A abertura:** quando o domínio abre, os feixes vêm **densos, longos e muito rápidos** (até 3,4 vezes a
-  velocidade normal e 2,4 vezes o comprimento) e vão rareando em 40 ticks, até o céu assentar. Quem olha no sentido
-  do fluxo vê as linhas convergirem num ponto de fuga; quem olha para o astrolábio as vê sair dele e passar.
-* **Depois:** um fluxo ralo constante e, a cada 64 ticks (o primeiro aos 56), uma **rajada**: o fluxo acelera e
-  engrossa por menos de um segundo (sobe em 3 ticks, segura 6, cai em 11), com um tremor e `vazio_rajada.ogg`, se o
-  dono o pôs.
-* **O feixe:** a cabeça é um ponto branco; atrás dela a agulha afina até sumir, branca perto da cabeça, depois azul
-  clara, depois um azul fundo que some na cauda, dentro de um brilho mais largo e fraco. O feixe mandado numa
-  rajada é mais brilhante e **se desdobra**: um fio ciano de um lado e um violeta do outro.
-* **Como é montado:** a arena é tomada em faixas atravessadas ao fluxo (3 blocos de largura, quatro camadas de 2,2
-  de altura); cada faixa pode mandar um feixe em 3 momentos a cada 18 ticks, com chance de 12 % na calma e 92 % no
-  auge de uma rajada. Cada feixe guarda a velocidade com que foi mandado. A arena é redonda, então o caminho é mais
-  curto perto das laterais, e o feixe nasce de uma parede e some na outra. Sai do número do domínio, da faixa e do
-  momento: todos veem os mesmos. O que passa rente à câmera é atenuado.
+A primeira versão desta peça tinha feixes em faixas paralelas, de uma parede à outra, só junto ao chão, ralos fora
+das rajadas e em branco e azul. O dono disse que não era o esperado e apontou um vídeo do Jujutsu Shenanigans. O
+comportamento que ele mostra, e que esta versão segue no nosso desenho: fonte num ponto com os feixes irradiando em
+perspectiva para a câmera, **denso e contínuo** o domínio inteiro, velocidade alta e constante, várias cores, o
+volume todo e não só o chão.
+
+* **A fonte:** o foco fica a 150 blocos do centro da arena, na direção em que o astrolábio está pendurado. Do
+  centro, os feixes parecem sair dele; quem olha para o outro lado os vê passar por cima e convergir à frente.
+* **O fluxo:** forte na abertura (os 40 primeiros ticks, até 1,8 vez mais comprido e 1,9 vez mais rápido), assenta
+  num **fluxo firme** (42 % do auge, com perto de 180 feixes vivos na arena a cada instante) e sobe de novo numa
+  **rajada** a cada 64 ticks (a primeira aos 56), com um tremor e `vazio_rajada.ogg`, se o dono o pôs.
+* **O feixe:** a cabeça é um ponto branco; atrás dela a agulha afina até sumir, branca perto da cabeça, depois da
+  sua cor, depois uma mais funda que some na cauda, dentro de um brilho mais largo e fraco. As cores são as do
+  Vazio: **branco, azul-gelo, violeta e magenta**. No auge de uma rajada o feixe **se desdobra**: um fio ciano de
+  um lado e um violeta do outro.
+* **Como é montado:** cada feixe corre num raio que parte do foco. Os raios são tomados em faixas: uma grade de
+  3,2 blocos no plano que passa pelo centro da arena e encara o foco. Cada faixa pode mandar um feixe em 2 momentos
+  a cada 18 ticks, com chance proporcional à força do fluxo; o feixe guarda a velocidade com que saiu e é visto de
+  onde o raio entra na arena até onde sai dela ou encontra o chão. Sai do número do domínio, da faixa e do momento:
+  todos veem os mesmos. O que passa rente à câmera é atenuado.
 
 ## Santuário Carmesim (`ShrineLook`)
 

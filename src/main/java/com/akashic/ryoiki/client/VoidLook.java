@@ -203,7 +203,7 @@ final class VoidLook implements DomainLook {
         }
         t.draw();
         GL11.glDepthMask(true);
-        StreakFx.draw(t, radius, time, seed, camX, camY, camZ);
+        StreakFx.draw(t, radius, time, seed, EYE_X, EYE_Y, EYE_Z, camX, camY, camZ);
     }
 
     @Override
