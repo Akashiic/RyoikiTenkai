@@ -16,7 +16,6 @@ import net.minecraftforge.client.event.RenderWorldLastEvent;
 
 import org.lwjgl.opengl.GL11;
 
-import com.akashic.ryoiki.fx.BlowPose;
 import com.akashic.ryoiki.fx.CastPose;
 import com.akashic.ryoiki.mode.AbilityMath;
 import com.akashic.ryoiki.mode.ModeWire;
@@ -67,8 +66,6 @@ public final class AbilityFx {
     private final List<Cut> cuts = new ArrayList<>();
     /** The red orbs of the star void, each by the entity that gathers it. */
     private final Map<Integer, Red> reds = new HashMap<>();
-    /** Who waits for its red orb to come back: 0 on guard, 1 striking, and for how many ticks, by entity. */
-    private final Map<Integer, int[]> punches = new HashMap<>();
     /** Who is making the gesture of a technique: its kind, how long ago it began and how long it lasts, by entity. */
     private final Map<Integer, int[]> gestures = new HashMap<>();
 
@@ -173,7 +170,6 @@ public final class AbilityFx {
 
     void clear() {
         reds.clear();
-        punches.clear();
         BlackFlashFx.INSTANCE.clear();
         orbs.clear();
         cuts.clear();
@@ -266,15 +262,16 @@ public final class AbilityFx {
                     r.bx = r.beforeX = m.x;
                     r.by = r.beforeY = m.y;
                     r.bz = r.beforeZ = m.z;
-                    // Who let it fly squares up for what it brings.
-                    punches.put(m.entity, new int[] { 0, 0 });
+                    // Who let it fly squares up for what it brings: for as long as it takes to come.
+                    gesture(mc, m.entity, CastPose.READY, AbilityMath.RED_BACK_TICKS + 30, false);
                 }
                 r.toX = m.x;
                 r.toY = m.y;
                 r.toZ = m.z;
                 int state = Math.round(m.dx);
                 if (state == 2 && r.state != 2) {
-                    punches.put(m.entity, new int[] { 1, 0 });
+                    // It is here, with someone: the black blow.
+                    gesture(mc, m.entity, CastPose.BLACK, (int) CastPose.BLACK_TICKS, true);
                 }
                 r.state = state;
             }
@@ -298,7 +295,11 @@ public final class AbilityFx {
                     ClientDomain.INSTANCE.strucks.put(victim, struck);
                     BlackFlashFx.INSTANCE.start(m.x, m.y, m.z, m.dx, m.dy, m.dz, m.entity, victim);
                 } else {
-                    punches.remove(m.entity);
+                    // Back with nobody: the stance is let go.
+                    int[] g = gestures.get(m.entity);
+                    if (g != null && g[0] == CastPose.READY) {
+                        g[2] = Math.min(g[2], g[1] + 6);
+                    }
                     if (r.burst && own == m.entity) {
                         CameraShake.INSTANCE.kick(5);
                     }
@@ -356,24 +357,6 @@ public final class AbilityFx {
             : who.prevRotationPitch + (who.rotationPitch - who.prevRotationPitch) * partialTicks;
         pose[0] = CastPose.sample(g[0], age, g[2], pitch);
         return CastPose.layer(age, g[2]);
-    }
-
-    /**
-     * The guard, and then the punch, of who waits for its red orb to come back: the degrees of
-     * {@link BlowPose#BONES}, or null; and in {@code shows} how much of it shows.
-     */
-    float[] punch(int entity, float partialTicks, float[] shows) {
-        int[] p = punches.get(entity);
-        if (p == null) {
-            return null;
-        }
-        float age = p[1] + partialTicks;
-        if (p[0] == 0) {
-            shows[0] = Draw.clamp01(age / 4);
-            return BlowPose.guard();
-        }
-        shows[0] = Draw.clamp01((BlowPose.TICKS - age) / 3);
-        return BlowPose.sample(1, Math.min(age, BlowPose.TICKS));
     }
 
     /** For the development harness: an effect, as if the server had announced it. */
@@ -469,16 +452,6 @@ public final class AbilityFx {
                 over = r.age > r.charge + 12;
             }
             if (over) {
-                i.remove();
-            }
-        }
-        for (Iterator<Map.Entry<Integer, int[]>> i = punches.entrySet()
-            .iterator(); i.hasNext();) {
-            Map.Entry<Integer, int[]> e = i.next();
-            int[] p = e.getValue();
-            p[1]++;
-            Red r = reds.get(e.getKey());
-            if (p[0] == 1 ? p[1] > BlowPose.TICKS : r == null || r.back < 0 || r.ended == 2) {
                 i.remove();
             }
         }

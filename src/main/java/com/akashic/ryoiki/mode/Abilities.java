@@ -463,6 +463,10 @@ final class Abilities {
             target.rotationYaw,
             target.rotationPitch);
         red.blow = AbilityMath.BLACK_WIND;
+        // The caster goes into the blow: a step forward with it.
+        caster.motionX += way[0] * AbilityMath.BLACK_STEP;
+        caster.motionZ += way[2] * AbilityMath.BLACK_STEP;
+        caster.velocityChanged = true;
         tellBack(red, AbilityMath.RED_BACK, 2, mode);
         return true;
     }

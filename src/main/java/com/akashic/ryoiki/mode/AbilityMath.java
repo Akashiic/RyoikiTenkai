@@ -95,7 +95,9 @@ public final class AbilityMath {
     /** Ticks from the one it brought being set before the caster to the blow: the fist's way. */
     public static final int BLACK_WIND = 3;
     /** How far before the caster the one it brought is set, and how the black blow throws. */
-    public static final double BLACK_AT = 1.5;
+    public static final double BLACK_AT = 1.7;
+    /** The step its caster takes into the blow, in blocks a tick. */
+    public static final double BLACK_STEP = 0.32;
     public static final double BLACK_THROW = 1.9;
     public static final double BLACK_LIFT = 0.42;
     /** The part of its harm it still does at the end of its range. */

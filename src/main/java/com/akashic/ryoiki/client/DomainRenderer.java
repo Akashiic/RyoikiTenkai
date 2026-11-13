@@ -378,13 +378,7 @@ public final class DomainRenderer {
                 fightShows = Math.max(fightShows, struck.layer(partial));
             }
         }
-        if (fight == null) {
-            // The guard and the punch of the black blow, for who waits for its red orb to come back.
-            float[] shows = new float[1];
-            fight = AbilityFx.INSTANCE.punch(id, partial, shows);
-            fightShows = shows[0];
-        }
-        // The gesture of a technique of the sorcerer mode: the chest, the head and the arms.
+        // The gesture of a technique of the sorcerer mode: the whole body, the hands and the fingers.
         float[][] gesture = new float[1][];
         float gestureShows = AbilityFx.INSTANCE.gesture(id, partial, gesture);
         boolean fighter = domain.fused() && (domain.clashEntities[0] == id || domain.clashEntities[1] == id);

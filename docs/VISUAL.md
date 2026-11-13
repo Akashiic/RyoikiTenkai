@@ -507,6 +507,28 @@ o desenho e o nome no mod são próprios, como no resto.
   sem branco no meio), fios vermelhos entrando nela e arcos vermelhos de fio branco em volta do corpo na carga,
   chão avermelhado; no voo, rastro vermelho, anéis vermelhos pelo caminho e estilhaços em cada um que ela
   atravessa. O golpe negro tem a sua própria sequência, abaixo.
+* **O corpo inteiro, por cima da pose do modelo** (refeito em 2026-11-13: o dono viu a personagem "com a mão na
+  cintura durante um feitiço vermelho" e mandou dar um *overwrite* na pose passiva e fazer a animação do golpe
+  negro). A causa: a animação parada do modelo mexe o braço esquerdo (cotovelo a 92 graus, mão virada, a "mão na
+  cintura"), a mão e as pernas, e os gestos só posavam peito, cabeça e braços, com o braço esquerdo dobrado de
+  propósito. Agora `fx/CastPose` posa **21 ossos** (corpo, pernas, pés, as duas mãos, dedos e polegares) e
+  `client/PlayerPoses` manda todos com peso total: **no modo nada da animação do modelo sobra neles**. Há teste
+  para isso (o cotovelo esquerdo nunca dobra mais que 20 graus num feitiço, a mão esquerda fica neutra).
+
+  ![Os gestos](img/gestos-vermelho.png)
+
+  * **Carga do vermelho** (1ª linha): um arremesso. O corpo recua e gira para longe do alvo sob o braço erguido,
+    peso na perna de trás, o outro braço solto e afastado do corpo.
+  * **Disparo** (2ª linha): quadril primeiro, peito depois, braço por último; o corpo vai à frente sobre a perna
+    da frente dobrada, o braço aponta na linha dos olhos e o outro é jogado para trás.
+  * **Esperando a volta** (3ª linha, `CastPose.READY`): de lado, joelhos dobrados, **punho fechado recolhido nas
+    costelas**, tremendo, e a outra mão aberta à frente.
+  * **O golpe negro** (4ª linha, `CastPose.BLACK`, 26 ticks): dessa postura o quadril gira, o peito segue, e o
+    punho sai reto na linha dos olhos com o corpo todo atrás, perna da frente funda e a de trás esticada; chega
+    no tick 3 (junto com o dano), passa um pouco do ponto, **fica sustentado** enquanto o efeito acontece, e só
+    então o corpo se recolhe. Quem conjura dá um passo para dentro do golpe.
+  * A cabeça desfaz o giro e a inclinação do corpo (fica no alvo) e as solas ficam niveladas, calculadas.
+    Correndo, as pernas continuam correndo.
 * **O golpe negro** (`client/BlackFlashFx`, refeito em 2026-11-13: o dono recusou a primeira versão, uns raios
   finos e um clarão, como "trabalho preguiçoso", e mandou fazer igual ou melhor que o do jogo de referência). O
   agente reviu o trecho quadro a quadro. É uma sequência **cronometrada pelo relógio**, não pelos ticks, para ser
@@ -581,6 +603,7 @@ puro, sem plugin):
 | Repulsão com R segurado, ninguém no caminho | o orbe volta e o conjurador vai de 20 para 16 |
 | O golpe negro, momento a momento (relógio parado, a cada 20 ms), no cliente de desenvolvimento com e sem a Angelica | os quatro quadros do impacto, a explosão e as faíscas, como descrito; nenhum erro de desenho no registro |
 | O golpe negro de verdade, entre dois jogadores, filmado nas duas telas | faíscas no punho, quadro de impacto, tela tomada pelo emaranhado, traços pretos e contas; alvo de 20 para 8 |
+| As poses novas no visor de quatro vistas (carga, disparo, espera, golpe negro em 4 instantes) e a sequência no jogo | braço esquerdo solto, sem mão na cintura; corpo inteiro no arremesso e no soco |
 | O gesto no visor de quatro vistas e no jogo (terceira pessoa, e visto pelo outro) | braço acima da cabeça com o orbe sobre a mão; braço apontando no disparo |
 | A passada no visor de quatro vistas (parado, trote, disparada, pulo) e filmada de lado e de trás | trote, disparada e pulo reconhecíveis; braços para trás e queda ajustados depois da primeira vista |
 | Gestos no visor de quatro vistas | mão à frente na altura do ombro e recolhida; mão acima do ombro oposto, e baixa do lado dela no fim |

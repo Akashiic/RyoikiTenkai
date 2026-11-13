@@ -1,5 +1,9 @@
 package com.akashic.ryoiki.client;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 import net.minecraft.entity.player.EntityPlayer;
 
 import com.akashic.ryoiki.fx.BlowPose;
@@ -10,22 +14,27 @@ import com.akashic.ryoiki.fx.Gait;
  * Everything the mod asks of a player's model at once, as one pose. A model takes one pose a frame, so what is
  * layered here is layered by hand: the way the body stands, runs and jumps in the sorcerer mode underneath; over
  * it, the guard and the blows of a clash and the blow taken; over that, the gesture of a technique.
+ *
+ * <p>
+ * The pose is of every bone the mod knows, hands and fingers included, at full weight: in the mode <b>nothing of
+ * the model's own animation is left in them</b>. A model's resting pose may have a hand on a hip or a wrist turned,
+ * and a bone the mod did not pose would keep that through a technique.
  */
 final class PlayerPoses {
 
-    private static final int BONES = BlowPose.BONES.length;
-    /** Where each bone of a gesture is among the bones of the body. */
+    private static final int BODY = BlowPose.BONES.length;
+    /** The bones of the body and, after them, those only a gesture has (the hands, their fingers). */
+    private static final String[] ALL;
+    /** Where each bone of a gesture is among them. */
     private static final int[] GESTURE = new int[CastPose.BONES.length];
-    /** The bones of the arms and of the legs, among the bones of the body. */
+    /** The bones of the arms and of the legs, among the bones of the body; the first is the whole body. */
+    private static final int WHOLE = 0;
     private static final int ARMS_FROM = 3;
     private static final int ARMS_TO = 6;
     private static final int LEGS_FROM = 7;
 
-    /** The bones of the body and, after them, those only a gesture has (a hand, its fingers). */
-    private static final String[] ALL;
-
     static {
-        java.util.List<String> all = new java.util.ArrayList<>(java.util.Arrays.asList(BlowPose.BONES));
+        List<String> all = new ArrayList<>(Arrays.asList(BlowPose.BONES));
         for (int i = 0; i < CastPose.BONES.length; i++) {
             int at = all.indexOf(CastPose.BONES[i]);
             if (at < 0) {
@@ -55,7 +64,8 @@ final class PlayerPoses {
         float moving = 0;
         if (track != null) {
             Gait.State state = track.at(partial);
-            pose = Gait.sample(state);
+            // With the hands and the fingers, at rest: not as the model's own animation would leave them.
+            pose = Arrays.copyOf(Gait.sample(state), ALL.length * 3);
             shows = track.weight(partial);
             moving = state.moving;
             if (fighter) {
@@ -68,11 +78,11 @@ final class PlayerPoses {
         }
         if (fight != null && fightShows > 0) {
             if (pose == null) {
-                pose = fight;
+                pose = Arrays.copyOf(fight, ALL.length * 3);
                 shows = fightShows;
             } else {
                 // A blow is thrown with the whole body from where it stands; running, the legs go on running.
-                for (int bone = 0; bone < BONES; bone++) {
+                for (int bone = 0; bone < BODY; bone++) {
                     blend(pose, fight, bone, fightShows * (bone >= LEGS_FROM ? 1 - 0.85F * moving : 1));
                 }
                 shows = Math.max(shows, fightShows);
@@ -83,21 +93,23 @@ final class PlayerPoses {
                 FuturaBridge.INSTANCE.pose(player, CastPose.BONES, gesture, gestureShows);
                 return true;
             }
-            // With the hand and the fingers, which the body's pose does not have.
-            pose = java.util.Arrays.copyOf(pose, ALL.length * 3);
             for (int i = 0; i < GESTURE.length; i++) {
+                int bone = GESTURE[i];
+                // A gesture is made with the whole body from where it stands; running, the legs go on running and
+                // the body keeps the lean of the run.
+                boolean carried = bone == WHOLE || bone >= LEGS_FROM && bone < BODY;
+                float much = gestureShows * (carried ? 1 - 0.85F * moving : 1);
                 for (int axis = 0; axis < 3; axis++) {
-                    int at = GESTURE[i] * 3 + axis;
-                    pose[at] += (gesture[i * 3 + axis] - pose[at]) * gestureShows;
+                    int at = bone * 3 + axis;
+                    pose[at] += (gesture[i * 3 + axis] - pose[at]) * much;
                 }
             }
-            FuturaBridge.INSTANCE.pose(player, ALL, pose, Math.max(shows, gestureShows));
-            return true;
+            shows = Math.max(shows, gestureShows);
         }
         if (pose == null || shows <= 0) {
             return false;
         }
-        FuturaBridge.INSTANCE.pose(player, BlowPose.BONES, pose, shows);
+        FuturaBridge.INSTANCE.pose(player, ALL, pose, shows);
         return true;
     }
 
