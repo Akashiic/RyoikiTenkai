@@ -44,6 +44,16 @@ final class VoidLook implements DomainLook {
     public void sky(float radius, float time) {
         GL11.glDisable(GL11.GL_BLEND);
         Draw.sphere(radius, 0x010208, 0x1A1650, 0x010208, 0.55F);
+        skyFeatures(radius, time);
+    }
+
+    @Override
+    public float[] backdrop() {
+        return new float[] { 0x010208, 0x1A1650, 0x010208, 0.55F };
+    }
+
+    @Override
+    public void skyFeatures(float radius, float time) {
         Draw.additive();
         for (int pass = 0; pass < 2; pass++) {
             // Once as it is, once upside down and fainter: the reflection in the floor.

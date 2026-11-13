@@ -10,6 +10,8 @@ final class Draw {
 
     /** Everything drawn while this is below 1 is that much fainter (reflections, fades). */
     static float alpha = 1;
+    /** A second factor on every colour's alpha: what a whole part of a scene is faded by. */
+    static float fade = 1;
 
     /** The camera's right and up, in the space things are being drawn in: what faces the camera is built on them. */
     private static float rightX;
@@ -48,7 +50,7 @@ final class Draw {
     }
 
     static void color(Tessellator t, int rgb, float a) {
-        a *= alpha;
+        a *= alpha * fade;
         t.setColorRGBA_F(
             (rgb >> 16 & 255) / 255F,
             (rgb >> 8 & 255) / 255F,
@@ -108,6 +110,51 @@ final class Draw {
             }
         }
         t.draw();
+    }
+
+    /** How much of the second of two skies a direction shows, 0 to 1. */
+    interface SkyMask {
+
+        float second(double dirX, double dirY, double dirZ);
+    }
+
+    /**
+     * Two skies in one: each a sphere as {@link #sphere} draws it (top, horizon, below and the power of its band),
+     * and for every direction how much of the second shows. Finer than a sky alone, for the edge between them.
+     */
+    static void spheres(float radius, float[] first, float[] second, SkyMask mask) {
+        Tessellator t = Tessellator.instance;
+        int stacks = 40;
+        int slices = 72;
+        t.startDrawingQuads();
+        for (int i = 0; i < stacks; i++) {
+            double p0 = Math.PI * i / stacks - Math.PI / 2;
+            double p1 = Math.PI * (i + 1) / stacks - Math.PI / 2;
+            for (int j = 0; j < slices; j++) {
+                double a0 = Math.PI * 2 * j / slices;
+                double a1 = Math.PI * 2 * (j + 1) / slices;
+                spheresVertex(t, radius, p0, a0, first, second, mask);
+                spheresVertex(t, radius, p0, a1, first, second, mask);
+                spheresVertex(t, radius, p1, a1, first, second, mask);
+                spheresVertex(t, radius, p1, a0, first, second, mask);
+            }
+        }
+        t.draw();
+    }
+
+    private static void spheresVertex(Tessellator t, float radius, double pitch, double yaw, float[] first,
+        float[] second, SkyMask mask) {
+        double y = Math.sin(pitch);
+        double r = Math.cos(pitch);
+        double x = Math.cos(yaw) * r;
+        double z = Math.sin(yaw) * r;
+        color(t, mix(skyColor(first, y), skyColor(second, y), mask.second(x, y, z)), 1);
+        t.addVertex(x * radius, y * radius, z * radius);
+    }
+
+    private static int skyColor(float[] sky, double y) {
+        float blend = (float) Math.pow(Math.abs(y), sky[3]);
+        return mix((int) sky[1], (int) sky[y >= 0 ? 0 : 2], blend);
     }
 
     private static void sphereVertex(Tessellator t, float radius, double pitch, double yaw, int top, int horizon,

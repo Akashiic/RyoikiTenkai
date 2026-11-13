@@ -59,14 +59,38 @@ modelo, textura nem som no mod (os sons são arquivos do dono, ver "Som"). A are
 
 * **Sinal do rival:** quem responde a um domínio ganha a própria faixa e a própria voz, por cima do que estiver na
   tela (o sinal dele pode terminar já dentro da arena).
-* **Durante, a fusão** (`Scene`): os dois domínios **dividem a arena**. Uma linha a atravessa (a costura); atrás
-  dela fica o domínio do anfitrião e à frente o do rival, cada um com o seu céu, o seu chão, as suas estruturas e a
-  sua névoa, desenhados só na sua parte (um plano de corte). O cenário do rival é desenhado **virado de frente
-  para a linha**, para o que ele tem (o salão, o astrolábio) ficar na parte dele. A costura passa pelo meio da arena
-  num Vazio e, num Santuário, por onde os conjuradores ficam, diante da porta do salão. Nela há uma linha de luz no
-  chão e uma cortina tênue (tênue porque os conjuradores começam o choque em cima dela). Perto da costura a névoa
-  mistura as cores dos dois. Para quem está fora, **o domo fica preto**. O dono pediu a fusão em 2026-11-13, no
-  lugar da alternância de cenários que havia antes.
+* **Durante, a fusão** (`Scene`, `fx/Frontier`, `ClashFront`): os dois domínios **dividem a arena e brigam por
+  ela**. O dono pediu a fusão em 2026-11-13 e recusou a primeira versão (uma linha reta com um corte seco) como
+  "pobre e medíocre": quer os efeitos dos dois domínios **se misturando e se repelindo**, sem linha. O que há:
+
+  * **A frente** (`Frontier`, lógica pura com teste) não é uma linha: é a soma de ondas longas e lentas, ondas
+    curtas e rápidas em sentidos opostos, e **línguas** arredondadas em que um domínio entra no outro e o outro
+    nele, lado a lado, crescendo e cedendo (até 5,2 blocos do lugar médio). Fica em torno da costura da arena
+    (o meio, num Vazio; diante da porta do salão, num Santuário).
+  * **A frente responde à luta:** quem está à frente no placar **empurra** a frente para o chão do outro (até 9
+    blocos no meio, menos junto às paredes), e ela segue o placar aos poucos; **cada golpe que acerta dá um
+    tranco** nela inteira e solta duas corcovas que correm ao longo dela a partir de onde bateu.
+  * **Cada cenário só existe do seu lado**, com exatidão: chão e estruturas são cortados ao longo da frente. Um
+    corte do OpenGL é reto e a frente não é, então cada cenário é montado uma vez numa lista e redesenhado para
+    cada um dos 56 trechos da frente, entre duas paredes e do seu lado do trecho (`Scene#clip`). O cenário do rival
+    é desenhado **virado de frente para a frente**, para o que ele tem ficar no chão dele.
+  * **Os céus se misturam**, sem corte: as cores de fundo dos dois são uma esfera só, cada direção uma mistura
+    conforme o quanto aquele pedaço de céu está além da frente, com uma turbulência lenta, de modo que a borda
+    deriva; as luzes de cada céu (estrelas, lua, astrolábio) somem em seis degraus pela mesma faixa
+    (`DomainSky#fused`).
+  * **Repelindo-se** (`ClashFront`): uma linha quente corre pela frente em **contas de luz** (dois trens em
+    velocidades diferentes, escuro entre eles), com uma parede baixa de luz sobre ela; **descargas** saltam dela
+    para um chão ou para o outro, tremendo enquanto duram; **faíscas** são atiradas para os dois lados e caem;
+    o chão **racha** a partir dela, com um ramo, na cor do domínio que empurra.
+  * **Misturando-se:** a luz de cada domínio fica **derramada no chão do outro** por uns 4 blocos além da
+    frente, respirando; **partículas** de cada um atravessam devagar e vão tomando a cor do outro, menores, até
+    sumir; colunas tênues de brilho sobem da frente até a faixa onde os céus se misturam.
+  * **Um golpe que acerta** abre um anel no chão a partir de onde empurrou a frente, e esquenta a frente ali.
+  * A luz da frente é quase apagada **bem onde a câmera está** (os conjuradores começam o choque em cima dela, e
+    luz somada a um palmo do olho é tela branca). Perto da frente a névoa mistura as cores dos dois. Para quem está
+    fora, **o domo fica preto**.
+
+  Tudo sai da forma da frente, do tempo e do número do domínio: todos na arena veem o mesmo.
 * **Na tela, no topo:** "CHOQUE DE DOMÍNIOS", o **contador** grande de 15 a 0 (vermelho e pulsando nos últimos 5 s) e,
   dos lados, a **barra de cada conjurador** com nome e porcentagem, na cor do domínio dele, enchendo em direção ao
   meio. Fica no topo porque embaixo estão a vida, a armadura e a barra de itens.
@@ -166,8 +190,9 @@ Verificado com dois clientes no servidor de teste: rival vencendo por tempo e po
 barra cheia, empate, resposta durante o sinal de mão e depois de o domínio abrir. O golpe 1 e a reação a levar golpe foram vistos quadro a quadro no modelo de teste e rodaram num choque com dois
 clientes. **A verificar:** a
 sensação do combo com jogadores de verdade (ritmo, alcance, força do arremesso), os golpes em outros modelos (ossos
-com outros nomes ou outra pose de repouso), a fusão com placa de vídeo de verdade e com shaderpack (o plano de corte é da
-pipeline fixa do OpenGL e um shaderpack pode ignorá-lo), quem assiste de fora perto do domo, mais de um jogador pego
+com outros nomes ou outra pose de repouso), a fusão com placa de vídeo de verdade (custo: cada cenário é redesenhado 58 vezes a partir de uma lista) e com
+shaderpack (os planos de corte e as listas são da pipeline fixa do OpenGL; um shaderpack pode ignorá-los, e
+`-Dryoiki.fusionLists=false` desliga as listas), quem assiste de fora perto do domo, mais de um jogador pego
 além dos dois conjuradores, e o choque em sobrevivência com armas e habilidades de outros mods.
 
 ## Som (`DomainSounds`, `SoundCues`, `OwnerSounds`)

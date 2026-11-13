@@ -1,7 +1,9 @@
 package com.akashic.ryoiki.client;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import net.minecraft.client.Minecraft;
@@ -11,6 +13,7 @@ import net.minecraft.entity.Entity;
 import com.akashic.ryoiki.DomainType;
 import com.akashic.ryoiki.arena.ShrineCore;
 import com.akashic.ryoiki.fx.BlowPose;
+import com.akashic.ryoiki.fx.Frontier;
 import com.akashic.ryoiki.fx.SlashField;
 import com.akashic.ryoiki.fx.SoundCues;
 import com.akashic.ryoiki.net.ChunkKeep;
@@ -32,6 +35,7 @@ public final class ClientDomain {
     /** A sound in the world is heard up to 16 blocks times its volume. */
     private static final float SIGN_VOLUME = 3F;
     private static final float DOME_VOLUME = 4F;
+    private static final float FRONT_FOLLOW = 0.14F;
 
     /** A blow of a caster in a clash, as it is drawn: the pose of the body comes from {@link BlowPose}. */
     public static final class Blow {
@@ -165,6 +169,15 @@ public final class ClientDomain {
     public final int[] clashHits = new int[2];
     /** The hand sign of a rival, which is not a domain of its own. */
     public Dome rivalSign;
+    /**
+     * The front between the two domains: its shape, how far whoever is ahead has pushed it (-1 to 1, the host's
+     * lead; it follows the score, not jumps to it), and the blows that shoved it (where along the seam, how many
+     * ticks ago, and 1 for the host's or -1 for the rival's).
+     */
+    public Frontier front;
+    public float frontPush;
+    private float frontPushBefore;
+    public final List<float[]> frontShoves = new ArrayList<>();
     /** The blow each caster is in, by entity id. */
     public final Map<Integer, Blow> blows = new LinkedHashMap<>();
     /** The blow each caster is taking, by entity id. */
@@ -298,6 +311,10 @@ public final class ClientDomain {
                     clashEntities[1] = m.rivalEntity;
                     clashHits[0] = 0;
                     clashHits[1] = 0;
+                    front = new Frontier(m.session, radius);
+                    frontPush = 0;
+                    frontPushBefore = 0;
+                    frontShoves.clear();
                     int run = ++clashRun;
                     DomainSounds.track(SoundCues.CLASH_TRACK, 1F, () -> clash >= 0 && clashRun == run);
                 }
@@ -334,6 +351,11 @@ public final class ClientDomain {
                     Struck struck = new Struck();
                     struck.side = m.blow % 2 == 1 ? 1 : -1;
                     strucks.put(other, struck);
+                    if (victim != null && inside != null) {
+                        // The blow shoves the front, from where it landed, away from who struck.
+                        double[] at = toScene(victim.posX, victim.posZ);
+                        frontShoves.add(new float[] { (float) at[0], 0, clashEntities[0] == m.casterEntity ? 1 : -1 });
+                    }
                     if (victim != null) {
                         DomainSounds.playAt(SoundCues.IMPACT, victim.posX, victim.posY + 1, victim.posZ, 1F);
                     }
@@ -403,7 +425,7 @@ public final class ClientDomain {
 
     /** Whether two domains share the arena now: each is drawn in its half ({@link #sceneSeam}). */
     public boolean fused() {
-        return inside != null && clash == session && clashTypes[0] != null;
+        return inside != null && clash == session && clashTypes[0] != null && front != null;
     }
 
     /**
@@ -413,6 +435,30 @@ public final class ClientDomain {
      */
     public float sceneSeam() {
         return openedAs == DomainType.MALEVOLENT_SHRINE ? ShrineCore.CASTER_DISTANCE : 0;
+    }
+
+    /** Where a place of the world is in the arena's scene: along the seam, and before the arena's centre. */
+    public double[] toScene(double worldX, double worldZ) {
+        double a = Math.toRadians(yaw);
+        double x = worldX - arenaX;
+        double z = worldZ - arenaZ;
+        return new double[] { x * Math.cos(a) + z * Math.sin(a), -x * Math.sin(a) + z * Math.cos(a) };
+    }
+
+    /**
+     * The front between the two domains of a clash, now: points across the arena, for each how far along the seam
+     * and how far before it ({@link Frontier#line}).
+     */
+    public float[] frontLine(float partialTicks) {
+        float[] shoves = new float[frontShoves.size() * 3];
+        for (int i = 0; i < frontShoves.size(); i++) {
+            float[] shove = frontShoves.get(i);
+            shoves[i * 3] = shove[0];
+            shoves[i * 3 + 1] = shove[1] + partialTicks;
+            shoves[i * 3 + 2] = shove[2];
+        }
+        float push = frontPushBefore + (frontPush - frontPushBefore) * partialTicks;
+        return front.line(clashAge + partialTicks, push, shoves);
     }
 
     /** How far before the seam the centre of a rival's scene is put: a shrine's hall stands back from it. */
@@ -479,6 +525,14 @@ public final class ClientDomain {
         }
         if (clash >= 0) {
             clashAge++;
+            // The front goes after the score: a seventh of the way each tick.
+            frontPushBefore = frontPush;
+            frontPush += ((clashHits[0] - clashHits[1]) / 16F - frontPush) * FRONT_FOLLOW;
+            for (Iterator<float[]> it = frontShoves.iterator(); it.hasNext();) {
+                if (++it.next()[1] >= Frontier.SHOVE_TICKS) {
+                    it.remove();
+                }
+            }
             if (clashTime > 0) {
                 clashTime--;
             }

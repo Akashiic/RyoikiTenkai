@@ -3,6 +3,7 @@ package com.akashic.ryoiki.client;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.ScaledResolution;
+import net.minecraft.client.renderer.GLAllocation;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.entity.RenderManager;
 import net.minecraft.entity.Entity;
@@ -19,6 +20,7 @@ import org.lwjgl.opengl.GL11;
 import com.akashic.ryoiki.DomainType;
 import com.akashic.ryoiki.RyoikiTenkai;
 import com.akashic.ryoiki.fx.BlowPose;
+import com.akashic.ryoiki.fx.Frontier;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 
@@ -34,9 +36,12 @@ public final class DomainRenderer {
     private static final int CLASH_BORDER = 0x050505;
     /** Ticks the burst of a blow that landed is drawn for. */
     private static final int IMPACT_TICKS = 5;
-    /** The curtain where two domains meet, and the light it throws on the floor to each side. */
-    private static final float SEAM_HEIGHT = 3.5F;
-    private static final float SEAM_WIDTH = 0.6F;
+    /**
+     * Whether a fused scene is put in a display list and replayed for each piece of its ground (else it is built
+     * again for each): the same picture, far less work. {@code -Dryoiki.fusionLists=false} turns it off.
+     */
+    private static final boolean LISTS = !"false".equals(System.getProperty("ryoiki.fusionLists"));
+    private static int lists = -1;
     /** Blocks about the line over which the fog goes from one domain's colour to the other's. */
     private static final float FOG_BLEND = 8;
 
@@ -87,38 +92,59 @@ public final class DomainRenderer {
                 domain.arenaZ - RenderManager.renderPosZ);
             // The scene is laid out behind where the caster looked: the same for everyone in the domain.
             GL11.glRotatef(-domain.yaw, 0, 1, 0);
-            // One domain, or the two of a clash, each in its part of the arena.
+            float[] line = domain.fused() ? domain.frontLine(event.partialTicks) : null;
+            // One domain, or the two of a clash, each on its ground.
             for (int part = 0; part < Scene.parts(domain); part++) {
                 DomainLook look = Scene.look(domain, part);
-                GL11.glPushMatrix();
-                Scene.clip(domain, part);
-                Scene.enter(domain, part);
-                Draw.camera(domain.yaw + (Scene.turned(domain, part) ? 180 : 0));
                 double[] cam = Scene.local(domain, part, sceneX, sceneZ);
-                // The floor does not hide what is drawn after it: the mist and the lights lie right on it.
-                GL11.glDepthMask(false);
-                look.floor(far, domain.radius, time);
-                GL11.glDepthMask(true);
-                look.props(
-                    far,
-                    domain.radius,
-                    time,
-                    domain.session,
-                    cam[0],
-                    RenderManager.renderPosY - domain.arenaY,
-                    cam[1]);
+                double camY = RenderManager.renderPosY - domain.arenaY;
+                boolean turned = Scene.turned(domain, part);
+                int part0 = part;
+                Runnable draw = () -> {
+                    GL11.glPushMatrix();
+                    Scene.enter(domain, part0);
+                    Draw.camera(domain.yaw + (turned ? 180 : 0));
+                    // The floor does not hide what is drawn after it: the mist and the lights lie right on it.
+                    GL11.glDepthMask(false);
+                    look.floor(far, domain.radius, time);
+                    GL11.glDepthMask(true);
+                    look.props(far, domain.radius, time, domain.session, cam[0], camY, cam[1]);
+                    GL11.glPopMatrix();
+                };
+                if (line == null) {
+                    draw.run();
+                    continue;
+                }
+                // The scene is put together once and drawn again for each piece of its ground.
+                if (LISTS) {
+                    if (lists < 0) {
+                        lists = GLAllocation.generateDisplayLists(2);
+                    }
+                    GL11.glNewList(lists + part, GL11.GL_COMPILE);
+                    draw.run();
+                    GL11.glEndList();
+                }
+                for (int piece = 0; piece < Scene.pieces(domain); piece++) {
+                    Scene.clip(domain, part, piece, line);
+                    if (LISTS) {
+                        GL11.glCallList(lists + part);
+                    } else {
+                        draw.run();
+                    }
+                }
                 Scene.leave();
-                GL11.glPopMatrix();
             }
-            if (domain.fused()) {
-                seam(domain, time);
+            if (line != null) {
+                ClashFront.draw(domain, line, domain.clashAge + event.partialTicks, event.partialTicks);
             }
             GL11.glPopMatrix();
         }
         for (ClientDomain.Blow blow : domain.blows.values()) {
             int since = blow.age - blow.landedAt;
             Entity victim = blow.victim < 0 || since >= IMPACT_TICKS ? null : mc.theWorld.getEntityByID(blow.victim);
-            if (victim == null) {
+            if (victim == null || victim == mc.renderViewEntity && mc.gameSettings.thirdPersonView == 0) {
+                // Seen through the eyes of who takes the blow, the burst would be on the eye itself: the jolt of the
+                // camera tells it instead.
                 continue;
             }
             // Where a blow lands: a burst of light at the chest, larger for the finisher.
@@ -235,50 +261,16 @@ public final class DomainRenderer {
         if (domain.inside != null) {
             int c = look(domain.shown()).fogColor();
             if (domain.fused()) {
-                // The distance fades to the colour of the part the camera is in, and to both near the line.
-                double a = Math.toRadians(domain.yaw);
-                double x = RenderManager.renderPosX - domain.arenaX;
-                double z = RenderManager.renderPosZ - domain.arenaZ;
-                double sceneZ = -x * Math.sin(a) + z * Math.cos(a);
-                float rival = Draw.clamp01(0.5F + (float) (sceneZ - domain.sceneSeam()) / FOG_BLEND);
+                // The distance fades to the colour of the ground the camera is on, and to both near the front.
+                double[] at = domain.toScene(RenderManager.renderPosX, RenderManager.renderPosZ);
+                float before = Frontier.before(domain.frontLine(0), (float) at[0], (float) at[1] - domain.sceneSeam());
+                float rival = Draw.clamp01(0.5F + before / FOG_BLEND);
                 c = Draw.mix(look(domain.clashTypes[0]).fogColor(), look(domain.clashTypes[1]).fogColor(), rival);
             }
             event.red = (c >> 16 & 255) / 255F;
             event.green = (c >> 8 & 255) / 255F;
             event.blue = (c & 255) / 255F;
         }
-    }
-
-    /**
-     * Where the two domains of a clash meet: a line of light across the floor and a faint curtain rising from it,
-     * brighter in pulses. Faint, because the casters begin a clash standing on it. Drawn in the arena's scene.
-     */
-    private static void seam(ClientDomain domain, float time) {
-        float z = domain.sceneSeam();
-        float half = (float) Math.sqrt(Math.max(1, domain.radius * domain.radius - z * z));
-        float pulse = 0.75F + 0.25F * (float) Math.sin(time * 0.9F);
-        Draw.additive();
-        GL11.glDepthMask(false);
-        Tessellator t = Tessellator.instance;
-        t.startDrawingQuads();
-        // The curtain: bright at the floor, gone a few blocks up.
-        Draw.color(t, 0xFFFFFF, 0.14F * pulse);
-        t.addVertex(-half, 0.02, z);
-        t.addVertex(half, 0.02, z);
-        Draw.color(t, 0xFFFFFF, 0);
-        t.addVertex(half, SEAM_HEIGHT, z);
-        t.addVertex(-half, SEAM_HEIGHT, z);
-        // The line on the floor, fading to each side.
-        for (int side = -1; side <= 1; side += 2) {
-            Draw.color(t, 0xFFFFFF, 0.6F * pulse);
-            t.addVertex(-half, 0.03, z);
-            t.addVertex(half, 0.03, z);
-            Draw.color(t, 0xFFFFFF, 0);
-            t.addVertex(half, 0.03, z + side * SEAM_WIDTH);
-            t.addVertex(-half, 0.03, z + side * SEAM_WIDTH);
-        }
-        t.draw();
-        GL11.glDepthMask(true);
     }
 
     /** On the screen: the cut-in, the flash that covers the way in and the shatter on the way out. */

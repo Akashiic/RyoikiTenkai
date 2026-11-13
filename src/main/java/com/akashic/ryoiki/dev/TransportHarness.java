@@ -607,6 +607,10 @@ public final class TransportHarness {
             case "blow":
                 heldBlow = Integer.parseInt(rest);
                 break;
+            case "fly":
+                mc.thePlayer.capabilities.isFlying = true;
+                mc.thePlayer.sendPlayerAbilities();
+                break;
             case "film":
                 filmLeft = Integer.parseInt(rest);
                 break;

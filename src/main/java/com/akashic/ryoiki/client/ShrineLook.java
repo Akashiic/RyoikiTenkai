@@ -35,6 +35,16 @@ final class ShrineLook implements DomainLook {
     public void sky(float radius, float time) {
         GL11.glDisable(GL11.GL_BLEND);
         Draw.sphere(radius, 0x000000, 0x4A050B, 0x000000, 0.42F);
+        skyFeatures(radius, time);
+    }
+
+    @Override
+    public float[] backdrop() {
+        return new float[] { 0x000000, 0x4A050B, 0x000000, 0.42F };
+    }
+
+    @Override
+    public void skyFeatures(float radius, float time) {
         for (int pass = 0; pass < 2; pass++) {
             GL11.glPushMatrix();
             if (pass == 1) {
