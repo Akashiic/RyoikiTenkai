@@ -29,6 +29,7 @@ documento é a ordem das peças. O estado de cada uma está em [`VISUAL.md`](VIS
 | | Peça |
 |---|---|
 | B1 | **Santuário: o corte.** Feito em 2026-11-13: arcos de lâmina em rajadas cruzadas, com crescente, fio, estilhaços e cicatriz no chão (`VISUAL.md`). O dono decidiu manter o arremesso do quarto golpe |
+| B1b | **Santuário: riscos no ar.** Feito em 2026-11-13, a pedido do dono: marcas pretas e curtas de lâmina por toda parte, que aparecem e somem (`VISUAL.md`) |
 | B2 | **Vazio: a rajada linear.** Feixes de luz que correm numa direção só, como na abertura do domínio; na abertura e como assinatura dele |
 | B3 | **No choque, os dois misturados:** cortes entrando no chão do Vazio e rajadas atravessando o do Santuário, e o que acontece onde um encontra o outro |
 

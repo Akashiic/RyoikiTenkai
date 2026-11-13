@@ -179,6 +179,7 @@ final class ShrineLook implements DomainLook {
         lights(t, radius, time);
         mist(radius, time);
         embers(t, radius, time);
+        ScratchFx.draw(t, radius, time, seed, camX, camY, camZ);
         SlashFx.draw(t, radius, time, seed, camX, camY, camZ);
     }
 
