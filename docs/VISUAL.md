@@ -1,0 +1,760 @@
+# Visual dos domínios
+
+O que o jogador vê, do sinal de mão ao fim do domínio. Tudo é **desenhado por código** no cliente (`client/`): não há
+modelo, textura nem som no mod (os sons são arquivos do dono, ver "Som"). A arena é feita de blocos invisíveis, então o cliente desenha o domínio inteiro.
+
+> **Sobre a referência.** O dono pediu o visual "igual ao do Jujutsu Shenanigans". O agente não reproduz a arte, os
+> personagens nem as cenas de um jogo ou de um anime existentes (inclusive o santuário de bocas e chifres da
+> referência que ele mandou); o que foi feito é um **visual próprio** com a mesma estrutura dramática (entrada com
+> gesto, domo, interior com um santuário central, cortes, estilhaço). Os dois domínios se chamam, na tela, **Vazio
+> Estelar** e **Santuário Carmesim** (os nomes estão em `assets/ryoikitenkai/lang/`, é só trocar).
+
+![Vazio Estelar](img/visual-vazio.png)
+
+![Santuário Carmesim](img/visual-santuario.png)
+
+## A sequência
+
+| Momento | O que aparece | Onde |
+|---|---|---|
+| Sinal de mão (25 ticks) | Uma **faixa inclinada** cruza a tela de quem está perto (o conjurador e quem está a até raio + 12 blocos). Nela, o **boneco do conjurador com a skin dele faz o gesto**: ergue os braços do repouso até o sinal do domínio (uma mão diante do rosto no vazio, as duas erguidas e unidas diante da boca, espelhadas, no santuário), com um clarão no instante em que o sinal se completa. Ao lado, o nome do domínio e o do jogador, e riscos de velocidade. Entra em 5 ticks e sai nos 4 últimos | `CutIn` |
+| | **A câmera sobre o boneco** (`CutIn#shot`): nos dois domínios, **três planos com cortes secos** aos 6 e aos 12 ticks, com um clarão a cada corte. O boneco está no lugar desde o primeiro quadro e a faixa entra por trás dele. **Vazio:** 1) de costas e de baixo, o corpo inteiro, o braço começando a subir; 2) close na mão que sobe, de lado e inclinado; 3) close frontal do rosto com a mão diante dele, com um tranco quando o sinal se completa. Fundo: braços de luz girando e estrelas em riscos. **Santuário:** 1) de cima e de lado, a cabeça baixa; 2) do chão, olhando para cima, as mãos se unindo em primeiro plano; 3) de frente e **reto** (sem giro nem inclinação lateral), com a câmera acima olhando para baixo: os olhos por cima das mãos unidas. Fundo: uma lua, anéis sobre água vermelha, cortes de luz e brasas. A câmera mira a cabeça ou a mão **do próprio modelo** (medidas no mesmo quadro, numa passada que não desenha nada), e é ela que gira, não o modelo. Com a skin comum (sem o Futura3D) os ângulos são os mesmos, mas a mira é sempre a cabeça | `CutIn` |
+| | Um **selo** no chão sob o conjurador (anéis e doze raios que giram) e uma onda que corre até onde o domo vai ficar | `DomainRenderer#seal` |
+| | O **domo** cresce do conjurador, devagar e depois de uma vez | `DomainRenderer` |
+| Entrada | Flash branco (cobre o teleporte) | `DomainRenderer#onOverlay` |
+| Interior | Céu, reflexo, chão e o que há na arena, conforme o domínio (abaixo) | `DomainSky`, `DomainLook` |
+| Para quem ficou de fora | O domo (branco ou preto) com uma linha de luz onde encosta no chão | `DomainRenderer` |
+| Saída | A tela fica inteira na cor do domínio, **racha** e os **estilhaços** voam, com a cidade atrás. Um tranco na câmera | `Shatter`, `fx/ShardField` |
+
+## Vazio Estelar (`VoidLook`)
+
+* **Céu:** espaço profundo, 1.100 estrelas que piscam (algumas com brilho em cruz), cinco nebulosas.
+* **Astrolábio:** ao norte, um núcleo escuro num aro branco com quatro anéis girando, cada um no seu plano. Abre nos
+  primeiros 45 ticks.
+* **Chão:** vidro negro. O céu inteiro é desenhado de novo de cabeça para baixo, mais fraco, e o chão é translúcido
+  por cima: o reflexo é de verdade. Anéis de luz correm do centro; uma linha marca a borda do domínio.
+* **No ar:** 110 pontos de luz subindo devagar.
+
+### Os dois modos do Vazio (decisão do dono em 2026-11-13)
+
+O dono descreveu o domínio do Vazio em dois modos, e é assim que ele funciona:
+
+**1. Iniciando** (`fx/StreakField`, `StreakFx`; 50 ticks): a rajada. Agulhas de luz **saem todas de um ponto, o
+astrolábio no céu do Vazio, e irradiam para fora dele por toda a arena**, retas e muito rápidas, em direção a quem
+olha e para além, dezenas na tela. Inteira na primeira metade desse tempo, apagando-se na segunda; depois **não há
+mais feixes**.
+
+![Rajada](img/rajada.png)
+
+* **A fonte:** o foco fica a 150 blocos do centro da arena, na direção em que o astrolábio está pendurado. Do
+  centro, os feixes parecem sair dele; quem olha para o outro lado os vê passar por cima e convergir à frente.
+* **O feixe:** a cabeça é um ponto branco; atrás dela a agulha afina até sumir, branca perto da cabeça, depois da
+  sua cor, depois uma mais funda que some na cauda, dentro de um brilho mais largo e fraco. As cores são as do
+  Vazio: branco, azul-gelo, violeta e magenta. No auge o feixe se desdobra: um fio ciano de um lado e um violeta
+  do outro.
+* **Como é montado:** cada feixe corre num raio que parte do foco. Os raios são tomados em faixas: uma grade de
+  3,2 blocos no plano que passa pelo centro da arena e encara o foco. Cada faixa pode mandar um feixe em 2 momentos
+  a cada 18 ticks, com chance proporcional à força da rajada; o feixe guarda a velocidade com que saiu e é visto de
+  onde o raio entra na arena até onde sai dela ou encontra o chão. Sai do número do domínio, da faixa e do momento:
+  todos veem os mesmos. O que passa rente à câmera é atenuado. `vazio_rajada.ogg`, se o dono o pôs, toca na entrada.
+* Histórico: a primeira versão tinha feixes paralelos de parede a parede, junto ao chão; a segunda os fazia irradiar
+  do astrolábio, mas o domínio inteiro, com rajadas periódicas. O dono esclareceu que a rajada é só o início.
+
+**O clarão entre os dois modos** (`StreakField#flash`, com teste; pedido do dono em 2026-11-13): um branco que
+toma a tela na passagem do "iniciando" para o "completo". Junta-se devagar e depois depressa nos últimos 16 ticks
+da rajada (entrada suave, ao cubo), é inteiro no instante em que ela acaba, e se dissolve em 14 ticks sobre o Vazio
+já parado. A rajada fica inteira até 82 % do início e some por baixo dele.
+
+**O céu nos dois modos** (`VoidLook`; ajustado com o dono em 2026-11-13). *Iniciando*: as estrelas vão **na mesma
+direção dos feixes**, para fora do buraco negro, cada uma arrastando um rastro reto; as nebulosas acendem (até 2,3
+vezes), o horizonte clareia em violeta e o halo do buraco negro abre num clarão, com os anéis acelerados. *Completo*:
+o céu é **estável**; as estrelas ficam onde a rajada as deixou e só cintilam, cada nebulosa respira no seu ritmo, o
+horizonte pulsa de leve e o halo bate. (Uma versão anterior fazia o céu girar em torno do astrolábio: os rastros
+saíam em espiral, contra os feixes, e no modo completo o céu parecia "cair para o lado". O dono pediu para tirar.)
+
+**O buraco negro** é o núcleo escuro do astrolábio, com o aro branco e os anéis girando. Fica **à frente do
+conjurador**, um terço acima do horizonte (a cena é virada por onde ele olhava ao conjurar), e ocupa uns 20° do
+céu. Antes ficava atrás do conjurador e tinha pouco mais da metade do tamanho: quem conjurava não o via.
+
+**2. Completo** (o resto dos 14 s): o Vazio **parado** (céu, astrolábio, poeira) e o seu efeito garantido: **todos
+os que foram pegos, menos o conjurador, ficam congelados**, sem poder fazer nada até o domínio acabar.
+
+* **No servidor** (`DomainManager#hold`, `#frozen`): cada um é mantido onde estava (se sair 0,14 bloco do lugar é
+  posto de volta), e os seus cliques em blocos, ataques e quebras são recusados.
+* **No cliente** (`ClientDomain#frozen`, `ClashInput#beforeMove`): as teclas de andar e pular não fazem nada e
+  nenhum clique do mouse passa, para o jogador não ficar sendo puxado de volta. Ele pode olhar em volta.
+* **Decisões do agente, a confirmar com o dono:** o congelamento vale desde o instante em que a pessoa é pega (não
+  só depois da rajada); **não vale durante um choque** nem enquanto alguém responde com o próprio domínio; quem foi
+  pego ainda pode responder com um domínio dentro da janela do choque; e os congelados **podem levar dano** de quem
+  não está congelado.
+* Medido com dois clientes em sobrevivência: quem foi pego tentou andar para a frente, de lado, cavar e bater, e
+  ficou no mesmo lugar nas quatro leituras; o conjurador andou a 0,22 bloco por tick.
+* **A verificar:** teclas de habilidade de outros mods e comandos (`/home`, `/tpa`), que este congelamento não
+  barra; e o congelado parado no ar, se foi pego pulando.
+
+## Santuário Carmesim (`ShrineLook`)
+
+* **Céu:** preto, com o horizonte em brasa e uma **lua de sangue** baixa (refletida na água).
+* **Chão:** água vermelha, com ondas que saem do centro.
+* **O santuário:** no **meio da arena**, atrás do conjurador (que cai 13 blocos à frente da porta, de costas para
+  ela). Um salão quadrado de 10 blocos de lado sobre uma base em degraus, com a porta acesa por dentro, três telhados
+  de beirais virados para cima e uma agulha com três anéis de luz; uma corda grossa com tiras de papel na frente,
+  um estandarte de cada lado e lanternas de pedra. A lua fica atrás dele.
+  * **É sólido.** No sinal de mão o servidor ergue o salão em blocos invisíveis (`arena/ShrineCore`, paredes e teto,
+    girado para onde o conjurador olhava) e o desfaz quando o domínio acaba. Ninguém cai dentro dele. O sólido vai
+    **até o pé da escada** (`ShrineCore.BASE`, 8 blocos do centro), não só até a parede do salão: a base de pedra
+    desenhada é mais larga que o salão, e quem chegava à parede ficava com a câmera dentro da pedra (medido em
+    2026-11-13: agora se para a 8,3 blocos do centro, com os pés fora do primeiro degrau).
+  * **O de um rival também**, desde 2026-11-13: num choque o salão do Santuário que responde é erguido onde é
+    desenhado (`ShrineCore#rival`, além da costura e de frente para ela), maciço, e quem estiver onde ele sobe é
+    posto diante da porta. Antes era só desenho, e um lutador arremessado para trás entrava nele. Se esse
+    Santuário vence, o salão fica; se perde, sai. O salão de um anfitrião que perde para outro Santuário também
+    sai (antes ficava sólido e invisível no meio).
+  * É um desenho próprio. O dono pediu o santuário da referência (bocas na porta, chifres, caveiras) "100%": isso o
+    agente não reproduz.
+* **Em volta:** doze **portais** em anel, fora da parede, cada um com duas lanternas que tremulam;
+  **torres** negras no horizonte; névoa vermelha rasteira em faixas; brasas subindo.
+* **Cortes** (`fx/SlashField`, `SlashFx`; refeitos em 2026-11-13, peça B1 do `PLANO-COMBATE.md`):
+
+  ![Cortes](img/cortes.png)
+
+  Cada corte é **o arco que uma lâmina varre no ar**: um pedaço de círculo (3,5 a 7,5 blocos de raio, 70° a 130°
+  de abertura) num plano próprio, nivelado ou inclinado, bojudo para cima ou para o lado. Vêm em **rajadas de três**,
+  a 2 ticks um do outro, **cruzando-se no mesmo lugar**, e uma rajada nova a cada 5 ticks noutro ponto do chão
+  (nunca no meio, onde o salão os esconderia). Tudo sai do número do domínio e do tempo: todos veem os mesmos.
+
+  * **A varrida:** a lâmina cruza o arco em 2,2 ticks, rápida no começo, com um ponto branco na frente.
+  * **O crescente:** grosso no meio (um quarto do raio) e afinando até as pontas; branco no fio que corta, passando
+    por laranja até carmesim por dentro, sobre uma **sombra escura** que lhe dá corpo contra qualquer fundo claro.
+    Depois afina em direção ao fio e se apaga a partir da ponta por onde começou (10 ticks ao todo).
+  * **O fio:** uma linha quente ao longo do arco, sempre de frente para o olho: um corte visto de perfil continua
+    sendo um corte.
+  * **Estilhaços:** onze por corte, atirados na direção da lâmina quando ela passa por cada ponto, caindo,
+    esfriando de branco para vermelho.
+  * **A cicatriz:** onde o arco passa baixo (até 3,2 blocos do chão) ele risca o chão; o risco é desenhado junto
+    com a lâmina e fica aceso por 44 ticks.
+  * Um corte que passa rente à câmera é atenuado (não vira tela branca). Cada rajada dá um tremor e toca
+    `santuario_corte.ogg`, se o dono o pôs.
+
+  Antes disto cada corte era uma linha reta de 66 blocos atravessando a arena: lia como risco, não como corte.
+* **Riscos no ar** (`fx/ScratchField`, `ScratchFx`; pedido do dono em 2026-11-13): além dos cortes grandes, marcas
+  pequenas de lâmina **por toda parte no ar**: um risco **preto com contorno branco brilhante**, fino, pontudo nas
+  duas extremidades, de 1,1 a 3 blocos, em qualquer ângulo, riscado em um tick, parado um instante e sumindo (5
+  ticks ao todo). "Só um efeito básico", nas palavras dele, o bastante para poluir a visão. O ar é tomado em células
+  de 3 blocos (três camadas a partir do chão); cada célula faz um risco a cada 14 ticks, no seu próprio momento,
+  num lugar e ângulo novos a cada vez, então a qualquer instante perto de um terço das células tem um risco. Sai do
+  número do domínio, da célula e do tempo: todos veem os mesmos. Só as células a até 24 blocos da câmera são
+  desenhadas, e nenhum risco a menos de 1,6 bloco do olho. O contorno é o mesmo traço em luz branca, um pouco mais
+  comprido e duas vezes mais largo, por baixo do preto, com um brilho mais largo e fraco por baixo dele. Na primeira
+  versão do contorno os riscos eram curtos e viravam losangos; foram alongados para manter a proporção de um traço.
+
+## Choque de Domínios (`ClashHud`, `ClientDomain#shown`)
+
+![Choque](img/choque.png)
+
+* **Sinal do rival:** quem responde a um domínio ganha a própria faixa e a própria voz, por cima do que estiver na
+  tela (o sinal dele pode terminar já dentro da arena).
+* **Durante, a fusão** (`Scene`, `fx/Frontier`, `ClashFront`): os dois domínios **dividem a arena e brigam por
+  ela**. O dono pediu a fusão em 2026-11-13 e recusou a primeira versão (uma linha reta com um corte seco) como
+  "pobre e medíocre": quer os efeitos dos dois domínios **se misturando e se repelindo**, sem linha. O que há:
+
+  * **A frente** (`Frontier`, lógica pura com teste) não é uma linha: é a soma de ondas longas e lentas, ondas
+    curtas e rápidas em sentidos opostos, e **línguas** arredondadas em que um domínio entra no outro e o outro
+    nele, lado a lado, crescendo e cedendo (até 5,2 blocos do lugar médio). Fica em torno da costura da arena
+    (o meio, num Vazio; diante da porta do salão, num Santuário).
+  * **A frente responde à luta:** quem está à frente no placar **empurra** a frente para o chão do outro (até 9
+    blocos no meio, menos junto às paredes), e ela segue o placar aos poucos; **cada golpe que acerta dá um
+    tranco** nela inteira e solta duas corcovas que correm ao longo dela a partir de onde bateu.
+  * **Cada cenário só existe do seu lado**, com exatidão: chão e estruturas são cortados ao longo da frente. Um
+    corte do OpenGL é reto e a frente não é, então cada cenário é montado uma vez numa lista e redesenhado para
+    cada um dos 56 trechos da frente, entre duas paredes e do seu lado do trecho (`Scene#clip`). O cenário do rival
+    é desenhado **virado de frente para a frente**, para o que ele tem ficar no chão dele.
+  * **Os céus se misturam**, sem corte: as cores de fundo dos dois são uma esfera só, cada direção uma mistura
+    conforme o quanto aquele pedaço de céu está além da frente, com uma turbulência lenta, de modo que a borda
+    deriva; as luzes de cada céu (estrelas, lua, astrolábio) somem em seis degraus pela mesma faixa
+    (`DomainSky#fused`).
+  * **Repelindo-se** (`ClashFront`): uma linha quente corre pela frente em **contas de luz** (dois trens em
+    velocidades diferentes, escuro entre eles), com uma parede baixa de luz sobre ela; **descargas** saltam dela
+    para um chão ou para o outro, tremendo enquanto duram; **faíscas** são atiradas para os dois lados e caem;
+    o chão **racha** a partir dela, com um ramo, na cor do domínio que empurra.
+  * **Misturando-se:** a luz de cada domínio fica **derramada no chão do outro** por uns 4 blocos além da
+    frente, respirando; **partículas** de cada um atravessam devagar e vão tomando a cor do outro, menores, até
+    sumir; colunas tênues de brilho sobem da frente até a faixa onde os céus se misturam.
+  * **Os efeitos de assinatura atravessam** (peça B3, 2026-11-13; `DomainLook#effects`, `Scene#ground`,
+    `Frontier#crossing`): os cortes e os riscos do Santuário e os feixes do Vazio não são cortados na frente como
+    o cenário. Cada um é desenhado **na arena inteira**, inteiro no próprio chão e **rareando por 14 blocos** chão
+    do outro adentro, de modo que no meio da arena os dois estão no ar ao mesmo tempo.
+
+    ![Os dois misturados](img/choque-misturado.png)
+
+    * **O Vazio não para de iniciar:** fora de um choque a rajada dura 2,5 s e o domínio fica imóvel; num choque
+      ele é contestado e não se completa, então a rajada segue o tempo todo a pouco mais da metade da força
+      (`StreakField#at` com um mínimo de 0,55). Ninguém é congelado num choque.
+    * **Um feixe que entra no chão do Santuário chega cortado:** é desenhado em três pedaços, com um brilho
+      vermelho em cada talho, e mais fraco quanto mais fundo.
+    * **Um corte que entra no chão do Vazio perde a brasa:** a cicatriz que deixa no chão é azul-gelo, não
+      vermelha, e some antes.
+    * As **colunas de brilho** da frente apagam-se perto do olho: vistas de cima, de dentro delas, somavam-se numa
+      lavagem de cor por cima de tudo.
+  * **Um golpe que acerta** abre um anel no chão a partir de onde empurrou a frente, e esquenta a frente ali.
+  * A luz da frente é quase apagada **bem onde a câmera está** (os conjuradores começam o choque em cima dela, e
+    luz somada a um palmo do olho é tela branca). Perto da frente a névoa mistura as cores dos dois. Para quem está
+    fora, **o domo fica preto**.
+
+  Tudo sai da forma da frente, do tempo e do número do domínio: todos na arena veem o mesmo.
+* **Na tela, no topo:** "CHOQUE DE DOMÍNIOS", o **contador** grande de 15 a 0 (vermelho e pulsando nos últimos 5 s) e,
+  dos lados, a **barra de cada conjurador** com nome e porcentagem, na cor do domínio dele, enchendo em direção ao
+  meio. Fica no topo porque embaixo estão a vida, a armadura e a barra de itens.
+* **Resolução:** clarão na cor do vencedor e tremor; o domínio do vencedor recomeça e toma a arena inteira. Se
+  quem venceu foi o rival, o cenário dele **fica onde estava** durante o choque (virado), sem pular de lugar. No
+  empate, a quebra de sempre.
+
+### Os golpes do choque (`ComboChain`, `BlowPose`, `ClientDomain.Blow`)
+
+No choque, cada clique dos dois conjuradores é um golpe de uma **cadeia de quatro**. O dono pediu este trabalho
+**meticuloso e uma peça por vez**: cada golpe é um movimento do corpo inteiro, calculado, e só se passa ao seguinte
+quando o anterior está bom. **Estado: a guarda e o golpe 1 estão feitos; os golpes 2, 3 e 4 são provisórios** (uma
+pose cada, tomada pelo corpo todo de uma vez), só para a cadeia existir.
+
+**Ordem das peças** (uma por vez; cada uma só começa com a anterior aprovada pelo dono):
+
+1. ~~a guarda e o golpe 1 (direto de direita)~~ feito;
+2. ~~levar um golpe~~ feito (abaixo);
+3. os kits, que o dono quer **diferentes por domínio e com golpes de perna**. Proposta do agente, a aprovar:
+
+   | | Vazio Estelar (leve, de longe, preciso) | Santuário Carmesim (pesado, de perto, bruto) |
+   |---|---|---|
+   | 1 | direto de direita (o que está feito) | gancho de esquerda ao corpo |
+   | 2 | jab de esquerda | cruzado de direita de cima para baixo |
+   | 3 | chute lateral alto, de direita | joelhada |
+   | 4 (finalizador) | chute giratório de costas | chute descendente (calcanhar), que derruba |
+
+4. cair no chão e levantar, junto com o primeiro finalizador.
+
+**O que cada eixo faz** (medido no modelo de teste com o visor de quatro vistas; graus como num arquivo de animação):
+
+| Eixo | Positivo |
+|---|---|
+| X | inclina o corpo para a frente; leva braço ou perna **para trás** (negativo: para a frente); dobra o joelho (`LowerLeg`) e o cotovelo é o contrário (`ForeArm` negativo dobra); aponta os dedos do pé para baixo |
+| Y | gira para a **direita do próprio modelo** (o ombro esquerdo vem à frente); num braço erguido, leva-o para a direita |
+| Z | inclina o tronco e a cabeça para a **esquerda** do modelo; abre o braço e a perna **direitos** para fora (os esquerdos são espelhados) |
+
+Ossos usados (`BlowPose.BONES`): `AllBody` (quadril e tudo acima e abaixo), `UpBody` (tronco), `AllHead`, `RightArm`,
+`RightForeArm`, `LeftArm`, `LeftForeArm`, `RightLeg`, `RightLowerLeg`, `RightFoot` e os três da perna esquerda.
+
+**A guarda** (de onde todo golpe sai e para onde volta): lado esquerdo à frente, corpo 20° fora da linha, joelhos
+dobrados com o peso entre as pernas, punho de trás no queixo e o da frente um pouco adiante.
+
+**Golpe 1, o direto de direita** (10 ticks; o punho chega no tick 3):
+
+![Golpe 1](img/golpe1.png)
+
+| Fase | Ticks | O que acontece |
+|---|---|---|
+| Antecipação | 0 a 1 | o corpo gira 5° a mais para trás, o peso vai para a perna de trás, o punho recolhe |
+| Golpe | 0,9 a 3 | **em cadeia**: o quadril gira primeiro (0,9 a 2,4), o tronco depois (1,2 a 2,7), o braço por último (1,5 a 3). No fim o quadril passou 32° pela linha e o tronco mais 22°; o peso está na perna da frente e a de trás, esticada |
+| Retorno | 4 a 9,2 | na ordem inversa: o braço volta primeiro, o quadril por último |
+
+Três coisas são **calculadas a cada instante, não posadas**, e têm teste (`BlowPoseTest`):
+
+* **o punho anda em linha reta** do queixo ao alvo: ombro e cotovelo são resolvidos para isso (dois segmentos
+  iguais), em vez de cada um girar por conta própria, o que levava o punho num arco para cima;
+* **a cabeça desfaz o giro do corpo**: o olhar fica no alvo (a menos de 3,5°) enquanto quadril e tronco giram;
+* **os pés ficam no chão**: a sola do pé da frente fica nivelada e apontada para o alvo o tempo todo; o pé de trás
+  gira sobre a ponta (de 42° para 12°) e o calcanhar sobe (de 8° para 26°) conforme o quadril vem.
+
+**Levar um golpe** (`BlowPose#struck`, 10 ticks):
+
+![Levar golpe](img/levar-golpe.png)
+
+O corpo de quem leva é **lançado e volta como uma mola amortecida** (`BlowPose#recoil`): chega ao máximo em meio
+tick, volta ao ponto de partida aos 2,75 ticks, passa 21 % para o outro lado (o corpo se segurando) e assenta por
+volta do tick 8. No máximo:
+
+* a cabeça vai 24° para trás e 20° para o lado oposto ao do golpe, com 6° de tombo;
+* o tronco recua 20° **na linha do golpe** e 5° para o lado, e gira 10°. O corpo fica virado em relação a essa
+  linha (20° na guarda, mais no meio de um golpe), então o recuo é repartido entre as duas inclinações do tronco
+  conforme o giro em que ele está: sem isso a cabeça saía para o lado errado;
+* a guarda abre (braços 10° a 14° para trás e para fora, cotovelos 26° a 30° mais abertos) e o peso cai na perna de
+  trás;
+* as solas não saem do lugar: cada pé desfaz o que foi somado acima dele.
+
+A reação é **somada à pose em que o corpo estiver** (a guarda ou um golpe próprio), e é espelhada conforme a mão que
+bate (golpes ímpares vêm da esquerda de quem leva). Por enquanto é só visual: levar um golpe não interrompe a
+cadeia de quem leva.
+
+**As regras dos dois combatentes** (`ClashInput`, só para os dois conjuradores e só durante o choque; ver
+[`PLANO-COMBATE.md`](PLANO-COMBATE.md), fase A):
+
+* **Um clique é um golpe, e mais nada.** O clique é tomado antes de o jogo vê-lo e respondido com um balanço de
+  braço, que é o que o servidor lê como golpe. O clique do Minecraft faria três coisas que quebram um combo: bater
+  no outro do jeito dele (e, correndo, dar recuo no alvo, cortar 40 % da velocidade de quem bate e **desligar a
+  corrida de quem bate**, no próprio cliente, antes de o servidor poder dizer não), começar a quebrar o bloco na
+  mira, e balançar o braço sem parar enquanto o botão fica apertado num bloco.
+* **Sem recuo nem tranco de dano do Minecraft.** Quem leva o golpe não é empurrado nem tem a câmera sacudida pelo
+  jogo: medido com três golpes acertando, o alvo não saiu do lugar. O que conta o golpe é nosso: a reação do corpo,
+  o clarão, um vermelho curto em quem leva (para quem vê) e o som de dano. Só o quarto golpe move o outro, e esse
+  arremesso é nosso.
+* **Os dois correm o tempo todo, para qualquer lado.** O jogo encerra a corrida que não é para a frente; a cada
+  tick, depois que ele decide e antes de mover o jogador, a corrida é recolocada (`EntityPlayerRunMixin`). Medido
+  em sobrevivência: fora do choque, andar para trás dá 0,22 bloco por tick; no choque, 0,28 para trás, de lado e
+  para a frente.
+* **Não quebram bloco.** No cliente o clique nem chega ao bloco; no servidor, clicar e quebrar são recusados.
+* **Os outros no domínio ficam como no Minecraft:** andam, e levam dano e recuo normais entre si. Ninguém fere
+  os dois combatentes de fora.
+
+**No jogo:** a pose entra em 1,5 tick e o lutador fica na guarda enquanto a cadeia pode continuar (16 ticks), saindo
+em 4; um golpe emenda no seguinte em 2 ticks, de onde o corpo estiver. O acerto é decidido **quando o punho chega**
+(3 ticks depois do clique), não no clique: é aí que vêm o clarão no peito de quem leva, o tranco, o tremor e o
+som.
+
+* **Ritmo:** um golpe a cada 6 ticks; um clique até 4 ticks adiantado fica guardado; 18 ticks sem golpear e a cadeia
+  volta ao primeiro; depois do quarto, 14 ticks de recuperação.
+* **Acerto:** vale o rival a até 3,6 blocos e dentro de 60° da direção do olhar (ou colado). Cada um enche 6,25 %.
+* **Movimento:** cada golpe dá um passo à frente (maior no quarto), e o quarto arremessa o rival.
+* **Som (opcional):** `golpe.ogg` e `impacto.ogg` em `config/ryoikitenkai/sons/`.
+* **Como trabalhar num golpe:** no harness, `turn guard`, `turn <golpe> <tick>` e `turn struck <tick>` (negativo: do outro lado) mostram o modelo de frente, de três
+  quartos, de perfil e de cima; com `ryoiki-bones.txt` na pasta do jogo (linhas `<osso> <x> <y> <z>`), `turn on`
+  mostra essa pose crua.
+
+Verificado com dois clientes no servidor de teste: rival vencendo por tempo e por barra cheia, anfitrião vencendo por
+barra cheia, empate, resposta durante o sinal de mão e depois de o domínio abrir. O golpe 1 e a reação a levar golpe foram vistos quadro a quadro no modelo de teste e rodaram num choque com dois
+clientes. **A verificar:** a
+sensação do combo com jogadores de verdade (ritmo, alcance, força do arremesso), os golpes em outros modelos (ossos
+com outros nomes ou outra pose de repouso), a fusão com placa de vídeo de verdade (custo: cada cenário é redesenhado 58 vezes a partir de uma lista) e com
+shaderpack (os planos de corte e as listas são da pipeline fixa do OpenGL; um shaderpack pode ignorá-los, e
+`-Dryoiki.fusionLists=false` desliga as listas), quem assiste de fora perto do domo, mais de um jogador pego
+além dos dois conjuradores, e o choque em sobrevivência com armas e habilidades de outros mods.
+
+## Modo Feiticeiro (`mode/SorcererMode`, `client/SorcererClient`, `client/ModeHud`)
+
+Peça M1 do plano, feita em 2026-11-13 a pedido do dono. **Ctrl+R** entra e sai (a tecla é configurável em
+Controles; o Ctrl é fixo). O servidor decide e avisa quem pediu e quem está vendo (`mode/ModeWire`, canal
+`ryoiki:mode`; as regras estão em `mode/ModeRules`, lógica pura com teste).
+
+![Modo Feiticeiro](img/modo.png)
+
+* **O que se vê:** a barra de itens, os corações, a armadura, a fome e a experiência somem, e o pé da tela passa
+  a ser o do modo (o rodapé, abaixo); por alguns segundos, o nome do modo e "Ctrl+R para sair" sobre ele.
+  A **mão fica vazia**: em primeira pessoa a mão abaixa o que segurava e volta nua (a animação é a do próprio jogo
+  ao esvaziar uma casa), e os outros jogadores veem quem está no modo sem item na mão, com skin comum ou com modelo
+  do Futura3D.
+* **O que não se pode:** usar item, trocar de casa (teclas 1 a 9 e roda do mouse), abrir o inventário, largar,
+  pegar item do chão, quebrar ou usar bloco, bater do jeito do Minecraft. Um clique é só o balanço do braço, como
+  para os conjuradores de um choque. O cliente nem tenta; o servidor recusa de quem tentar.
+* **O inventário não é mexido.** Os itens ficam onde estão, só não são mostrados nem usáveis. Nada é guardado à
+  parte, então não há o que devolver, perder ou duplicar. (O item some da mão só no instante em que o jogador é
+  desenhado, e volta antes de qualquer outra coisa olhar: há mod que reabastece mão vazia, como o InventoryTweaks.)
+* **Morrer no modo não perde nada.** Antes de o jogo derrubar os itens, eles são escritos nos dados salvos do
+  próprio jogador e tirados das mãos; o jogador que renasce os recebe de volta, cada um na sua casa, armadura
+  vestida. Quem morre continua no modo. A experiência segue a regra normal do servidor, e os inventários de outros
+  mods (Baubles, Tinkers, mochilas) seguem as regras deles.
+* **Sem fome.** O modo não tem barra de fome, então não tem fome: no modo o jogador conta como alimentado e não
+  fica com mais fome (regenera como quem está de barriga cheia, a regra normal do jogo). A fome que ele tinha ao
+  entrar fica guardada e volta quando ele sai. A experiência só não é mostrada: continua sendo ganha.
+* **Quando não dá para trocar:** no meio de um domínio (nem entrar, nem sair), morto, ou menos de 1 s depois da
+  última troca. Sair do servidor tira do modo.
+* **Config:** `modo.ativo` e `modo.recarga`. Comandos para a staff: `/ryoiki modo [jogador]` e
+  `/ryoiki tecnica <vazio|santuario|nenhuma> [jogador]` (a técnica fica salva com o jogador).
+* **No modo, fora de um choque, o jogador ainda não bate em ninguém:** o ataque do Minecraft está desligado e os
+  golpes do nosso sistema só existem no choque. Isso espera as decisões do dono (ver `PLANO-COMBATE.md`).
+
+### O rodapé (`client/ModeHud`, peça M2, 2026-11-13)
+
+![O rodapé](img/modo-rodape.png)
+
+Pedido do dono: as quatro habilidades no rodapé, a última a Expansão de Domínio, e **uma barra de vida com textura
+bonita, sem fome e sem barra de experiência**.
+
+* **A barra de vida:** uma barra só, de pontas em bico, com moldura de laca escura e friso na cor da técnica; à
+  esquerda um **losango com a vida em número**. A vida é uma faixa com veios e um fio de luz, na cor da técnica
+  (azul para violeta no Vazio, carmim para laranja no Santuário, prata sem técnica), dividida em dez por entalhes.
+  * **Um golpe:** a vida cai de uma vez, o que foi perdido fica **pálido por um instante** e só então escoa, e o
+    friso clareia. Quando sobe, sobe aos poucos.
+  * **Um brilho** atravessa a vida a cada cinco segundos. Com **um quarto de vida ou menos** o friso e o número
+    pulsam em vermelho.
+  * **Veneno** deixa a vida verde, **decomposição** (wither) cinza-roxa; **absorção** é uma linha de ouro por cima.
+  * **Armadura:** um escudo pequeno e o valor, depois da ponta da barra, só quando há armadura.
+* **As quatro casas:** três pequenas e a do domínio, maior, de friso duplo, que **respira** quando está pronta. Cada
+  uma tem o ícone da habilidade, a **tecla** no canto (as teclas 1 a 4 do jogador) e, em recarga, uma sombra que
+  escoa e os **segundos** que faltam. Apertar a tecla faz a casa responder (cresce um pouco e acende). Uma
+  habilidade que ainda não existe aparece apagada.
+* **O chat** sobe para cima do rodapé enquanto o jogador está no modo (no jogo normal as últimas linhas dele ficam
+  por cima dos corações).
+* **A textura** é uma folha só, `assets/ryoikitenkai/textures/gui/modo.png`, desenho próprio **gerado por
+  `tools/hud/gerar.py`** (numpy e Pillow), com dois texels por pixel da interface. As peças são brancas ou cinza e o
+  jogo tinge com a cor da técnica; quem quiser outra arte troca o arquivo por um pacote de recursos, mantendo as
+  posições.
+* **O que ainda não faz:** as teclas 1 a 3 só fazem a casa responder: as habilidades são **propostas**
+  (`PLANO-COMBATE.md`) que o dono ainda vai aprovar, e os ícones delas também.
+
+### Parar, correr e pular no modo (`fx/Gait`, `client/Stride`, `client/PlayerPoses`, 2026-11-13)
+
+Pedido do dono junto com a habilidade 1: "melhore a animação de andar, correr, pular no modo". No modo o corpo do
+modelo (Futura3D) deixa de usar a animação do próprio modelo para os 13 ossos do corpo e passa a ser posado por um
+**modelo da passada**, lógica pura com teste, como os golpes.
+
+![A passada](img/modo-passada.png)
+
+* **O andar do jogo já é uma corrida** (mais de 4 blocos por segundo, com pernas de três quartos de bloco), então
+  as duas marchas são corridas, com os dois pés fora do chão entre os passos:
+  * **Trote** (o andar do jogo): corpo quase reto, braços dobrados balançando contra as pernas, joelho subindo
+    pouco. Uma passada completa cobre 2,3 blocos.
+  * **Disparada** (o correr do jogo): corpo inclinado 21 graus, passada mais longa (2,7 blocos), calcanhar
+    subindo atrás e joelho alto na frente, e os **braços deitados para trás** ao longo do corpo.
+* **Como a passada é feita:** cada perna fica no chão uma parte do ciclo, indo para trás sob o quadril na velocidade
+  do chão, e o resto no ar, dobrando para vir à frente; as duas ficam a meio ciclo uma da outra. O quadril gira
+  com a perna da frente, o peito contra o quadril, os braços contra as pernas, e a cabeça desfaz tudo isso para
+  ficar nivelada e olhando o caminho. O pé no chão fica com a sola nivelada. A passada avança pela **distância
+  percorrida**, não pelo tempo, e para no ar.
+* **De lado e de costas:** a passada encurta e, de lado, as pernas abrem e fecham em vez de ir e vir.
+* **Parado:** a animação **do próprio modelo** (decisão do dono em 2026-11-13: "só quando luta que nossas animações
+  vêm à tona"). A nossa pose entra conforme o corpo anda, sai do chão, luta ou faz um gesto, e sai de novo ao parar.
+  Os dois de um choque ficam em guarda mesmo parados.
+* **Pulo:** subindo, um joelho vai alto (a perna que vinha à frente), a outra perna fica para trás e os braços vão
+  para trás; descendo, as pernas se abrem sob o corpo e os braços saem para os lados; ao tocar o chão o peito cede
+  para a frente e volta.
+* **Camadas:** por cima disso entram a guarda e os golpes do choque (correndo, as pernas continuam correndo; os
+  dois de um choque mantêm os braços em guarda entre os golpes) e o gesto de uma habilidade.
+* **Quando o modo não posa:** agachado, na água, numa escada, montado, dormindo ou voando; aí vale a animação do
+  próprio modelo.
+* **Limites:** só para modelos do Futura3D (a skin comum continua com a animação do jogo). O quadril não sobe nem
+  desce, porque a API do Futura3D só gira ossos: por isso a aterrissagem não dobra os joelhos e o pé "flutua" um
+  pouco no começo e no fim do apoio. Dar deslocamento de osso ao Futura3D resolveria (peça à parte, noutro
+  repositório). O modelo de teste tem mangas longas, que exageram os braços para trás.
+
+### A tecla 1: Atração e Talho (2026-11-13)
+
+O dono aprovou as seis habilidades propostas (`PLANO-COMBATE.md`) e mandou fazer a primeira de cada técnica.
+
+![Atração e Talho](img/habilidade1.png)
+
+* **Atração (Vazio Estelar): o orbe que segue o olhar.** Refeita em 2026-11-13 a pedido do dono, que mostrou a
+  dinâmica que queria num GIF do jogo de referência (o orbe azul controlável, com dois modos). O agente viu esse GIF
+  e a descrição da wiki do jogo para entender o comportamento; o desenho e o nome aqui são próprios (como nos
+  domínios), e o texto que aparece no jogo fica no arquivo de idioma, onde o dono põe o nome que quiser.
+  * Um orbe nasce à frente de quem conjura, a até 7 blocos, e por **3,5 s vai para onde a câmera aponta** (no
+    máximo 0,9 bloco por tick, sem atravessar parede). Quem estiver a 3,5 blocos dele é puxado, fica preso no
+    miolo e **é carregado junto**; a cada meio segundo leva dano. Recarga 12 s.
+  * **Soltar é arremessar:** quando o orbe acaba, ou quando um giro rápido da câmera o leva mais depressa do que
+    o preso consegue acompanhar, o preso sai com a velocidade que o orbe tinha.
+  * **Dois modos**, pelo lugar onde o conjurador estava ao usar: **no chão** ele continua andando e o orbe varre à
+    frente, mais ou menos na altura de um corpo; **no ar** ele fica **suspenso onde está** até o fim e o orbe vai
+    para qualquer lado, inclusive para o céu (levando junto quem estiver preso).
+  * **O que se vê:** uma **esfera azul de verdade** (pedido do dono em 2026-11-13, que achou a primeira versão,
+    só de brilhos, desagradável): uma malha esférica com corpo e borda, branca no meio, depois azul-gelo, depois
+    **azul escuro onde a superfície vira para longe do olho**, com um fio claro na borda e faixas que giram na
+    superfície. Em volta dela o halo, uma poça de luz no chão embaixo, **respingos de azul escuro com cauda**
+    girando, três arcos claros, agulhas de luz chegando de toda parte, dois anéis que se fecham e pedaços do chão
+    arrancados para cima; quando é levada depressa deixa rastro; no fim fecha-se e solta um anel. Para quem está dentro, a
+    luz é atenuada (senão a tela ficava branca). Quem conjura **mantém a mão estendida** enquanto guia o orbe e a
+    recolhe no fim.
+* **Talho (Santuário Carmesim).** Refeito em 2026-11-13 pela página do personagem do Santuário na wiki que o dono
+  usa de guia (a habilidade tem dois modos, no chão e no ar). Recarga 13 s.
+  * **No chão: a rajada.** Um quarto de segundo depois do gesto, dez cortes em um segundo (um a cada 2 ticks) caem
+    **direto sobre todo jogador do modo que estiver à frente**, a até 8 blocos (cone de uns 75° para cada lado); o
+    alvo fica preso no lugar enquanto é cortado e o último corte o joga 3 blocos para trás. Sem ninguém à frente,
+    os cortes rasgam o ar a 3,5 blocos. **O que se vê:** cada corte é um **crescente preto grande, de borda
+    branca**, que aparece de uma vez atravessando o corpo, cada um num ângulo, branco no primeiro instante,
+    fechando em um quarto de segundo; um clarão branco no corpo, respingos vermelhos e uma **marca vermelha no
+    chão** por 2 s. Quem conjura **arma o braço sobre o ombro oposto, desce apontando para o alvo com o corpo
+    lançado à frente, e a mão dá um golpe curto para cada corte**, alternando o lado.
+  * **No ar: o corte longo.** Quem conjura **fica suspenso e dá uma cambalhota inteira para a frente** (0,45 s,
+    joelhos recolhidos, girando no quadril) e, ao sair dela, lança **um corte só** para onde olha: voa reto por até
+    20 blocos a 1,5 bloco por tick, corta o primeiro que encontrar e deixa a **cicatriz em brasa no chão**. É o
+    crescente de sombra preta, gume vermelho e fio branco, com três rastros.
+  * A vítima da rajada sente um tremor por corte, mas a câmera **não tomba** dez vezes e os respingos não cobrem a
+    visão dela.
+
+  ![A rajada, vista por quem conjura](img/talho-rajada.png)
+
+  ![O gesto da rajada, visto pelo alvo](img/talho-rajada-gesto.png)
+
+  ![No ar: a cambalhota e o corte longo](img/talho-aereo.png)
+* **Quem é atingido:** só **outros jogadores que também estão no modo**. Decisão do dono em 2026-11-13: o modo
+  **ignora o WorldGuard e qualquer sistema de proteção**, porque só entra nele quem tem a permissão (abaixo). Por
+  isso o efeito é aplicado direto (a vida é tirada e o corpo é movido), sem passar pelo dano do jogo, que é o que
+  as proteções escutam: vale em região sem PvP, em região invencível e com o PvP do servidor desligado. Quem está
+  no criativo não é tocado.
+* **Permissão:** entrar no modo com Ctrl+R exige o node **`ryoikitenkai.modo`** (`modo.permissao` no config;
+  vazio libera para todos). Operadores têm por padrão. O comando `/ryoiki modo [jogador]`, da staff, põe qualquer
+  um no modo. Num servidor sem Bukkit não há nodes e todos entram.
+* **Dano:** pequeno e **igual com qualquer armadura**: Atração meio coração a cada meio segundo em quem está
+  preso; Talho: o corte longo tira dois corações e meio e a rajada inteira 70% disso, em dez partes
+  (`dano.atracao` e `dano.talho` no config, em meios corações).
+* **Código:** `mode/AbilityMath` (os números, o puxão e o encontro da lâmina com um corpo: lógica pura com teste),
+  `mode/Abilities` (servidor), `client/AbilityFx` (o desenho), `fx/CastPose` (os gestos, com teste).
+  O gesto só mexe peito, cabeça e braços: as pernas continuam o que estavam fazendo.
+* **Limites:** no modelo de skin comum (sem Futura3D) não há gesto, só o balanço do braço. Vista exatamente de
+  trás (terceira pessoa), a lâmina fica de perfil e o alvo fica atrás do próprio jogador. O orbe não gruda no alvo:
+  é quem conjura que o leva até ele com a câmera.
+
+### A tecla 2 do Vazio: Repulsão (2026-11-13)
+
+O dono indicou a página do personagem na wiki do jogo de referência como **o guia das habilidades 1, 2 e 3 do
+Vazio** e disse que a 2 "é o vermelho". O agente leu o texto da wiki e viu o GIF para entender o comportamento;
+o desenho e o nome no mod são próprios, como no resto.
+
+![Repulsão](img/habilidade2.png)
+
+* **O que faz:** o oposto da Atração. Quem conjura **carrega por 1,2 s** e solta um orbe vermelho que voa reto,
+  rápido (2,4 blocos por tick), por até 24 blocos ou até um bloco sólido, **atravessando** quem estiver no
+  caminho: cada um leva o dano e é **arremessado** ao longo do trajeto. O dano e o arremesso **caem com a
+  distância** (de 3 corações de perto a menos de 1 no fim do alcance; `dano.repulsao`). Recarga 10 s.
+* **Dois modos**, como na Atração: **no chão** o orbe sai quase nivelado (no máximo 12 graus para cima ou para
+  baixo); **carregado no ar**, quem conjura fica **suspenso** durante a carga e o orbe vai para onde a câmera
+  apontar no instante do disparo, em qualquer direção.
+* **Fase 2, a volta (segurar R):** se quem conjura segurar a tecla do modo (R, sem Ctrl) em qualquer momento
+  antes de o orbe terminar o alcance, ele **volta** do fim do caminho até o conjurador (1,5 bloco por tick). Quem
+  estiver no caminho da volta é **trazido junto**, posto diante do conjurador, e leva o **golpe negro**: um soco
+  3 ticks depois, com dano próprio (`dano.golpe_negro`, 4 corações) e um arremesso forte. Se o orbe voltar **sem
+  ninguém**, o próprio conjurador leva o dano (`dano.repulsao_retorno`, 2 corações), como na wiki.
+* **Gesto e origem** (refeitos em 2026-11-13: o dono achou "feio e pobre a habilidade saindo da barriga" e mandou
+  ler o modelo). O agente leu o modelo que o dono anexou: ele tem o **localizador da mão**
+  (`RightHandLocator`), os dedos como um osso só em duas juntas (`right_fg`, `right_ffg`) e o polegar
+  (`left_dmz`), e as animações de mira dele acompanham a inclinação da cabeça. Daí:
+  * **Carga:** o braço direito sobe **acima da cabeça**, mão aberta e dedos retos, o corpo um pouco para trás e
+    esse ombro recuado, o outro braço solto junto ao quadril; a mão treme mais conforme o orbe enche. O orbe
+    nasce **sobre a ponta dos dedos**, lido do localizador da mão do modelo (`FuturaBridge#hand`).
+  * **Disparo:** o braço desce de uma vez e **aponta para onde a câmera olha** (segue a inclinação, até 70 graus
+    para cima), o ombro vai junto, o braço dá o coice do tiro e assenta. O orbe **sai da mão**: nos primeiros
+    blocos ele ainda acompanha a mão que desce e só então entra na linha do voo. No servidor a linha parte da mão
+    que aponta e mira o ponto que os olhos veem (`AbilityMath#hand`, `#toward`).
+  * **Esperando a volta:** quem conjura fica em guarda, com faíscas brancas e azul-gelo no punho; quando o orbe
+    chega com alguém, dá o direto do sistema de golpes (`BlowPose`), e o punho chega no tick do golpe negro.
+  * Sem modelo (skin comum) ou na própria visão em primeira pessoa, a mão é estimada.
+* **O que se vê:** uma esfera **pequena e vermelha de verdade** (0,26 bloco de raio, do vinho ao vermelho vivo,
+  sem branco no meio), fios vermelhos entrando nela e arcos vermelhos de fio branco em volta do corpo na carga,
+  chão avermelhado; no voo, rastro vermelho, anéis vermelhos pelo caminho e estilhaços em cada um que ela
+  atravessa. O golpe negro tem a sua própria sequência, abaixo.
+* **O corpo inteiro, por cima da pose do modelo** (refeito em 2026-11-13: o dono viu a personagem "com a mão na
+  cintura durante um feitiço vermelho" e mandou dar um *overwrite* na pose passiva e fazer a animação do golpe
+  negro). A causa: a animação parada do modelo mexe o braço esquerdo (cotovelo a 92 graus, mão virada, a "mão na
+  cintura"), a mão e as pernas, e os gestos só posavam peito, cabeça e braços, com o braço esquerdo dobrado de
+  propósito. Agora `fx/CastPose` posa **21 ossos** (corpo, pernas, pés, as duas mãos, dedos e polegares) e
+  `client/PlayerPoses` manda todos com peso total: **no modo nada da animação do modelo sobra neles**. Há teste
+  para isso (o cotovelo esquerdo nunca dobra mais que 20 graus num feitiço, a mão esquerda fica neutra).
+
+  ![Os gestos](img/gestos-vermelho.png)
+
+  * **Carga do vermelho** (1ª linha): um arremesso. O corpo recua e gira para longe do alvo sob o braço erguido,
+    peso na perna de trás, o outro braço solto e afastado do corpo.
+  * **Disparo** (2ª linha): quadril primeiro, peito depois, braço por último; o corpo vai à frente sobre a perna
+    da frente dobrada, o braço aponta na linha dos olhos e o outro é jogado para trás.
+  * **Esperando a volta** (3ª linha, `CastPose.READY`): de lado, joelhos dobrados, **punho fechado recolhido nas
+    costelas**, tremendo, e a outra mão aberta à frente.
+  * **O golpe negro** (4ª linha, `CastPose.BLACK`, 26 ticks): dessa postura o quadril gira, o peito segue, e o
+    punho sai reto na linha dos olhos com o corpo todo atrás, perna da frente funda e a de trás esticada; chega
+    no tick 3 (junto com o dano), passa um pouco do ponto, **fica sustentado** enquanto o efeito acontece, e só
+    então o corpo se recolhe. Quem conjura dá um passo para dentro do golpe.
+  * A cabeça desfaz o giro e a inclinação do corpo (fica no alvo) e as solas ficam niveladas, calculadas.
+    Correndo, as pernas continuam correndo.
+* **O golpe negro** (`client/BlackFlashFx`, refeito em 2026-11-13: o dono recusou a primeira versão, uns raios
+  finos e um clarão, como "trabalho preguiçoso", e mandou fazer igual ou melhor que o do jogo de referência). O
+  agente reviu o trecho quadro a quadro. É uma sequência **cronometrada pelo relógio**, não pelos ticks, para ser
+  igual com qualquer taxa de quadros:
+
+  ![O golpe negro](img/golpe-negro.png)
+
+  1. **Os quadros do impacto** (160 ms): a imagem do mundo vira **duas cores, sem cinzas**: vermelho e preto
+     (60 ms), o negativo em preto e branco (20 ms), **a tela branca**, só com o que era mais escuro em preto
+     (50 ms), e o negativo de novo (30 ms). A imagem é o próprio quadro: copiado da tela para uma textura,
+     redesenhado como brilho (produto escalar no estágio de textura) e endurecido elevando ao quadrado e dobrando
+     três vezes. Sem shader, e conferido com a Angelica.
+  2. **A explosão** (até 0,7 s): tudo estourado em branco, **raios vermelhos grossos** saindo de onde o golpe
+     pegou até além das bordas da tela, e um **emaranhado de traços vermelhos**, com pretos no meio, cobrindo a
+     tela inteira, **outro emaranhado a cada 70 ms**. Os dois corpos brilham.
+  3. **As faíscas negras** (até 1,9 s): a luz some e fica o que resta do emaranhado, **preto de borda vermelha**,
+     cada vez menos traços, que pulam de lugar; e **contas vermelhas** que sobem do chão e encolhem.
+
+  O mesmo acontece **no mundo**, em três dimensões, em volta do lugar do golpe (emaranhado, raios, dois anéis,
+  contas, pedaços do chão arremessados), para quem está longe. Na tela ele aparece inteiro para os dois e para
+  quem está a até 7 blocos, e vai sumindo até 26. A interface do jogo fica por cima, legível. Antes do golpe,
+  enquanto o punho vem, saem dele **faíscas pretas de borda vermelha**. Tremor de câmera para quem está perto.
+  `-Dryoiki.impactFrame=false` troca os quadros do impacto por cores chapadas, se alguma placa de vídeo não
+  gostar da cópia da tela.
+* **Limites:** a carga não é interrompida por levar golpe; o modelo não tem dedo indicador separado, então a mão
+  aponta inteira; o trazido é levado por teleporte a cada tick (num cliente com atraso pode parecer aos saltos).
+  O Santuário ainda não tem a habilidade 2 (a casa fica apagada).
+
+### O roxo: o azul parado mais o vermelho (2026-11-13)
+
+Pedido do dono, pela variante da wiki: se alguém **morre no orbe azul**, a esfera azul **fica parada por 5 s**
+onde matou; se o mesmo conjurador acerta o **vermelho** nela (na ida ou na volta com R), as duas viram **o roxo**,
+que 3 s depois estoura e dá **dano fatal a todos no raio**: **80 blocos**, decisão do dono (`roxo.raio` no config).
+
+![O roxo](img/roxo.png)
+
+* **Regras:** só o azul do próprio conjurador serve; o orbe parado não puxa ninguém; o vermelho some ao encontrá-lo
+  (passando a até 1,7 bloco do centro). O estouro mata os outros jogadores no modo dentro do raio (quem conjurou
+  não morre; criativo não é tocado), ignorando proteção como o resto do modo. **Nenhum bloco é quebrado e nenhuma
+  outra criatura é atingida** (o dono pediu sem grife). Com 80 blocos de raio, os 3 s **não dão tempo de sair**: quem está por perto no modo morre. O servidor avisa do roxo todos a até 144 blocos, para que vejam o que os mata.
+* **O que se vê** (`client/PurpleFx`, conferido contra o GIF da wiki quadro a quadro): no encontro, os quadros de
+  impacto em duas cores; uma esfera magenta de miolo claro crescendo, com respingos roxos escuros girando, o azul
+  e o vermelho ainda enrolando nela por um instante, **raios** brancos e rosa cada vez mais longos, o **chão
+  aceso até o raio com a borda marcada**, a tela dos próximos tingida de rosa e tremendo; no fim uma **casca
+  escura** incha até o raio; e o estouro: **tela branca** para quem está perto, anel no chão e ciscos de luz.
+* **Código:** `Abilities#meetsBlue`, `#purple`; `AbilityMath#passes` (com teste); harness `purple <distância>`.
+
+### A tecla 4: Expansão de Domínio (peça M3, 2026-11-13)
+
+No modo, a tecla 4 expande o domínio da técnica do jogador. O cliente só pede (`ModeWire.USE`); o servidor decide
+(`SorcererMode#use`, regra pura em `ModeRules#expand`) e conjura pelo mesmo caminho do comando
+(`DomainManager#cast`), então tudo o que vale para um domínio vale aqui: o sinal de mão, quem é pego, e **responder
+ao domínio de outro pela tecla 4 abre o choque**.
+
+* **Recarga: 60 s** (`dominio.recarga`, decisão do dono), contados **do sinal de mão**: como o domínio dura 14 ou
+  18 s, sobram uns 45 s depois que ele acaba. A casa escurece e conta os segundos. Fica guardada com o jogador pelo
+  relógio, então sair e voltar não a zera.
+* **Quando não conjura:** fora do modo (a tecla 4 é a casa 4 da barra de itens, como sempre), sem técnica, ou em
+  recarga: nada acontece. Se o domínio não pode abrir ali (no ar, outro perto demais, domínios demais), o jogador lê
+  o motivo no chat e **não gasta a recarga**.
+* `/ryoiki expandir` continua existindo, para a staff, sem recarga.
+
+**Medido em 2026-11-13** (dois clientes no Crucible de teste, e o cliente de desenvolvimento num servidor Forge
+puro, sem plugin):
+
+| O que | Resultado |
+|---|---|
+| Teclas de verdade (xdotool): Ctrl+R; R sozinho; 3, roda, Q e E no modo | entra e sai; nada; nada, a casa e os itens não mudam |
+| Clique de verdade segurado 2 s no chão, criativo | no modo o chão fica inteiro; no normal abre um buraco |
+| Largar, usar, quebrar e atacar mandados direto ao servidor, no modo | recusados: itens iguais, bloco no lugar, o outro com a vida cheia |
+| Item no chão | no modo não é pego (31 pedras); no normal é (32) |
+| Morrer no Forge puro | no modo normal perde tudo (controle); no modo Feiticeiro volta com tudo nas mesmas casas e a armadura vestida |
+| Morrer no Crucible de teste (com BetterKeepInventory) | no modo volta com tudo no lugar; fora dele o plugin devolve os itens com a armadura no inventário |
+| Trocar de modo dentro de um domínio | recusado, com aviso no chat; depois do domínio volta a funcionar |
+| Fome com o efeito Fome forte (6 s) | fora do modo cai de 20 a 0; no modo fica em 20; ao sair volta a 0 |
+| O rodapé no Crucible de teste, dois clientes | Santuário, Vazio e sem técnica; a técnica dada pelo console muda o rodapé na hora |
+| Dano, recarga e tecla, filmados | a perda pálida escoa, a sombra da recarga conta os segundos, a casa responde |
+| Tecla 4 de verdade, fora do modo | troca para a casa 4 da barra de itens; nenhum domínio |
+| Tecla 4 de verdade, no modo, com a técnica do Vazio | o domínio abre; 5 s depois o rodapé marca 55 s |
+| O outro jogador responde pela tecla 4 (Santuário) | choque de domínios; os dois ficam em recarga |
+| Tecla 4 durante a recarga (aos 30 s) | nada; a contagem segue |
+| Tecla 4 depois dos 60 s | o domínio abre de novo |
+| Tecla 4 sem técnica | nada |
+| Rajada do Talho num alvo a 5 blocos, vista dos dois clientes | dez crescentes pretos sobre o alvo, marcas no chão; vida de 20 para 16,5; alvo jogado 3,3 blocos; o gesto aparece no modelo de quem conjura |
+| Talho no ar (depois de um pulo), mirado num alvo a 9 blocos | quem conjura fica suspenso, dá a cambalhota e lança o corte; o alvo é atingido e a cicatriz fica no chão |
+| A verificar na rajada | alvo no limite dos 8 blocos e fora do cone; vários alvos de uma vez; GPU real |
+| Talho a 9 blocos, e a 6 (com dano pelo jogo, antes da regra nova) | vida de 20 para 15, jogado 3 a 4 blocos para trás; a cicatriz fica no chão |
+| O orbe no chão, no spawn de teste (WorldGuard: sem PvP e `invincible`) | o outro jogador foi preso e carregado com o giro da câmera; vida de 20 para 17 e para 11 |
+| O orbe usado no ar, mirado para o céu | quem conjurou ficou parado a 0,8 bloco do chão até o fim; o outro foi levado para cima e perdeu vida |
+| Entrar no modo sem a permissão (jogador sem op) e com ela | recusado com aviso no chat; aceito |
+| Repulsão do chão num jogador a 8 blocos, no spawn protegido | vida de 20 para 15; jogado de 59,5 para 66,1 |
+| Repulsão carregada no ar (pulo) | quem conjurou ficou a 1 bloco do chão durante a carga; o alvo foi de 59,5 para 66,6, vida 15 |
+| Repulsão com R segurado, alvo a 8 blocos | atravessado na ida (20 para 16), trazido de volta para diante do conjurador, golpe negro (para 7), arremessado |
+| O roxo de ponta a ponta (dano da Atração posto em 30 só para o teste) | o azul matou e ficou parado; o vermelho o encontrou; o roxo cresceu 3 s e estourou; o outro jogador, trazido para dentro do raio, morreu de novo |
+| Repulsão com R segurado, ninguém no caminho | o orbe volta e o conjurador vai de 20 para 16 |
+| O golpe negro, momento a momento (relógio parado, a cada 20 ms), no cliente de desenvolvimento com e sem a Angelica | os quatro quadros do impacto, a explosão e as faíscas, como descrito; nenhum erro de desenho no registro |
+| O golpe negro de verdade, entre dois jogadores, filmado nas duas telas | faíscas no punho, quadro de impacto, tela tomada pelo emaranhado, traços pretos e contas; alvo de 20 para 8 |
+| As poses novas no visor de quatro vistas (carga, disparo, espera, golpe negro em 4 instantes) e a sequência no jogo | braço esquerdo solto, sem mão na cintura; corpo inteiro no arremesso e no soco |
+| O gesto no visor de quatro vistas e no jogo (terceira pessoa, e visto pelo outro) | braço acima da cabeça com o orbe sobre a mão; braço apontando no disparo |
+| A passada no visor de quatro vistas (parado, trote, disparada, pulo) e filmada de lado e de trás | trote, disparada e pulo reconhecíveis; braços para trás e queda ajustados depois da primeira vista |
+| Gestos no visor de quatro vistas | mão à frente na altura do ombro e recolhida; mão acima do ombro oposto, e baixa do lado dela no fim |
+
+**A verificar:** a recarga do domínio depois de sair e voltar ao servidor (está nos dados do jogador, mas não foi
+ensaiado); com placa de vídeo e o modpack completo; morrer no modo e sair do servidor antes de renascer (os
+itens estão nos dados do jogador e voltam ao renascer, mas isso não foi ensaiado); mundos com inventário separado
+(PerWorldInventory); teclas de outros mods que abrem inventários próprios (Baubles, mochilas) não são travadas; no
+modo não se abre porta nem se aperta botão (o clique direito está todo desligado).
+
+## Som (`DomainSounds`, `SoundCues`, `OwnerSounds`)
+
+**O mod não traz som nenhum** (decisão do dono: só a trilha dele). Cada som é um `<nome>.ogg` em
+`config/ryoikitenkai/sons/` do cliente; `OwnerSounds` é um resource pack sobre essa pasta que também escreve o
+`sounds.json`, com um evento para cada arquivo presente. O que não tem arquivo não toca e não gera aviso no log.
+
+* **A trilha da expansão:** `vazio_trilha` e `santuario_trilha` tocam uma vez, em estéreo, do sinal de mão ao fim da
+  quebra (16,45 s e 20,45 s), para o conjurador e quem vê a faixa. Some em meio segundo se o domínio acabar antes ou
+  se o jogador não for pego.
+* **A voz:** `vazio_voz` e `santuario_voz` tocam uma vez, em estéreo, no primeiro tick do sinal de mão, por cima da
+  trilha, para os mesmos jogadores.
+* **O choque:** `clash_trilha`. Quando o choque começa (`DomainWire.CLASH`), a trilha do domínio some em 0,5 s e a
+  do choque começa, para quem está no domínio e quem está a até raio + 12 blocos do domo; no fim do choque
+  (`CLASH_END`, o fim do domínio, ou o jogador de fora se afastar) ela some em 0,5 s.
+* **A música do jogo** (`MusicHush`): enquanto uma trilha do dono toca, a música que estava tocando é parada e
+  nenhuma começa (categoria "música"). Depois o jogo volta a tocar no tempo dele, uma faixa nova.
+* **Por momento, opcionais:** `sinal` (no conjurador, mono), `faixa_corte`, `<domínio>_entrada` (mono; do domo para
+  quem está fora), `<domínio>_ambiente` (laço), `santuario_corte`, `saida`, `domo` (laço, mono).
+
+Os nomes, os tempos e o conversor (`tools/sons/converter.py`) estão em
+[`tools/sons/LEIA-ME.md`](../tools/sons/LEIA-ME.md).
+
+Verificado no cliente de teste, com o OpenAL gravando num arquivo e um tom puro por som: sem arquivos, o mod não toca
+nada e o log fica limpo; com arquivos, voz e trilha começam juntas no sinal de mão, os fades do choque duram 0,5 s na
+entrada e na saída, e a música do jogo para quando a trilha começa. **A verificar:** ouvir num PC de verdade, com dois
+jogadores (quem está fora, perto do domo, num choque) e no modpack completo.
+
+## A arte do dono na faixa
+
+A faixa tem um espaço, à direita, para uma imagem ou uma animação curta de cada domínio. **O mod não traz nenhuma**:
+quem monta o modpack põe o arquivo na pasta de configuração **do cliente**. Há dois jeitos:
+
+```
+config/ryoikitenkai/faixa/vazio.gif              um GIF animado, tocado na velocidade dele
+config/ryoikitenkai/faixa/santuario.gif
+
+config/ryoikitenkai/faixa/vazio/00.png, 01.png...    ou uma pasta de quadros PNG, na ordem dos nomes
+config/ryoikitenkai/faixa/vazio/fps.txt              (opcional; um número, 12 se faltar)
+```
+
+Toca em laço enquanto a faixa está na tela (até 96 quadros, até 1.024 pixels de lado). Se houver o GIF e a pasta, vale
+o GIF. Sem nenhum dos dois, a faixa fica como antes. O mod lê na primeira vez que a faixa aparece, então trocar o
+arquivo pede reabrir o jogo. Só GIF e PNG: WebP não é lido.
+
+O que vai ali é escolha e responsabilidade de quem monta o modpack. O dono pediu duas cenas do anime e insistiu; o
+agente não as embutiu no mod nem as usou nas amostras (as capturas mostram uma animação de teste).
+
+## Como é feito
+
+* **O céu entra no lugar do céu do jogo.** Enquanto o jogador está no domínio, o cliente troca o `IRenderHandler` de
+  céu do mundo pelo do domínio, e os de nuvem e de chuva por um que não desenha nada (`DomainSky`); ao sair, devolve
+  o que havia. O céu é desenhado em volta da câmera, antes de tudo, então fica atrás de tudo e a qualquer distância.
+  Com distância de renderização menor que 4 chunks o jogo não desenha céu: aí o mod desenha no fim do quadro, só onde
+  não há nada na frente.
+* **A neblina** do jogo passa a ter a cor do domínio (`EntityViewRenderEvent.FogColors`).
+* **O tremor** vira a entidade da câmera uns graus só durante o desenho de cada quadro e desfaz logo depois
+  (`CameraShake`). Nada vai para o servidor.
+* **A cena fica atrás do conjurador.** A mensagem de entrada leva para onde o conjurador olhava quando o domínio
+  abriu; céu, chão e estruturas são girados por esse ângulo, igual para todos lá dentro.
+* **O gesto usa o modelo do jogador.** Onde o 3D Futura Engine desenha os jogadores (o mod de modelos da rede, no
+  repositório YesSteveModel), o conjurador faz o sinal com o **próprio modelo**: `FuturaBridge` chama, por reflexão,
+  `FuturaModels.setBonePose` (API 6 do Futura3D) a cada quadro, com a rotação de cada osso como num arquivo de
+  animação. Isso vale **na faixa** (o jogador é desenhado ali como no inventário, da cintura para cima, enquadrado
+  pela cabeça do modelo) **e no mundo** (durante o sinal e nos primeiros 34 ticks do domínio).
+  * Ossos posados: `RightArm`, `RightForeArm`, `LeftArm`, `LeftForeArm`, `Head` (nomes padrão dos modelos) e os dedos
+    `right_fg`, `right_ffg`, `left_fg`, `left_ffg`, `left_dmz` (os quatro dedos como um bloco em duas juntas, e o
+    polegar). Um modelo que não tem um osso simplesmente não o move.
+  * Os ângulos foram acertados num modelo de teste que o dono mandou (uma personagem de quimono, CC BY-NC-SA, **fora
+    do repositório**) e conferidos no modelo padrão do modpack. Em outros modelos o gesto pode sair diferente.
+  * **Dedos um a um não existem** nesses modelos: os quatro dedos são um osso só. O sinal é feito com os braços, as
+    mãos e esse bloco.
+* **Sem o Futura3D** (ou com um mais antigo que a API 6), a faixa mostra um `ModelBiped` do próprio jogo com a skin
+  comum do conjurador, com os braços posados à mão.
+
+![O gesto no modelo do jogador](img/visual-gesto-modelo.png)
+
+* **Um domínio novo** é uma classe que implementa `DomainLook` (céu, chão, o que há na arena e as cores da faixa e
+  dos estilhaços) e uma entrada em `DomainType`.
+
+## Verificado e a verificar
+
+* **Verificado** em 2026-11-12: no cliente de desenvolvimento com a Angelica 2.2.45, e no cliente **TEOF 5.4**
+  completo conectado ao Crucible da rede (as últimas capturas de cada imagem acima). Sempre com renderização por
+  software.
+* **A verificar:**
+  * com placa de vídeo e com um **shaderpack** ligado (os shaders da Angelica mudam o céu e podem ignorar o céu do
+    mod);
+  * o **custo em quadros por segundo** num PC modesto (são alguns milhares de triângulos por quadro, sem textura);
+  * a faixa de entrada em telas muito largas ou com a escala da interface no máximo;
+  * skins em alta resolução (HD);
+  * o gesto em outros modelos do servidor (cada modelo tem o seu repouso de braços e os seus ossos de dedos);
+  * o que os outros jogadores veem (a faixa, o selo, o domo): as capturas são de um jogador só;
+  * o minimapa (JourneyMap) continua mostrando as coordenadas da arena.
+
+## O que falta para o visual
+
+* **Som:** ouvir a trilha do dono num PC de verdade e com dois jogadores; o choque de domínios ainda não tem som.
+* **Efeitos de jogo:** os cortes do santuário e a paralisia do vazio são só imagem.
+* **O sinal de mão no mundo sem o Futura3D:** com a skin comum o jogador fica parado (o gesto só aparece na faixa).
+* **Santuário contra Santuário:** o salão do rival fica a 26 blocos do centro numa arena de 30, e a parte dele que
+  passaria da parede não é construída nem cabe no desenho. A verificar com dois jogadores.

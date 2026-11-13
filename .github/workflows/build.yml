@@ -1,0 +1,49 @@
+name: Build and test
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ '*' ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # a convenção GTNH tira a versão das tags do git
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          # 25: o daemon do Gradle (gradle/gradle-daemon-jvm.properties).
+          java-version: |
+            21
+            25
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Versão dos builds sem tag
+        if: github.ref_type != 'tag'
+        run: echo "VERSION=0.1.0-dev-${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+
+      - name: Build, spotless e testes
+        run: ./gradlew build
+
+      # O mod (o jar para mods/, no servidor e no cliente).
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ryoikitenkai-mod
+          if-no-files-found: error
+          path: |
+            build/libs/ryoikitenkai-*.jar
+            !build/libs/*-dev.jar
+            !build/libs/*-sources.jar
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-reports
+          path: build/reports/tests
