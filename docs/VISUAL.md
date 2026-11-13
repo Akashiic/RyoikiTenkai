@@ -439,9 +439,12 @@ O dono aprovou as seis habilidades propostas (`PLANO-COMBATE.md`) e mandou fazer
   * **Dois modos**, pelo lugar onde o conjurador estava ao usar: **no chão** ele continua andando e o orbe varre à
     frente, mais ou menos na altura de um corpo; **no ar** ele fica **suspenso onde está** até o fim e o orbe vai
     para qualquer lado, inclusive para o céu (levando junto quem estiver preso).
-  * **O que se vê:** um miolo branco numa luz azul, com **lóbulos de azul escuro girando em volta**, três arcos
-    claros que giram, agulhas de luz chegando de toda parte, dois anéis que se fecham e pedaços do chão arrancados
-    para cima; quando é levado depressa deixa rastro; no fim fecha-se e solta um anel. Para quem está dentro, a
+  * **O que se vê:** uma **esfera azul de verdade** (pedido do dono em 2026-11-13, que achou a primeira versão,
+    só de brilhos, desagradável): uma malha esférica com corpo e borda, branca no meio, depois azul-gelo, depois
+    **azul escuro onde a superfície vira para longe do olho**, com um fio claro na borda e faixas que giram na
+    superfície. Em volta dela o halo, uma poça de luz no chão embaixo, **respingos de azul escuro com cauda**
+    girando, três arcos claros, agulhas de luz chegando de toda parte, dois anéis que se fecham e pedaços do chão
+    arrancados para cima; quando é levada depressa deixa rastro; no fim fecha-se e solta um anel. Para quem está dentro, a
     luz é atenuada (senão a tela ficava branca). Quem conjura **mantém a mão estendida** enquanto guia o orbe e a
     recolhe no fim.
 * **Talho (Santuário Carmesim).** Uma lâmina sai da frente do peito e voa reto por até 12 blocos, a 1,5 bloco por

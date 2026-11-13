@@ -79,6 +79,8 @@ public final class AbilityFx {
         int age;
         /** Begun in the air: its caster hangs there. */
         boolean air;
+        /** The height of the ground under it; NaN when there is none near. */
+        float ground = Float.NaN;
         /** Ticks since it ended; negative while it lasts. */
         int closing = -1;
         final float[] needles = new float[NEEDLES * 4];
@@ -205,6 +207,11 @@ public final class AbilityFx {
         return CastPose.layer(age, g[2]);
     }
 
+    /** For the development harness: an effect, as if the server had announced it. */
+    public void show(byte[] data) {
+        heard(ModeWire.decode(data));
+    }
+
     /** Whether a player hangs in the air by an orb it began there: it does not move until the orb is over. */
     public boolean hangs(int entity) {
         Orb o = orbs.get(entity);
@@ -238,6 +245,17 @@ public final class AbilityFx {
                 o.closing = 0;
             } else {
                 rubble(mc.theWorld, o);
+            }
+            o.ground = Float.NaN;
+            int bx = MathHelper.floor_double(o.x);
+            int bz = MathHelper.floor_double(o.z);
+            for (int by = MathHelper.floor_double(o.y); by >= MathHelper.floor_double(o.y) - 4; by--) {
+                if (mc.theWorld.getBlock(bx, by, bz)
+                    .getMaterial()
+                    .blocksMovement()) {
+                    o.ground = by + 1;
+                    break;
+                }
             }
             if (o.closing > PULL_CLOSES) {
                 i.remove();
@@ -312,6 +330,86 @@ public final class AbilityFx {
 
     // Atração.
 
+    private static final int[] SPHERE = { 0x1838D8, 0x2F8CFF, 0x58D6FF, 0xBFF6FF, 0xFFFFFF };
+    private static final int SPHERE_RIM = 0x8FC8FF;
+    private static final int STACKS = 14;
+    private static final int SLICES = 22;
+
+    /**
+     * A sphere at a place (blocks from the camera), coloured by how its surface faces the eye, with bands of light
+     * that turn about it.
+     */
+    private static void sphere(Tessellator t, float x, float y, float z, float radius, float age, float alpha) {
+        if (alpha <= 0.02F) {
+            return;
+        }
+        float distance = (float) Math.sqrt(x * x + y * y + z * z);
+        if (distance < radius * 1.15F) {
+            // The eye is in it: there is no outside to draw.
+            return;
+        }
+        float[][][] at = new float[STACKS + 1][SLICES + 1][3];
+        int[][] color = new int[STACKS + 1][SLICES + 1];
+        float[][] facing = new float[STACKS + 1][SLICES + 1];
+        for (int i = 0; i <= STACKS; i++) {
+            double lat = Math.PI * i / STACKS - Math.PI / 2;
+            float cosLat = (float) Math.cos(lat);
+            float sinLat = (float) Math.sin(lat);
+            for (int j = 0; j <= SLICES; j++) {
+                double lon = Math.PI * 2 * j / SLICES;
+                float nx = cosLat * (float) Math.cos(lon);
+                float nz = cosLat * (float) Math.sin(lon);
+                float px = x + nx * radius;
+                float py = y + sinLat * radius;
+                float pz = z + nz * radius;
+                at[i][j][0] = px;
+                at[i][j][1] = py;
+                at[i][j][2] = pz;
+                // How squarely this bit of surface faces the eye: 1 in the middle of the disc, 0 on its edge.
+                float length = (float) Math.sqrt(px * px + py * py + pz * pz);
+                float f = -(nx * px + sinLat * py + nz * pz) / length;
+                facing[i][j] = f;
+                int c = Draw.mix(SPHERE[0], SPHERE[1], smooth((f - 0.14F) / 0.28F));
+                c = Draw.mix(c, SPHERE[2], smooth((f - 0.40F) / 0.30F));
+                c = Draw.mix(c, SPHERE[3], smooth((f - 0.68F) / 0.20F));
+                c = Draw.mix(c, SPHERE[4], smooth((f - 0.86F) / 0.13F));
+                c = Draw.mix(c, SPHERE_RIM, (1 - smooth(f / 0.09F)) * 0.75F);
+                // The bands: brighter and darker stripes that wind about it and turn.
+                float band = MathHelper.sin((float) (4 * lon + 3 * Math.sin(2 * lat)) + age * 0.35F);
+                color[i][j] = band > 0 ? Draw.mix(c, 0xFFFFFF, 0.16F * band) : Draw.mix(c, SPHERE[0], -0.14F * band);
+            }
+        }
+        Draw.translucent();
+        GL11.glDepthMask(true);
+        t.startDrawingQuads();
+        for (int i = 0; i < STACKS; i++) {
+            for (int j = 0; j < SLICES; j++) {
+                if (facing[i][j] < -0.05F && facing[i + 1][j] < -0.05F
+                    && facing[i][j + 1] < -0.05F
+                    && facing[i + 1][j + 1] < -0.05F) {
+                    // The far side.
+                    continue;
+                }
+                corner(t, at[i][j], color[i][j], alpha);
+                corner(t, at[i][j + 1], color[i][j + 1], alpha);
+                corner(t, at[i + 1][j + 1], color[i + 1][j + 1], alpha);
+                corner(t, at[i + 1][j], color[i + 1][j], alpha);
+            }
+        }
+        t.draw();
+        GL11.glDepthMask(false);
+    }
+
+    private static void corner(Tessellator t, float[] at, int color, float alpha) {
+        Draw.color(t, color, alpha);
+        t.addVertex(at[0], at[1], at[2]);
+    }
+
+    private static float smooth(float v) {
+        v = Draw.clamp01(v);
+        return v * v * (3 - 2 * v);
+    }
+
     /** Bits of the ground under an orb, torn up toward it: the game's own, of whatever block is there. */
     private static void rubble(World world, Orb o) {
         if (world == null || world.rand.nextInt(2) != 0) {
@@ -349,7 +447,7 @@ public final class AbilityFx {
         float near = 0.16F + 0.84F * Draw.clamp01(((float) Math.sqrt(x * x + y * y + z * z) - 0.8F) / 2.6F);
         float alive = open * (1 - closing) * near;
         float beat = 0.5F + 0.5F * MathHelper.sin(age * 0.9F);
-        float size = (0.62F + 0.06F * beat) * (0.35F + 0.65F * open) * (1 - closing * closing);
+        float size = (0.62F + 0.03F * beat) * (0.35F + 0.65F * open) * (1 - closing * closing);
         float speed = (float) Math.sqrt(vx * vx + vy * vy + vz * vz);
 
         // Swung through the air it leaves itself behind: paler orbs along the way it came.
@@ -453,34 +551,69 @@ public final class AbilityFx {
             GL11.glPopMatrix();
         }
 
-        // The orb: a wide blue light, a bright one inside it, a white heart.
+        // The light it throws: around it, and in a pool on whatever ground is under it.
         t.startDrawing(GL11.GL_TRIANGLES);
-        Draw.glow(t, x, y, z, size * 4.4F, BLUE, 0.5F * alive);
-        Draw.glow(t, x, y, z, size * 2.3F, ICE, 0.85F * alive);
-        Draw.glow(t, x, y, z, size * 1.25F, WHITE, alive);
+        Draw.glow(t, x, y, z, size * 5.8F, BLUE, 0.4F * alive);
+        Draw.glow(t, x, y, z, size * 3.3F, 0x7FCBFF, 0.55F * alive);
+        Draw.glow(t, x, y, z, size * 2.15F, 0xCFEFFF, 0.5F * alive);
         t.draw();
-        // And about it, dark lobes of deep blue, turning: what it has swallowed and not yet let go.
+        if (!Float.isNaN(o.ground) && o.y - o.ground < 4) {
+            float low = 1 - (float) (o.y - o.ground) / 4;
+            GL11.glPushMatrix();
+            GL11.glTranslatef(x, (float) (o.ground - RenderManager.renderPosY) + 0.03F, z);
+            Draw.ring(0, 0.6F + 2.6F * low, 28, 0xDFF4FF, 0.42F * alive * low, 0x7FCBFF, 0);
+            GL11.glPopMatrix();
+        }
+        // About it, dark splashes of deep blue, turning: each a hard little body with a tail.
         Draw.translucent();
-        t.startDrawing(GL11.GL_TRIANGLES);
         for (int i = 0; i < LOBES; i++) {
             float tilt = o.lobes[i * 4];
-            float a = o.lobes[i * 4 + 1] + age * o.lobes[i * 4 + 3];
-            float reach = size * o.lobes[i * 4 + 2] * (1.5F + 0.25F * MathHelper.sin(age * 0.3F + i));
-            float ca = MathHelper.cos(a) * reach;
-            float sa = MathHelper.sin(a) * reach;
-            float lx = x + ca * MathHelper.cos(tilt);
-            float ly = y + sa * 0.8F + ca * MathHelper.sin(tilt) * 0.5F;
-            float lz = z + sa * 0.6F - ca * MathHelper.sin(tilt) * 0.4F;
-            Draw.glow(t, lx, ly, lz, size * (0.7F + 0.2F * MathHelper.sin(age * 0.5F + i * 2)), INK, 0.8F * alive);
+            float reach = size * (1.75F + 0.75F * o.lobes[i * 4 + 2]) * (1 + 0.12F * MathHelper.sin(age * 0.3F + i));
+            float[] last = null;
+            for (int step = 0; step <= 9; step++) {
+                // The body leads; the tail is where it was a moment ago.
+                float a = o.lobes[i * 4 + 1] + (age - step * 0.32F) * o.lobes[i * 4 + 3];
+                float ca = MathHelper.cos(a) * reach;
+                float sa = MathHelper.sin(a) * reach;
+                float[] at = { x + ca * MathHelper.cos(tilt), y + sa * 0.85F + ca * MathHelper.sin(tilt) * 0.5F,
+                    z + sa * 0.6F - ca * MathHelper.sin(tilt) * 0.4F };
+                if (step == 0) {
+                    float body = size * (0.3F + 0.12F * MathHelper.sin(age * 0.5F + i * 2));
+                    t.startDrawing(GL11.GL_TRIANGLES);
+                    Draw.glow(t, at[0], at[1], at[2], body * 2.1F, INK, 0.75F * alive);
+                    Draw.glow(t, at[0], at[1], at[2], body * 1.1F, 0x061280, alive);
+                    t.draw();
+                } else {
+                    float f0 = 1 - (step - 1) / 9F;
+                    float f1 = 1 - step / 9F;
+                    t.startDrawingQuads();
+                    ribbon(
+                        t,
+                        last[0],
+                        last[1],
+                        last[2],
+                        at[0],
+                        at[1],
+                        at[2],
+                        size * 0.26F * f0,
+                        size * 0.26F * f1,
+                        INK,
+                        0.8F * alive * f0,
+                        INK,
+                        0.8F * alive * f1);
+                    t.draw();
+                }
+                last = at;
+            }
         }
-        t.draw();
-        Draw.additive();
-        t.startDrawing(GL11.GL_TRIANGLES);
-        Draw.glow(t, x, y, z, size * 0.7F, WHITE, 0.9F * alive);
-        t.draw();
+        // The orb itself: a sphere, with a body and an edge. From the eye, its middle is white, then the blue of
+        // ice, then a deep blue where its surface turns away, and a thin light on the very edge; and its surface
+        // moves.
+        sphere(t, x, y, z, size * 1.5F, age, alive);
 
         if (closing > 0) {
             // What is left when it closes: a ring of light going out, thin and quick.
+            Draw.additive();
             float out = closing * (2 - closing);
             GL11.glPushMatrix();
             GL11.glTranslatef(x, y, z);

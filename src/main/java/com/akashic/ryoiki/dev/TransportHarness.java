@@ -704,6 +704,24 @@ public final class TransportHarness {
                     .recharge(Integer.parseInt(n[0]) - 1, Integer.parseInt(n[1]), Integer.parseInt(n[2]));
                 break;
             }
+            case "orb": {
+                // "orb 5": the void's orb that far before the eyes, drawn here only, for half a minute: to look at it.
+                net.minecraft.util.Vec3 look = mc.thePlayer.getLookVec();
+                double far = Double.parseDouble(rest);
+                com.akashic.ryoiki.client.AbilityFx.INSTANCE.show(
+                    com.akashic.ryoiki.mode.ModeWire.effect(
+                        com.akashic.ryoiki.mode.AbilityMath.PULL,
+                        -7,
+                        mc.thePlayer.posX + look.xCoord * far,
+                        mc.thePlayer.posY + look.yCoord * far,
+                        mc.thePlayer.posZ + look.zCoord * far,
+                        0,
+                        0,
+                        0,
+                        com.akashic.ryoiki.mode.AbilityMath.ORB_RADIUS,
+                        600));
+                break;
+            }
             case "press":
                 com.akashic.ryoiki.client.SorcererClient.INSTANCE.press(Integer.parseInt(rest) - 1);
                 break;
